@@ -328,7 +328,7 @@ else {
 			///////Add Artworks~///////
 			gal.artGroup = new THREE.Group();
            
-			gal.num_of_paintings = 18;
+			gal.num_of_paintings = 30;
 			gal.paintings = [];
 			for(var i = 0; i < gal.num_of_paintings; i++){
 				(function(index) {
