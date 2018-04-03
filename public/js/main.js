@@ -328,7 +328,7 @@ else {
 			///////Add Artworks~///////
 			gal.artGroup = new THREE.Group();
            
-			gal.num_of_paintings = 30;
+			gal.num_of_paintings = 18;
 			gal.paintings = [];
 			for(var i = 0; i < gal.num_of_paintings; i++){
 				(function(index) {
@@ -345,8 +345,8 @@ else {
 					var img = new THREE.MeshBasicMaterial({ map: texture });
 
 					artwork.onload = function(){
-						ratiow = artwork.width/300;
-						ratioh = artwork.height/300;
+						ratiow = artwork.width/1024;
+						ratioh = artwork.height/1024;
 						// plane for artwork
 						var plane = new THREE.Mesh(new THREE.PlaneGeometry(ratiow, ratioh),img); //width, height
 						plane.overdraw = true;
