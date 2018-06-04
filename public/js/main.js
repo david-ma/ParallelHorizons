@@ -348,7 +348,7 @@ else {
 						ratiow = artwork.width/1024;
 						ratioh = artwork.height/1024;
 						// plane for artwork
-						var plane = new THREE.Mesh(new THREE.PlaneGeometry(ratiow, ratioh),img); //width, height
+						var plane = new THREE.Mesh(new THREE.PlaneGeometry(ratiow, ratioh), img); //width, height
 						plane.overdraw = true;
                         //-1 because index is 0 - n-1 but num of paintings is n 
 						if(index <= Math.floor(gal.num_of_paintings/2)-1) //bottom half
@@ -362,10 +362,12 @@ else {
                             plane.position.set(2.5 * index - 55 ,2 ,2.96);
                             //plane.position.set(65*i - 75*Math.floor(gal.num_of_paintings/2) - 15*Math.floor(num_of_paintings/2), 48, 90);
 							plane.rotation.y = Math.PI;
-						}https://aerotwist.com/tutorials/create-your-own-environment-maps/
+						}
+
+						//https://aerotwist.com/tutorials/create-your-own-environment-maps/
 						gal.scene.add(plane);
                         gal.paintings.push(plane);
-					}
+					};
 
 					img.map.needsUpdate = true; //ADDED
 				}(i))
