@@ -432,7 +432,7 @@ else {
                 //calculate objects interesting ray
                 gal.intersects = gal.raycaster.intersectObjects(gal.paintings);
                 if(gal.intersects.length !== 0) {
-                    gal.intersects[0].object.material.color.set(0xaaeeee);
+                    // gal.intersects[0].object.material.color.set(0xaaeeee);
                     //console.log(intersects[0].distance);
                     console.log(gal.intersects[0].point);
                 }
