@@ -68,10 +68,10 @@ else {
             gal.camera.add(gal.user);
 
             gal.controls = new THREE.PointerLockControls(gal.camera, gal.renderer.domElement);
-            gal.scene.add(gal.controls.getObject());
+            gal.scene.add(gal.camera);
 
-            gal.pastX = gal.controls.getObject().position.x;
-            gal.pastZ = gal.controls.getObject().position.z;
+            gal.pastX = gal.camera.position.x;
+            gal.pastZ = gal.camera.position.z;
 
             //https://developer.mozilla.org/en-US/docs/Web/API/Document/querySelector
             gal.canvas = document.querySelector('canvas');
@@ -86,7 +86,7 @@ else {
 
             //only when pointer is locked will translation controls be allowed: gal.controls.enabled
             gal.moveVelocity = new THREE.Vector3();
-            gal.jump = true;
+            gal.jump = true; // allow jump
             gal.moveForward = false;
             gal.moveBackward = false;
             gal.moveLeft = false;
@@ -437,58 +437,48 @@ else {
                     gal.moveVelocity.x += 38.0 * gal.analogRight * delta;
                 }
 
-                // gal.controls.getObject().translateX(gal.moveVelocity.x * delta);
-                // gal.controls.getObject().translateZ(gal.moveVelocity.z * delta);
+                // gal.camera.translateX(gal.moveVelocity.x * delta);
+                // gal.camera.translateZ(gal.moveVelocity.z * delta);
 
                 gal.controls.moveForward(gal.moveVelocity.z * delta * -1);
                 gal.controls.moveRight(gal.moveVelocity.x * delta);
 
-                if (gal.controls.getObject().position.z < -2) {
-                    gal.controls.getObject().position.z = -2;
+                if (gal.camera.position.z < -2) {
+                    gal.camera.position.z = -2;
                 }
-                if (gal.controls.getObject().position.z > 2) {
-                    gal.controls.getObject().position.z = 2;
+                if (gal.camera.position.z > 2) {
+                    gal.camera.position.z = 2;
                 }
-                if (gal.controls.getObject().position.x < -18) {
-                    gal.controls.getObject().position.x = -18;
+                if (gal.camera.position.x < -18) {
+                    gal.camera.position.x = -18;
                 }
-                if (gal.controls.getObject().position.x > 18) {
-                    gal.controls.getObject().position.x = 18;
+                if (gal.camera.position.x > 18) {
+                    gal.camera.position.x = 18;
                 }
-
-
 
 
 
 
 // Apply gravity based on the world. Not the camera!!!!
-// gal.controls.getObject().translateY(gal.moveVelocity.y * delta);
 // Gravity
-gal.moveVelocity.y -= .6 * delta; // m/s^2 * kg * delta Time
-// gal.controls.getObject().position.y += gal.moveVelocity.y;
+gal.moveVelocity.y -= .6 * delta;
 gal.camera.position.y += gal.moveVelocity.y;
 
-/*
-                var downDist = gal.moveVelocity.y * delta;
-                console.log(downDist);
-                gal.controls.moveDown(downDist);
-*/
 
-                if (gal.controls.getObject().position.y < 1.75) {
+
+                // floor?
+                if (gal.camera.position.y < 1.75) {
                     gal.jump = true;
                     gal.moveVelocity.y = 0;
-                    gal.controls.getObject().position.y = 1.75;
+                    gal.camera.position.y = 1.75;
                 }
 
                 // roof?
-                if (gal.controls.getObject().position.y > 5) {
-                    gal.jump = true;
+                if (gal.camera.position.y > 5) {
                     gal.moveVelocity.y = 0;
-                    gal.controls.getObject().position.y = 5;
+                    gal.camera.position.y = 5;
                 }
 
-
-console.log(gal.moveVelocity.y);
 
 
 
@@ -510,22 +500,22 @@ console.log(gal.moveVelocity.y);
                         //reffer to  forced positioning from above
                         //if gets to a certain value, force value to that value?
                         /*
-                        if(gal.controls.getObject().position.x > gal.pastX) { //collision on right side
-                            gal.controls.getObject().position.x = gal.pastX;
+                        if(gal.camera.position.x > gal.pastX) { //collision on right side
+                            gal.camera.position.x = gal.pastX;
                         }
-                        else if(gal.controls.getObject().position.x < gal.pastX) { //collision on left side
-                            gal.controls.getObject().position.x = gal.pastX;
+                        else if(gal.camera.position.x < gal.pastX) { //collision on left side
+                            gal.camera.position.x = gal.pastX;
                         }
-                        if(gal.controls.getObject().position.z > gal.pastZ) { //collision from front
-                            gal.controls.getObject().position.z = gal.pastZ;
+                        if(gal.camera.position.z > gal.pastZ) { //collision from front
+                            gal.camera.position.z = gal.pastZ;
                         }
-                        else if(gal.controls.getObject().position.z < gal.pastZ) {
-                            gal.controls.getObject().position.z = gal.pastZ;
+                        else if(gal.camera.position.z < gal.pastZ) {
+                            gal.camera.position.z = gal.pastZ;
                         }
                         */
                         /*
-						gal.controls.getObject().position.x -= gal.pastX * delta * .9;
-						gal.controls.getObject().position.z -= gal.pastZ * delta * .9;
+						gal.camera.position.x -= gal.pastX * delta * .9;
+						gal.camera.position.z -= gal.pastZ * delta * .9;
 
 						gal.moveVelocity.x = 0;
 						gal.moveVelocity.z = 0;
@@ -536,8 +526,8 @@ console.log(gal.moveVelocity.y);
                         gal.wallGroup.children[i].material.color.set(0xffffff);
                     }
                 }
-                gal.pastX = gal.controls.getObject().position.x;
-                gal.pastZ = gal.controls.getObject().position.z;
+                gal.pastX = gal.camera.position.x;
+                gal.pastZ = gal.camera.position.z;
 
                 gal.user.BBox.setFromObject(gal.user);
 
