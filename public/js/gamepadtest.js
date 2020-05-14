@@ -9,9 +9,11 @@
 var haveEvents = 'GamepadEvent' in window;
 var haveWebkitEvents = 'WebKitGamepadEvent' in window;
 var controllers = {};
-var rAF = window.mozRequestAnimationFrame ||
-    window.webkitRequestAnimationFrame ||
-    window.requestAnimationFrame;
+var rAF = requestAnimationFrame;
+
+// window.mozRequestAnimationFrame ||
+//     window.webkitRequestAnimationFrame ||
+//     window.requestAnimationFrame;
 
 function connecthandler(e) {
     addgamepad(e.gamepad);
@@ -79,8 +81,18 @@ function framerate() {
 
 
 var buttonActions = {
+    1: function(action) {
+        // Jumping action.
+        // if(action == "on") {
+        //     gal.moveVelocity.y += 17;
+        //     gal.jump = false;
+        // } else {
+        //     gal.jump = true;
+        // }
+    },
     12: function(action) {
         // Go forward.
+        // if(action == "on") gal.controls.moveForward( 1 );
         if(action == "on") gal.moveForward = true;
         if(action == "off") gal.moveForward = false;
     },
@@ -153,6 +165,24 @@ function updateStatus() {
                 } else {
                     gal.analogForward = 0;
                     gal.analogBackward = 0;
+                }
+            }
+            if(i == 2) {
+                if (controller.axes[i] < -0.1) {
+                    gal.analogY = controller.axes[i];
+                } else if(controller.axes[i] > 0.1) {
+                    gal.analogY = controller.axes[i];
+                } else {
+                    gal.analogY = 0;
+                }
+            }
+            if(i == 3) {
+                if (controller.axes[i] < -0.1) {
+                    gal.analogX = controller.axes[i];
+                } else if(controller.axes[i] > 0.1) {
+                    gal.analogX = controller.axes[i];
+                } else {
+                    gal.analogX = 0;
                 }
             }
         }

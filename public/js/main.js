@@ -4,6 +4,8 @@ if (!(Detector.webgl)) //if no support for WebGL
 }
 else {
     //////////////////////////////////////MAIN SCENE////////////////////////////////////////
+    const PI_2 = Math.PI / 2;
+
     var gal = {
 		/*
 		gal.scene;
@@ -24,7 +26,10 @@ else {
 		gal.movement;
 		gal.create;
 		gal.render;
-		*/
+        */
+
+        euler: new THREE.Euler(0, 0, 0, 'YXZ'),
+
         scene: new THREE.Scene(),
         camera: new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000),
         renderer: new THREE.WebGLRenderer({ antialias: false }),
@@ -62,7 +67,7 @@ else {
             //make our collision object a child of the camera
             gal.camera.add(gal.user);
 
-            gal.controls = new THREE.PointerLockControls(gal.camera);
+            gal.controls = new THREE.PointerLockControls(gal.camera, gal.renderer.domElement);
             gal.scene.add(gal.controls.getObject());
 
             gal.pastX = gal.controls.getObject().position.x;
@@ -90,6 +95,8 @@ else {
             gal.analogBackward = 0;
             gal.analogLeft = 0;
             gal.analogRight = 0;
+            gal.analogX = 0;
+            gal.analogY = 0;
 
             //Resize if window size change!
             window.addEventListener('resize', function () {
@@ -380,6 +387,15 @@ else {
         render: function () {
             requestAnimationFrame(gal.render);
 
+            gal.euler.setFromQuaternion(gal.camera.quaternion);
+
+            gal.euler.y -= gal.analogY * 0.04;
+            gal.euler.x -= gal.analogX * 0.04;
+
+            gal.euler.x = Math.max(- PI_2, Math.min(PI_2, gal.euler.x));
+
+            gal.camera.quaternion.setFromEuler(gal.euler);
+
             ////Movement Controls /////
             if (gal.controls.enabled === true) {
                 gal.initialRender = false;
@@ -392,6 +408,8 @@ else {
                 //only when the object is currently in motion
                 gal.moveVelocity.x -= gal.moveVelocity.x * 10.0 * delta;
                 //for now
+
+// Apply gravity based on the world. Not the camera!!!!
                 gal.moveVelocity.y -= 9.8 * 7.0 * delta; // m/s^2 * kg * delta Time
                 gal.moveVelocity.z -= gal.moveVelocity.z * 10.0 * delta;
 
