@@ -85,7 +85,11 @@ else {
 			gal.moveForward = false;
 			gal.moveBackward = false;
 			gal.moveLeft = false;
-			gal.moveRight = false;
+            gal.moveRight = false;
+            gal.analogForward = 0;
+            gal.analogBackward = 0;
+            gal.analogLeft = 0;
+            gal.analogRight = 0;
 
 			//Resize if window size change!
 			window.addEventListener('resize', function() {
@@ -406,7 +410,20 @@ else {
 					gal.moveVelocity.x += 38.0 * delta;
 				}
 				
-				gal.controls.getObject().translateX(gal.moveVelocity.x * delta);
+				if(gal.analogForward) {
+					gal.moveVelocity.z -= 38.0 * gal.analogForward * delta;
+				}
+				if(gal.analogBackward) {
+					gal.moveVelocity.z += 38.0 * gal.analogBackward * delta;
+				}
+				if(gal.analogLeft) {
+					gal.moveVelocity.x -= 38.0 * gal.analogLeft * delta;
+				}
+				if(gal.analogRight) {
+					gal.moveVelocity.x += 38.0 * gal.analogRight * delta;
+				}
+
+                gal.controls.getObject().translateX(gal.moveVelocity.x * delta);
 				gal.controls.getObject().translateY(gal.moveVelocity.y * delta);
 				gal.controls.getObject().translateZ(gal.moveVelocity.z * delta);
 				

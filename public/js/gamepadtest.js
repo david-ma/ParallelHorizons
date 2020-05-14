@@ -61,14 +61,6 @@ function removegamepad(gamepad) {
 }
 
 
-var buttonActions = {
-    14: function() {
-        // Go left.
-        console.log("pressing 14");
-        gal.moveLeft = true;
-    }
-}
-
 var lastCalledTime;
 var fps;
 var counter = 0;
@@ -83,6 +75,30 @@ function framerate() {
      lastCalledTime = performance.now();
      fps = 1/delta;
      if(counter++ % 30 == 0) $("#fps").text(Math.floor(fps));
+}
+
+
+var buttonActions = {
+    12: function(action) {
+        // Go forward.
+        if(action == "on") gal.moveForward = true;
+        if(action == "off") gal.moveForward = false;
+    },
+    13: function(action) {
+        // Go back.
+        if(action == "on") gal.moveBackward = true;
+        if(action == "off") gal.moveBackward = false;
+    },
+    14: function(action) {
+        // Go left.
+        if(action == "on") gal.moveLeft = true;
+        if(action == "off") gal.moveLeft = false;
+    },
+    15: function(action) {
+        // Go Right.
+        if(action == "on") gal.moveRight = true;
+        if(action == "off") gal.moveRight = false;
+    }
 }
 
 function updateStatus() {
@@ -106,11 +122,10 @@ function updateStatus() {
             if (pressed) {
                 b.className = "button pressed";
 
-                console.log(i);
-                if(buttonActions[i]) buttonActions[i]();
-
+                if(buttonActions[i]) buttonActions[i]("on");
             } else {
                 b.className = "button";
+                if(buttonActions[i]) buttonActions[i]("off");
             }
         }
 
@@ -119,6 +134,27 @@ function updateStatus() {
             var a = axes[i];
             a.innerHTML = i + ": " + controller.axes[i].toFixed(4);
             a.setAttribute("value", controller.axes[i]);
+
+            if(i == 0) {
+                if (controller.axes[i] < -0.1) {
+                    gal.analogLeft = controller.axes[i] * -1;
+                } else if(controller.axes[i] > 0.1) {
+                    gal.analogRight = controller.axes[i];
+                } else {
+                    gal.analogRight = 0;
+                    gal.analogLeft = 0;
+                }
+            }
+            if(i == 1) {
+                if (controller.axes[i] < -0.1) {
+                    gal.analogForward = controller.axes[i] * -1;
+                } else if(controller.axes[i] > 0.1) {
+                    gal.analogBackward = controller.axes[i];
+                } else {
+                    gal.analogForward = 0;
+                    gal.analogBackward = 0;
+                }
+            }
         }
     }
     rAF(updateStatus);
