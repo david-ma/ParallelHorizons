@@ -234,7 +234,7 @@ else {
                 }
                 else if (e.keyCode === 32) { //Spacebar
                     if (gal.jump) {
-                        gal.moveVelocity.y += 17;
+                        gal.moveVelocity.y += .2;
                         gal.jump = false;
                     }
                 }
@@ -408,9 +408,6 @@ else {
                 //only when the object is currently in motion
                 gal.moveVelocity.x -= gal.moveVelocity.x * 10.0 * delta;
                 //for now
-
-// Apply gravity based on the world. Not the camera!!!!
-                gal.moveVelocity.y -= 9.8 * 7.0 * delta; // m/s^2 * kg * delta Time
                 gal.moveVelocity.z -= gal.moveVelocity.z * 10.0 * delta;
 
                 //need to apply velocity when keys are being pressed
@@ -440,15 +437,12 @@ else {
                     gal.moveVelocity.x += 38.0 * gal.analogRight * delta;
                 }
 
-                gal.controls.getObject().translateX(gal.moveVelocity.x * delta);
-                gal.controls.getObject().translateY(gal.moveVelocity.y * delta);
-                gal.controls.getObject().translateZ(gal.moveVelocity.z * delta);
+                // gal.controls.getObject().translateX(gal.moveVelocity.x * delta);
+                // gal.controls.getObject().translateZ(gal.moveVelocity.z * delta);
 
-                if (gal.controls.getObject().position.y < 1.75) {
-                    gal.jump = true;
-                    gal.moveVelocity.y = 0;
-                    gal.controls.getObject().position.y = 1.75;
-                }
+                gal.controls.moveForward(gal.moveVelocity.z * delta * -1);
+                gal.controls.moveRight(gal.moveVelocity.x * delta);
+
                 if (gal.controls.getObject().position.z < -2) {
                     gal.controls.getObject().position.z = -2;
                 }
@@ -461,6 +455,43 @@ else {
                 if (gal.controls.getObject().position.x > 18) {
                     gal.controls.getObject().position.x = 18;
                 }
+
+
+
+
+
+
+// Apply gravity based on the world. Not the camera!!!!
+// gal.controls.getObject().translateY(gal.moveVelocity.y * delta);
+// Gravity
+gal.moveVelocity.y -= .6 * delta; // m/s^2 * kg * delta Time
+// gal.controls.getObject().position.y += gal.moveVelocity.y;
+gal.camera.position.y += gal.moveVelocity.y;
+
+/*
+                var downDist = gal.moveVelocity.y * delta;
+                console.log(downDist);
+                gal.controls.moveDown(downDist);
+*/
+
+                if (gal.controls.getObject().position.y < 1.75) {
+                    gal.jump = true;
+                    gal.moveVelocity.y = 0;
+                    gal.controls.getObject().position.y = 1.75;
+                }
+
+                // roof?
+                if (gal.controls.getObject().position.y > 5) {
+                    gal.jump = true;
+                    gal.moveVelocity.y = 0;
+                    gal.controls.getObject().position.y = 5;
+                }
+
+
+console.log(gal.moveVelocity.y);
+
+
+
 
                 //rayCaster/////
                 gal.raycaster.setFromCamera(gal.mouse.clone(), gal.camera);

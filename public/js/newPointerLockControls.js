@@ -76,7 +76,6 @@ THREE.PointerLockControls = function (camera, domElement) {
     }
 
     this.connect = function () {
-console.log("Connecting...");
 
         document.addEventListener('mousemove', onMouseMove, false);
         document.addEventListener('pointerlockchange', onPointerlockChange, false);
@@ -85,7 +84,6 @@ console.log("Connecting...");
     };
 
     this.disconnect = function () {
-console.log("Disconnecting...");
 
         document.removeEventListener('mousemove', onMouseMove, false);
         document.removeEventListener('pointerlockchange', onPointerlockChange, false);
