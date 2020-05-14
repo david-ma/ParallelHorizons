@@ -252,7 +252,7 @@ else {
 			gal.scene.add(gal.worldLight);
 
             //set the floor up
-            gal.floorText = THREE.ImageUtils.loadTexture("img/Textures/Floor.jpg");
+            gal.floorText = new THREE.TextureLoader().load("img/Textures/Floor.jpg");
             gal.floorText.wrapS = THREE.RepeatWrapping;
             gal.floorText.wrapT = THREE.RepeatWrapping;
             gal.floorText.repeat.set(24,24);
@@ -340,7 +340,8 @@ else {
 					var source = './img/Artworks/' + (index).toString() + '.jpg';
 					artwork.src = source;
                     
-                    var texture = THREE.ImageUtils.loadTexture(artwork.src);
+                    var texture = new THREE.TextureLoader().load(artwork.src);
+
                     texture.minFilter = THREE.LinearFilter;
 					var img = new THREE.MeshBasicMaterial({ map: texture });
 
@@ -434,12 +435,12 @@ else {
                 if(gal.intersects.length !== 0) {
                     // gal.intersects[0].object.material.color.set(0xaaeeee);
                     //console.log(intersects[0].distance);
-                    console.log(gal.intersects[0].point);
+                    // console.log(gal.intersects[0].point);
                 }
 
                 for(var i = 0; i < gal.wallGroup.children.length; i++) {
 
-                    if(gal.user.BBox.isIntersectionBox(gal.wallGroup.children[i].BBox)){
+                    if(gal.user.BBox.intersectsBox(gal.wallGroup.children[i].BBox)){
      
                         //reffer to  forced positioning from above
                         //if gets to a certain value, force value to that value?
