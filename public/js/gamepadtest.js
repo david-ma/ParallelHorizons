@@ -60,7 +60,34 @@ function removegamepad(gamepad) {
     delete controllers[gamepad.index];
 }
 
+
+var buttonActions = {
+    14: function() {
+        // Go left.
+        console.log("pressing 14");
+        gal.moveLeft = true;
+    }
+}
+
+var lastCalledTime;
+var fps;
+var counter = 0;
+
+function framerate() {
+    if(!lastCalledTime) {
+        lastCalledTime = performance.now();
+        fps = 0;
+        return;
+     }
+     delta = (performance.now() - lastCalledTime)/1000;
+     lastCalledTime = performance.now();
+     fps = 1/delta;
+     if(counter++ % 30 == 0) $("#fps").text(Math.floor(fps));
+}
+
 function updateStatus() {
+    framerate();
+
     scangamepads();
     for (j in controllers) {
         var controller = controllers[j];
@@ -78,6 +105,10 @@ function updateStatus() {
             b.style.backgroundSize = pct + " " + pct;
             if (pressed) {
                 b.className = "button pressed";
+
+                console.log(i);
+                if(buttonActions[i]) buttonActions[i]();
+
             } else {
                 b.className = "button";
             }
