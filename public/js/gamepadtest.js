@@ -83,12 +83,12 @@ function framerate() {
 var buttonActions = {
     1: function(action) {
         // Jumping action.
-        // if(action == "on") {
-        //     gal.moveVelocity.y += 17;
-        //     gal.jump = false;
-        // } else {
-        //     gal.jump = true;
-        // }
+        if(action == "on") {
+            if (gal.jump) {
+                gal.moveVelocity.y += .2;
+                gal.jump = false;
+            };
+        };
     },
     12: function(action) {
         // Go forward.

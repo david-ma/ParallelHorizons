@@ -46,7 +46,7 @@ else {
 
             gal.initialRender = true;
 
-            gal.scene.fog = new THREE.FogExp2(0x666666, 0.025);
+            gal.scene.fog = new THREE.FogExp2(0x666666, 0.05);
 
             gal.renderer.setSize(window.innerWidth, window.innerHeight);
             gal.renderer.setClearColor(0xffffff, 1);
@@ -66,6 +66,7 @@ else {
 
             //make our collision object a child of the camera
             gal.camera.add(gal.user);
+            gal.camera.position.y = 1.75;
 
             gal.controls = new THREE.PointerLockControls(gal.camera, gal.renderer.domElement);
             gal.scene.add(gal.camera);
