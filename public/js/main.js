@@ -414,6 +414,11 @@ else {
                 //need to apply velocity when keys are being pressed
                 if (gal.moveForward) {
                     gal.moveVelocity.z -= 38.0 * delta;
+
+// "wanna make a walking simulator where you can't walk forward straight - you're always moving like 1 degree to the left" -@angharadyeo
+// https://twitter.com/angharadyeo/status/1266287307209838592
+                    gal.moveVelocity.x -= 3.8 * delta;
+
                 }
                 if (gal.moveBackward) {
                     gal.moveVelocity.z += 38.0 * delta;
