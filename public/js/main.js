@@ -161,7 +161,7 @@ else {
 
 
             } else {
-                alert("Your browser does not support the Pointer Lock API");
+                // alert("Your browser does not support the Pointer Lock API");
             }
         },
 
