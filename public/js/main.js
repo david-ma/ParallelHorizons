@@ -5,6 +5,7 @@ if (!(Detector.webgl)) //if no support for WebGL
 else {
     //////////////////////////////////////MAIN SCENE////////////////////////////////////////
     const PI_2 = Math.PI / 2;
+    const speed = 38.0;
 
     var gal = {
 		/*
@@ -162,6 +163,7 @@ else {
 
             } else {
                 // alert("Your browser does not support the Pointer Lock API");
+                // gal.canvas.requestPointerLock();
             }
         },
 
@@ -253,6 +255,13 @@ else {
                 }
                 else if (e.keyCode === 68 || e.keyCode === 39) { //D or RIGHT
                     gal.moveRight = false;
+                }
+                else if (e.keyCode === 81) {
+// Press Q for testing a new feature.
+// TODO: Remove after feature complete!
+                    console.log("Try to move to target position?");
+                    gal.targetPosition = {"x":10.288147066797656,"y":1.75,"z":1.043671234909461}
+
                 }
             });
         },
@@ -413,29 +422,29 @@ else {
 
                 //need to apply velocity when keys are being pressed
                 if (gal.moveForward) {
-                    gal.moveVelocity.z -= 38.0 * delta;
+                    gal.moveVelocity.z -= speed * delta;
                 }
                 if (gal.moveBackward) {
-                    gal.moveVelocity.z += 38.0 * delta;
+                    gal.moveVelocity.z += speed * delta;
                 }
                 if (gal.moveLeft) {
-                    gal.moveVelocity.x -= 38.0 * delta;
+                    gal.moveVelocity.x -= speed * delta;
                 }
                 if (gal.moveRight) {
-                    gal.moveVelocity.x += 38.0 * delta;
+                    gal.moveVelocity.x += speed * delta;
                 }
 
                 if (gal.analogForward) {
-                    gal.moveVelocity.z -= 38.0 * gal.analogForward * delta;
+                    gal.moveVelocity.z -= speed * gal.analogForward * delta;
                 }
                 if (gal.analogBackward) {
-                    gal.moveVelocity.z += 38.0 * gal.analogBackward * delta;
+                    gal.moveVelocity.z += speed * gal.analogBackward * delta;
                 }
                 if (gal.analogLeft) {
-                    gal.moveVelocity.x -= 38.0 * gal.analogLeft * delta;
+                    gal.moveVelocity.x -= speed * gal.analogLeft * delta;
                 }
                 if (gal.analogRight) {
-                    gal.moveVelocity.x += 38.0 * gal.analogRight * delta;
+                    gal.moveVelocity.x += speed * gal.analogRight * delta;
                 }
 
                 // gal.camera.translateX(gal.moveVelocity.x * delta);
@@ -443,6 +452,22 @@ else {
 
                 gal.controls.moveForward(gal.moveVelocity.z * delta * -1);
                 gal.controls.moveRight(gal.moveVelocity.x * delta);
+
+
+// move to target position
+                if (gal.targetPosition) {
+                    var deltaX = gal.camera.position.x - gal.targetPosition.x;
+                    gal.camera.position.x -= (speed * Math.cbrt(deltaX) * delta) / 12;
+                    
+                    var deltaZ = gal.camera.position.z - gal.targetPosition.z;
+                    gal.camera.position.z -= (speed * Math.cbrt(deltaZ) * delta) / 12;
+
+                    if(deltaX * deltaX < 0.001 && deltaZ * deltaZ < 0.001) {
+                        delete gal.targetPosition;
+                    }
+                }
+
+
 
                 if (gal.camera.position.z < -2) {
                     gal.camera.position.z = -2;
