@@ -29,6 +29,9 @@ else {
 		gal.render;
         */
 
+        queue: [], // queue of functions to do
+        axis: new THREE.Vector3(0, 1, 0),
+
         euler: new THREE.Euler(0, 0, 0, 'YXZ'),
 
         scene: new THREE.Scene(),
@@ -292,35 +295,35 @@ else {
                     console.log(`x: ${gal.camera.position.x}, z: ${gal.camera.position.z}`)
 
                 } else if (e.keyCode === 82) {
-                    // console.log(`x: ${gal.camera.position.x}, z: ${gal.camera.position.z}`)
 
-                    var targetPoint = new THREE.Vector3(1, 1.75, 10);
+                    var target = {
+                        x: 10,
+                        z: 1
+                    }
+                    var targetPos = new THREE.Vector2( target.z, target.x )
+                    var currentPos = new THREE.Vector2( gal.camera.position.z, gal.camera.position.x )
 
-                    var angle = new THREE.Vector2( -1, -10 ).angle()
-
-                    console.log("angle to target point???", angle);
-
-                    var axis = new THREE.Vector3(0, 1, 0);
+                    var angle = currentPos.sub(targetPos).angle()
 
                     gal.queue = [];
 
-                    gal.queue.push(function() {
-                        angle = new THREE.Vector2( -1, 0 ).angle()
-                        gal.camera.quaternionTarget = new THREE.Quaternion()
-                            .setFromAxisAngle( axis, angle )
-                    })
-
-                    gal.queue.push(function() {
-                        gal.targetPosition = {"x":10,"y":1.75,"z":1}
-                    })
-                    
                     gal.queue.push(function(){
                         gal.camera.quaternionTarget = new THREE.Quaternion()
-                            .setFromAxisAngle( axis, angle )
+                            .setFromAxisAngle( gal.axis, angle )
                     })
 
-                    gal.queue.pop()()
+                    gal.queue.push(function() {
+                        gal.targetPosition = { "x":10, "y":1.75, "z":1 }
+                    })
                     
+                    gal.queue.push(function() {
+                        angle = new THREE.Vector2( -1 , 0 ).angle()
+                        gal.camera.quaternionTarget = new THREE.Quaternion()
+                            .setFromAxisAngle( gal.axis, angle )
+                    })
+
+                    gal.queue.shift()()
+
                     // look at position
                     // go to it
                     // look at painting?
@@ -547,13 +550,13 @@ else {
                     if(deltaX * deltaX < 0.001 && deltaZ * deltaZ < 0.001) {
                         console.log("Target position reached");
                         delete gal.targetPosition;
-                        if(gal.queue.length != 0) gal.queue.pop()();
+                        if(gal.queue.length != 0) gal.queue.shift()();
                     }
                 }
 
                 if(gal.camera.quaternionTarget) {
                     var angle = gal.camera.quaternion.angleTo(gal.camera.quaternionTarget);
-                    console.log(`angle is ${angle}`);
+                    // console.log(`angle is ${angle}`);
 
 
                     gal.camera.quaternion.rotateTowards(gal.camera.quaternionTarget, 0.05);
@@ -561,7 +564,7 @@ else {
                     if (gal.camera.quaternion.equals(gal.camera.quaternionTarget)) {
                         console.log("target look reached");
                         delete gal.camera.quaternionTarget;
-                        if(gal.queue.length != 0) gal.queue.pop()();
+                        if(gal.queue.length != 0) gal.queue.shift()();
                     }
                 }
 
