@@ -1,3 +1,19 @@
+var lastCalledTime;
+var fps;
+var counter = 0;
+
+function framerate() {
+    if(!lastCalledTime) {
+        lastCalledTime = performance.now();
+        fps = 0;
+        return;
+     }
+     delta = (performance.now() - lastCalledTime)/1000;
+     lastCalledTime = performance.now();
+     fps = 1/delta;
+     if(counter++ % 30 == 0) $("#fps").text(Math.floor(fps));
+}
+
 if (!(Detector.webgl)) //if no support for WebGL
 {
     alert("Your browser does not support WebGL!");
@@ -167,6 +183,67 @@ else {
             } else {
                 // alert("Your browser does not support the Pointer Lock API");
                 // gal.canvas.requestPointerLock();
+
+                // activate mobile controls?
+                // $("#mobile_controls").removeClass("hidden");
+
+                // function mobile() {
+                //     gal.menu.className += " hide";
+                //     gal.bgMenu.className += " hide";
+                // }
+
+                // gal.play.addEventListener("click", mobile);
+                // gal.bgMenu.addEventListener("click", mobile);
+            }
+        },
+
+        mobileControls() {
+            console.log("Activating mobile controls");
+            var positions = [];
+            [1, -1].forEach(z => {
+                for(i = 0; i < 9; i++) {
+                    positions.push({
+                        z: z,
+                        x: (-10) + (2.5 * i)
+                    })
+                }
+            });
+
+            $("#mob_left").on("click", () => {
+                console.log("Click");
+                moveToTarget(positions.shift())
+            });
+
+            function moveToTarget(target) {
+                gal.render();
+                alert(`moving to target (${target.z}, ${target.x})`)
+
+                var targetPos = new THREE.Vector2( target.z, target.x )
+                var currentPos = new THREE.Vector2( gal.camera.position.z, gal.camera.position.x )
+
+                var angle = currentPos.sub(targetPos).angle()
+
+                gal.queue = [];
+
+                // look at target
+                gal.queue.push(function(){
+                    gal.camera.quaternionTarget = new THREE.Quaternion()
+                        .setFromAxisAngle( gal.axis, angle )
+                })
+
+                // walk to target
+                gal.queue.push(function() {
+                    gal.targetPosition = { "x":target.x, "y":1.75, "z":target.z }
+                })
+                
+                // look at art
+                gal.queue.push(function() {
+                    angle = new THREE.Vector2( -1 * target.z , 0 ).angle()
+                    gal.camera.quaternionTarget = new THREE.Quaternion()
+                        .setFromAxisAngle( gal.axis, angle )
+                })
+
+                gal.queue.shift()()
             }
         },
 
@@ -182,16 +259,16 @@ else {
 
             } else {
                 //pointer is no longer disabled
-                gal.controls.enabled = false;
+                // gal.controls.enabled = false;
                 //remove hidden property from menu
-                gal.menu.className = gal.menu.className.replace(/(?:^|\s)hide(?!\S)/g, '');
-                gal.bgMenu.className = gal.bgMenu.className.replace(/(?:^|\s)hide(?!\S)/g, '');
-                document.removeEventListener("mousemove", gal.moveCallback, false);
+                // gal.menu.className = gal.menu.className.replace(/(?:^|\s)hide(?!\S)/g, '');
+                // gal.bgMenu.className = gal.bgMenu.className.replace(/(?:^|\s)hide(?!\S)/g, '');
+                // document.removeEventListener("mousemove", gal.moveCallback, false);
             }
         },
 
         errorCallback: function (event) {
-            alert("Pointer Lock Failed");
+            console.error("Pointer Lock Failed");
         },
 
         moveCallback: function (event) {
@@ -293,7 +370,54 @@ else {
 
                 } else if (e.keyCode === 69) {
                     console.log(`x: ${gal.camera.position.x}, z: ${gal.camera.position.z}`)
+                    // console.log("Activating mobile controls");
+                    var positions = [];
+                    [1, -1].forEach(z => {
+                        for(i = 0; i < 9; i++) {
+                            positions.push({
+                                z: z,
+                                x: (-10) + (2.5 * i)
+                            })
+                        }
+                    });
 
+                    setInterval(
+                        function() {
+                            moveToTarget(positions[Math.floor(Math.random() * positions.length)]);
+                        }, 6000
+                    );
+
+
+                    function moveToTarget(target) {
+                        console.log(`moving to target (${target.z}, ${target.x})`)
+        
+                        var targetPos = new THREE.Vector2( target.z, target.x )
+                        var currentPos = new THREE.Vector2( gal.camera.position.z, gal.camera.position.x )
+        
+                        var angle = currentPos.sub(targetPos).angle()
+        
+                        gal.queue = [];
+        
+                        // look at target
+                        gal.queue.push(function(){
+                            gal.camera.quaternionTarget = new THREE.Quaternion()
+                                .setFromAxisAngle( gal.axis, angle )
+                        })
+        
+                        // walk to target
+                        gal.queue.push(function() {
+                            gal.targetPosition = { "x":target.x, "y":1.75, "z":target.z }
+                        })
+                        
+                        // look at art
+                        gal.queue.push(function() {
+                            angle = new THREE.Vector2( -1 * target.z , 0 ).angle()
+                            gal.camera.quaternionTarget = new THREE.Quaternion()
+                                .setFromAxisAngle( gal.axis, angle )
+                        })
+        
+                        gal.queue.shift()()
+                    }
                 } else if (e.keyCode === 82) {
 
                     var target = {
@@ -323,11 +447,6 @@ else {
                     })
 
                     gal.queue.shift()()
-
-                    // look at position
-                    // go to it
-                    // look at painting?
-
 
                 }
             });
@@ -462,6 +581,7 @@ else {
             }
         },
         render: function () {
+            framerate();
             requestAnimationFrame(gal.render);
 
             if( gal.analogX || gal.analogY) {
@@ -475,7 +595,7 @@ else {
             }
 
             ////Movement Controls /////
-            if (gal.controls.enabled === true) {
+            if (true || gal.controls.enabled === true) {
                 gal.initialRender = false;
                 var currentTime = performance.now(); //returns time in milliseconds
                 //accurate to the thousandth of a millisecond
@@ -539,11 +659,11 @@ else {
 
 
 
-// move to target position
+// Move to target position
                 if (gal.targetPosition) {
                     var deltaX = gal.camera.position.x - gal.targetPosition.x;
                     gal.camera.position.x -= (speed * Math.cbrt(deltaX) * delta) / 12;
-                    
+
                     var deltaZ = gal.camera.position.z - gal.targetPosition.z;
                     gal.camera.position.z -= (speed * Math.cbrt(deltaZ) * delta) / 12;
 
@@ -554,12 +674,13 @@ else {
                     }
                 }
 
+// Turn to face target quarternion
                 if(gal.camera.quaternionTarget) {
                     var angle = gal.camera.quaternion.angleTo(gal.camera.quaternionTarget);
                     // console.log(`angle is ${angle}`);
 
 
-                    gal.camera.quaternion.rotateTowards(gal.camera.quaternionTarget, 0.05);
+                    gal.camera.quaternion.rotateTowards(gal.camera.quaternionTarget, 0.03);
                     // if(angle < 0.7) {
                     if (gal.camera.quaternion.equals(gal.camera.quaternionTarget)) {
                         console.log("target look reached");
@@ -673,13 +794,65 @@ gal.camera.position.y += gal.moveVelocity.y;
                 }
                 gal.renderer.render(gal.scene, gal.camera);
             }
+        },
+        screensaver: function() {
+            alert("running screensaver");
+            var positions = [];
+            [1, -1].forEach(z => {
+                for(i = 0; i < 9; i++) {
+                    positions.push({
+                        z: z,
+                        x: (-10) + (2.5 * i)
+                    })
+                }
+            });
+
+            setInterval(
+                function() {
+                    moveToTarget(positions[Math.floor(Math.random() * positions.length)]);
+                }, 8000
+            );
+
+
+            function moveToTarget(target) {
+                console.log(`moving to target (${target.z}, ${target.x})`)
+
+                var targetPos = new THREE.Vector2( target.z, target.x )
+                var currentPos = new THREE.Vector2( gal.camera.position.z, gal.camera.position.x )
+
+                var angle = currentPos.sub(targetPos).angle()
+
+                gal.queue = [];
+
+                // look at target
+                gal.queue.push(function(){
+                    gal.camera.quaternionTarget = new THREE.Quaternion()
+                        .setFromAxisAngle( gal.axis, angle )
+                })
+
+                // walk to target
+                gal.queue.push(function() {
+                    gal.targetPosition = { "x":target.x, "y":1.75, "z":target.z }
+                })
+                
+                // look at art
+                gal.queue.push(function() {
+                    angle = new THREE.Vector2( -1 * target.z , 0 ).angle()
+                    gal.camera.quaternionTarget = new THREE.Quaternion()
+                        .setFromAxisAngle( gal.axis, angle )
+                })
+
+                gal.queue.shift()()
+            }
         }
     };
 
     gal.raycastSetUp();
     gal.boot();
     gal.pointerControls();
+    // gal.mobileControls();
     gal.movement();
     gal.create();
     gal.render();
+    gal.screensaver();
 } 
