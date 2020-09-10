@@ -342,119 +342,6 @@ else {
                 else if (e.keyCode === 68 || e.keyCode === 39) { //D or RIGHT
                     gal.moveRight = false;
                 }
-                else if (e.keyCode === 81) {
-// Press Q for testing a new feature.
-// TODO: Remove after feature complete!
-                    console.log("Try to move to target position?");
-                    gal.targetPosition = {"x":10.288147066797656,"y":1.75,"z":1.043671234909461}
-
-
-                    // gal.camera.quaternion = {"_x":0.00000386955804149291,"_y":-0.9998194846923328,"_z":0.01899885645990376,"_w":0.00020363644178840833}
-                    // gal.euler = {"_x":0,"_y":Math.PI,"_z":-PI_2,"_order":"YXZ"}
-                    // gal.camera.quaternion.setFromEuler(gal.euler);
-                    // gal.camera.quaternionTarget = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, Math.PI,0,"XYZ"));
-
-                    // console.log(gal.camera.getWorldDirection()
-
-                    var targetPoint = new THREE.Vector3(1, 1.75, 10)
-
-                    console.log("looking at... ", targetPoint)
-
-                    var dir = new THREE.Vector3(); // create once an reuse it
-                    dir = dir.subVectors( gal.camera.position, targetPoint ).normalize();
-
-                    console.log(dir);
-
-                    var axis = new THREE.Vector3(0, 1, 0)
-
-                    gal.camera.quaternionTarget = new THREE.Quaternion()
-                        .setFromAxisAngle(
-                            axis, (5 * Math.PI/4)
-                        )
-
-                    // console.log(gal.camera.quaternionTarget);
-
-                } else if (e.keyCode === 69) {
-                    console.log(`x: ${gal.camera.position.x}, z: ${gal.camera.position.z}`)
-                    // console.log("Activating mobile controls");
-                    var positions = [];
-                    [1, -1].forEach(z => {
-                        for(i = 0; i < 9; i++) {
-                            positions.push({
-                                z: z,
-                                x: (-10) + (2.5 * i)
-                            })
-                        }
-                    });
-
-                    setInterval(
-                        function() {
-                            moveToTarget(positions[Math.floor(Math.random() * positions.length)]);
-                        }, 6000
-                    );
-
-
-                    function moveToTarget(target) {
-                        console.log(`moving to target (${target.z}, ${target.x})`)
-        
-                        var targetPos = new THREE.Vector2( target.z, target.x )
-                        var currentPos = new THREE.Vector2( gal.camera.position.z, gal.camera.position.x )
-        
-                        var angle = currentPos.sub(targetPos).angle()
-        
-                        gal.queue = [];
-        
-                        // look at target
-                        gal.queue.push(function(){
-                            gal.camera.quaternionTarget = new THREE.Quaternion()
-                                .setFromAxisAngle( gal.axis, angle )
-                        })
-        
-                        // walk to target
-                        gal.queue.push(function() {
-                            gal.targetPosition = { "x":target.x, "y":1.75, "z":target.z }
-                        })
-                        
-                        // look at art
-                        gal.queue.push(function() {
-                            angle = new THREE.Vector2( -1 * target.z , 0 ).angle()
-                            gal.camera.quaternionTarget = new THREE.Quaternion()
-                                .setFromAxisAngle( gal.axis, angle )
-                        })
-        
-                        gal.queue.shift()()
-                    }
-                } else if (e.keyCode === 82) {
-
-                    var target = {
-                        x: 10,
-                        z: 1
-                    }
-                    var targetPos = new THREE.Vector2( target.z, target.x )
-                    var currentPos = new THREE.Vector2( gal.camera.position.z, gal.camera.position.x )
-
-                    var angle = currentPos.sub(targetPos).angle()
-
-                    gal.queue = [];
-
-                    gal.queue.push(function(){
-                        gal.camera.quaternionTarget = new THREE.Quaternion()
-                            .setFromAxisAngle( gal.axis, angle )
-                    })
-
-                    gal.queue.push(function() {
-                        gal.targetPosition = { "x":10, "y":1.75, "z":1 }
-                    })
-                    
-                    gal.queue.push(function() {
-                        angle = new THREE.Vector2( -1 , 0 ).angle()
-                        gal.camera.quaternionTarget = new THREE.Quaternion()
-                            .setFromAxisAngle( gal.axis, angle )
-                    })
-
-                    gal.queue.shift()()
-
-                }
             });
         },
 
@@ -586,9 +473,14 @@ else {
                 }(i))
             }
         },
+        animatedObjects: [],
         render: function () {
             framerate();
             requestAnimationFrame(gal.render);
+
+            gal.animatedObjects.forEach(obj => {
+                obj.render(obj);
+            })
 
             if( gal.analogX || gal.analogY) {
                 console.log("Analog sticks being used?");
