@@ -551,31 +551,23 @@ else {
                 var indices = [];
 
                 vertices.push( a.x - t, a.y + t, a.z );
-                vertices.push( b.x + t, a.y - t, a.z );
                 vertices.push( b.x + t, a.y + t, a.z );
-                vertices.push( a.x - t, a.y - t, a.z );
-
-                indices.push(0,1,2);
-                indices.push(0,3,1);
-
-                vertices.push( a.x - t, b.y - t, a.z );
-                vertices.push( a.x + t, b.y - t, a.z );
-                vertices.push( a.x + t, a.y - t, a.z );
-
-                indices.push(3,4,5);
-                indices.push(3,5,6);
-
-                vertices.push( a.x - t, b.y + t, a.z ); // 7
-                vertices.push( b.x - t, b.y + t, a.z );
                 vertices.push( b.x + t, b.y - t, a.z );
+                vertices.push( a.x - t, b.y - t, a.z );
 
-                indices.push(7,9,8);
-                indices.push(7,4,9);
-
+                vertices.push( a.x + t, a.y - t, a.z );
                 vertices.push( b.x - t, a.y - t, a.z );
+                vertices.push( b.x - t, b.y + t, a.z );
+                vertices.push( a.x + t, b.y + t, a.z );
 
-                indices.push(10,8,9);
-                indices.push(2,10,9);
+                indices.push(0,5,1);
+                indices.push(0,4,5);
+                indices.push(0,3,7);
+                indices.push(0,7,4);
+                indices.push(3,6,7);
+                indices.push(3,2,6);
+                indices.push(2,5,6);
+                indices.push(2,1,5);
 
                 geometry.setAttribute( 'position', new THREE.Float32BufferAttribute( vertices, 3 ) );
                 geometry.setIndex( indices );
