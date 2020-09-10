@@ -467,11 +467,123 @@ else {
                         //https://aerotwist.com/tutorials/create-your-own-environment-maps/
                         gal.scene.add(plane);
                         gal.paintings.push(plane);
+
+
+// console.log("Drawing box");
+//                         var geometry = new THREE.BoxBufferGeometry( 1, 1, 1 );
+//                         var material = new THREE.MeshBasicMaterial( {color: 0x00ff00} );
+//                         var cube = new THREE.Mesh( geometry, material );
+//                         gal.scene.add( cube );
+
+
+
                     };
+                    // var frame = new THREE.Group();
+
+                    // // var geometry = new THREE.BoxGeometry( 1, 1, 1 );
+                    // var material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+
+                    // var geometry = new THREE.Geometry();
+
+                    // geometry.vertices.push(
+                    //     new THREE.Vector3(-8, 3, 0),
+                    //     new THREE.Vector3(-8, 1, 0),
+                    //     new THREE.Vector3(10, 1, 0),
+                    //     new THREE.Vector3(10, 3, 0)
+                    // );
+
+                    // geometry.faces.push(new THREE.Face3(0, 1, 2));
+                    // geometry.faces.push(new THREE.Face3(0, 2, 3));
+
+                    // geometry.computeBoundingSphere();
+
+
+                    // var cube = new THREE.Mesh(geometry, material);
+
+
+                    // frame.add(cube);
+
+
+                    // gal.scene.add( frame );
+                    
 
                     img.map.needsUpdate = true; //ADDED
                 }(i))
             }
+
+            // var geometry = new THREE.BufferGeometry();
+            // // create a simple square shape. We duplicate the top left and bottom right
+            // // vertices because each vertex needs to appear once per triangle.
+            // var vertices = [
+            //     0, 2,  -1,
+            //     1, 1.9, -1,
+            //     1,  2.0,  -1,
+            //     0, 1.9, -1
+            // ];
+
+            // var indices = [];
+
+            // indices.push(0,1,2)
+            // indices.push(0,3,1)
+
+            // // itemSize = 3 because there are 3 values (components) per vertex
+            // // geometry.setAttribute( 'position', new THREE.BufferAttribute( vertices, 3 ) );
+            // geometry.setIndex( indices );
+            // geometry.setAttribute( 'position', new THREE.Float32BufferAttribute( vertices, 3 ) );
+            // // geometry.setAttribute( 'normal', new THREE.Float32BufferAttribute( normals, 3 ) );
+            // // geometry.setAttribute( 'color', new THREE.Float32BufferAttribute( colors, 3 ) );
+
+
+            // var material = new THREE.MeshBasicMaterial( { color: 0x000000 } );
+            // var mesh = new THREE.Mesh( geometry, material );
+
+            var mesh = drawFrame({ x: -1.1, y: 2.85, z: -2.9 }, { x: 1.1, y: 1, z: -2.9 }, 0.03);
+            // var mesh = drawFrame({ x: -1.1, y: 2.85, z: -1.5 }, { x: 1.1, y: 1, z: -1.5 }, parseFloat(0.03));
+
+            gal.scene.add(mesh);
+
+
+
+// topleft, bottomright, thickness
+            function drawFrame(a, b, t) {
+                var geometry = new THREE.BufferGeometry();
+                var vertices = [];
+                var indices = [];
+
+                vertices.push( a.x - t, a.y + t, a.z );
+                vertices.push( b.x + t, a.y - t, a.z );
+                vertices.push( b.x + t, a.y + t, a.z );
+                vertices.push( a.x - t, a.y - t, a.z );
+
+                indices.push(0,1,2);
+                indices.push(0,3,1);
+
+                vertices.push( a.x - t, b.y - t, a.z );
+                vertices.push( a.x + t, b.y - t, a.z );
+                vertices.push( a.x + t, a.y - t, a.z );
+
+                indices.push(3,4,5);
+                indices.push(3,5,6);
+
+                vertices.push( a.x - t, b.y + t, a.z ); // 7
+                vertices.push( b.x - t, b.y + t, a.z );
+                vertices.push( b.x + t, b.y - t, a.z );
+
+                indices.push(7,9,8);
+                indices.push(7,4,9);
+
+                vertices.push( b.x - t, a.y - t, a.z );
+
+                indices.push(10,8,9);
+                indices.push(2,10,9);
+
+                geometry.setAttribute( 'position', new THREE.Float32BufferAttribute( vertices, 3 ) );
+                geometry.setIndex( indices );
+                var material = new THREE.MeshBasicMaterial( { color: 0x000000 } );
+                var mesh = new THREE.Mesh( geometry, material );
+                return mesh;
+            }
+
         },
         animatedObjects: [],
         render: function () {
