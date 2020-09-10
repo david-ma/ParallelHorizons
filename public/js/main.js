@@ -259,11 +259,11 @@ else {
 
             } else {
                 //pointer is no longer disabled
-                // gal.controls.enabled = false;
-                //remove hidden property from menu
-                // gal.menu.className = gal.menu.className.replace(/(?:^|\s)hide(?!\S)/g, '');
-                // gal.bgMenu.className = gal.bgMenu.className.replace(/(?:^|\s)hide(?!\S)/g, '');
-                // document.removeEventListener("mousemove", gal.moveCallback, false);
+                gal.controls.enabled = false;
+                // remove hidden property from menu
+                gal.menu.className = gal.menu.className.replace(/(?:^|\s)hide(?!\S)/g, '');
+                gal.bgMenu.className = gal.bgMenu.className.replace(/(?:^|\s)hide(?!\S)/g, '');
+                document.removeEventListener("mousemove", gal.moveCallback, false);
             }
         },
 
@@ -459,7 +459,7 @@ else {
             gal.scene.add(gal.worldLight);
 
             //set the floor up
-            gal.floorText = new THREE.TextureLoader().load("img/Textures/Floor.jpg");
+            gal.floorText = new THREE.TextureLoader().load("/gallery/img/Textures/Floor.jpg");
             gal.floorText.wrapS = THREE.RepeatWrapping;
             gal.floorText.wrapT = THREE.RepeatWrapping;
             gal.floorText.repeat.set(24, 24);
@@ -544,7 +544,7 @@ else {
                     var ratiow = 0;
                     var ratioh = 0;
 
-                    var source = './img/Artworks/' + (index).toString() + '.jpg';
+                    var source = '/gallery/img/Artworks/' + (index).toString() + '.jpg';
                     artwork.src = source;
 
                     var texture = new THREE.TextureLoader().load(artwork.src);
@@ -595,7 +595,7 @@ else {
             }
 
             ////Movement Controls /////
-            if (true || gal.controls.enabled === true) {
+            if (gal.screensaver || gal.controls.enabled === true) {
                 gal.initialRender = false;
                 var currentTime = performance.now(); //returns time in milliseconds
                 //accurate to the thousandth of a millisecond
@@ -794,56 +794,6 @@ gal.camera.position.y += gal.moveVelocity.y;
                 }
                 gal.renderer.render(gal.scene, gal.camera);
             }
-        },
-        screensaver: function() {
-            alert("running screensaver");
-            var positions = [];
-            [1, -1].forEach(z => {
-                for(i = 0; i < 9; i++) {
-                    positions.push({
-                        z: z,
-                        x: (-10) + (2.5 * i)
-                    })
-                }
-            });
-
-            setInterval(
-                function() {
-                    moveToTarget(positions[Math.floor(Math.random() * positions.length)]);
-                }, 8000
-            );
-
-
-            function moveToTarget(target) {
-                console.log(`moving to target (${target.z}, ${target.x})`)
-
-                var targetPos = new THREE.Vector2( target.z, target.x )
-                var currentPos = new THREE.Vector2( gal.camera.position.z, gal.camera.position.x )
-
-                var angle = currentPos.sub(targetPos).angle()
-
-                gal.queue = [];
-
-                // look at target
-                gal.queue.push(function(){
-                    gal.camera.quaternionTarget = new THREE.Quaternion()
-                        .setFromAxisAngle( gal.axis, angle )
-                })
-
-                // walk to target
-                gal.queue.push(function() {
-                    gal.targetPosition = { "x":target.x, "y":1.75, "z":target.z }
-                })
-                
-                // look at art
-                gal.queue.push(function() {
-                    angle = new THREE.Vector2( -1 * target.z , 0 ).angle()
-                    gal.camera.quaternionTarget = new THREE.Quaternion()
-                        .setFromAxisAngle( gal.axis, angle )
-                })
-
-                gal.queue.shift()()
-            }
         }
     };
 
@@ -854,5 +804,4 @@ gal.camera.position.y += gal.moveVelocity.y;
     gal.movement();
     gal.create();
     gal.render();
-    gal.screensaver();
-} 
+}
