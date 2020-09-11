@@ -201,6 +201,9 @@ else {
                 });
 
                 gal.play.addEventListener("click", function () {
+                    gal.menu.className += " hide";
+                    gal.bgMenu.className += " hide";
+
                     moveToTarget(positions[Math.floor(Math.random() * positions.length)]);
                     setInterval(
                         function () {
@@ -239,56 +242,6 @@ else {
 
                     gal.queue.shift()()
                 }
-            }
-        },
-
-        mobileControls() {
-            console.log("Activating mobile controls");
-            var positions = [];
-            [1, -1].forEach(z => {
-                for(i = 0; i < 9; i++) {
-                    positions.push({
-                        z: z,
-                        x: (-10) + (2.5 * i)
-                    })
-                }
-            });
-
-            $("#mob_left").on("click", () => {
-                console.log("Click");
-                moveToTarget(positions.shift())
-            });
-
-            function moveToTarget(target) {
-                gal.render();
-                alert(`moving to target (${target.z}, ${target.x})`)
-
-                var targetPos = new THREE.Vector2( target.z, target.x )
-                var currentPos = new THREE.Vector2( gal.camera.position.z, gal.camera.position.x )
-
-                var angle = currentPos.sub(targetPos).angle()
-
-                gal.queue = [];
-
-                // look at target
-                gal.queue.push(function(){
-                    gal.camera.quaternionTarget = new THREE.Quaternion()
-                        .setFromAxisAngle( gal.axis, angle )
-                })
-
-                // walk to target
-                gal.queue.push(function() {
-                    gal.targetPosition = { "x":target.x, "y":1.75, "z":target.z }
-                })
-                
-                // look at art
-                gal.queue.push(function() {
-                    angle = new THREE.Vector2( -1 * target.z , 0 ).angle()
-                    gal.camera.quaternionTarget = new THREE.Quaternion()
-                        .setFromAxisAngle( gal.axis, angle )
-                })
-
-                gal.queue.shift()()
             }
         },
 
