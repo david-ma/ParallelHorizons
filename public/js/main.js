@@ -17,7 +17,7 @@ function framerate() {
      delta = (performance.now() - lastCalledTime)/1000;
      lastCalledTime = performance.now();
      fps = 1/delta;
-     if(counter++ % 30 == 0) $("#fps").text(Math.floor(fps));
+     if(counter++ % 15 == 0) $("#fps").text(Math.floor(fps));
 }
 
 if (!(Detector.webgl)) //if no support for WebGL
@@ -58,7 +58,7 @@ else {
 
         scene: new THREE.Scene(),
         camera: new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000),
-        renderer: new THREE.WebGLRenderer({ antialias: false }),
+        renderer: new THREE.WebGLRenderer({ antialias: true }),
         raycaster: new THREE.Raycaster(),
         mouse: new THREE.Vector3(),
         raycastSetUp: function () {
@@ -446,8 +446,15 @@ else {
                     var img = new THREE.MeshBasicMaterial({ map: texture });
 
                     artwork.onload = function () {
-                        ratiow = artwork.width / 1024;
-                        ratioh = artwork.height / 1024;
+                        if (artwork.width > 100) {
+
+
+                        ratiow = artwork.width / 1700;
+                        ratioh = artwork.height / 1700;
+
+                        var art = new THREE.Group();
+
+
                         // plane for artwork
                         var plane = new THREE.Mesh(new THREE.PlaneGeometry(ratiow, ratioh), img); //width, height
                         plane.overdraw = true;
@@ -456,27 +463,59 @@ else {
                         {
                             //plane.rotation.z = Math.PI/2;
                             plane.position.set(2.5 * index - 17.5, 2, -2.96); //y and z kept constant
+
+                            var mesh = drawFrame({
+                                x: 2.5 * index - 17.5 - (ratiow / 2) - 0.3,
+                                y: 2 + (ratioh / 2) + 0.3,
+                                z: -3
+                            }, { 
+                                x: 2.5 * index - 17.5 + (ratiow / 2) + 0.3,
+                                y: 2 - (ratioh / 2) - 0.3,
+                                z: -3 
+                            }, 0.03);
+                            art.add(mesh);
+
                         }
                         else {
                             //plane.rotation.z = Math.PI/2;
                             plane.position.set(2.5 * index - 55, 2, 2.96);
                             //plane.position.set(65*i - 75*Math.floor(gal.num_of_paintings/2) - 15*Math.floor(num_of_paintings/2), 48, 90);
                             plane.rotation.y = Math.PI;
+
+                            var mesh = drawFrame({
+                                x: 2.5 * index - 55 - (ratiow / 2) - 0.3,
+                                y: 2 + (ratioh / 2) + 0.3,
+                                z: -3
+                            }, { 
+                                x: 2.5 * index - 55 + (ratiow / 2) + 0.3,
+                                y: 2 - (ratioh / 2) - 0.3,
+                                z: -3
+                            }, 0.03);
+                            mesh.rotation.y = Math.PI;
+                            art.add(mesh);
+console.log("hey");
                         }
 
                         //https://aerotwist.com/tutorials/create-your-own-environment-maps/
-                        gal.scene.add(plane);
-                        gal.paintings.push(plane);
+                        art.add(plane);
+
+                        
 
 
+
+
+                        gal.scene.add(art);
+                        gal.paintings.push(art);
+
+                        }
                     };
 
                     img.map.needsUpdate = true; //ADDED
                 }(i))
             }
 
-            var mesh = drawFrame({ x: -1.1, y: 2.85, z: -3 }, { x: 1.1, y: 1, z: -3 }, 0.03);
-            gal.scene.add(mesh);
+            // var mesh = drawFrame({ x: -1.1, y: 2.85, z: -3 }, { x: 1.1, y: 1, z: -3 }, 0.03);
+            // gal.scene.add(mesh);
 
         },
         animatedObjects: [],
@@ -772,7 +811,7 @@ function drawFrame(a, b, t) {
     geometry.setIndex( indices );
 
     var colors = new Float32Array(indices.length * 3);
-    geometry.addAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+    geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
 
     var material = new THREE.MeshBasicMaterial ({color: 0x111111}); // ??? Where is this from?
     var blackBorders = new THREE.Mesh( geometry, material );
