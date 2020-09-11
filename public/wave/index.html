@@ -111,7 +111,7 @@
                 </p>
             </div>
             <div>
-                <iframe width="100%" height="125" scrolling="no" frameborder="no" allow="autoplay" src="https://w.soundcloud.com/player/?url=https%3A//api.soundcloud.com/tracks/156920476&color=%23ff5500&auto_play=true&hide_related=false&show_comments=true&show_user=true&show_reposts=false&show_teaser=true"></iframe>
+                <iframe id="soundCloudiFrame" width="100%" height="125" scrolling="no" frameborder="no" allow="autoplay" src="https://w.soundcloud.com/player/?url=https%3A//api.soundcloud.com/tracks/156920476&color=%23ff5500&auto_play=false&hide_related=false&show_comments=true&show_user=true&show_reposts=false&show_teaser=true"></iframe>
                 <div style="display:none; font-size: 10px; color: #cccccc;line-break: anywhere;word-break: normal;overflow: hidden;white-space: nowrap;text-overflow: ellipsis; font-family: Interstate,Lucida Grande,Lucida Sans Unicode,Lucida Sans,Garuda,Verdana,Tahoma,sans-serif;font-weight: 100;">
                     <a href="https://soundcloud.com/home-2001" title="HOME" target="_blank" style="color: #cccccc; text-decoration: none;">HOME</a> · <a href="https://soundcloud.com/home-2001/resonance" title="Resonance" target="_blank" style="color: #cccccc; text-decoration: none">Resonance</a>
                     </div>
@@ -133,6 +133,21 @@
         integrity="sha256-9/aliU8dGd2tb6OSsuzixeV4y/faTqgFtohetphbbj0=" crossorigin="anonymous"></script>
 
     <script type="text/javascript" src="/gallery/js/Detector.js"></script>
+    <script type="text/javascript" src="/gallery/js/soundcloud-api.js"></script>
+    <script>
+        var iframeElement = document.querySelector('iframe');
+        var widget        = SC.Widget(iframeElement);
+
+        widget.bind(SC.Widget.Events.READY, function(){
+            console.log("Widget is ready?");
+            widget.play();
+        })
+
+        widget.bind(SC.Widget.Events.FINISH, function(){
+            console.log("Song finished? Repeat it.");
+            widget.play();
+        })
+    </script>
 
     <script type="module">
         import * as THREE from '../js/three.module.js';

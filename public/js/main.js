@@ -485,7 +485,6 @@ else {
                             }, 0.03);
                             mesh.rotation.y = Math.PI;
                             art.add(mesh);
-console.log("hey");
                         }
 
                         //https://aerotwist.com/tutorials/create-your-own-environment-maps/
