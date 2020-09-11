@@ -187,19 +187,58 @@ else {
 
 
             } else {
-                // alert("Your browser does not support the Pointer Lock API");
-                // gal.canvas.requestPointerLock();
+// No Pointer Lock Controls? Probably mobile.
+                gal.screensaver = true;
 
-                // activate mobile controls?
-                // $("#mobile_controls").removeClass("hidden");
+                var positions = [];
+                [1, -1].forEach(z => {
+                    for (var i = 0; i < 9; i++) {
+                        positions.push({
+                            z: z,
+                            x: (-10) + (2.5 * i)
+                        })
+                    }
+                });
 
-                // function mobile() {
-                //     gal.menu.className += " hide";
-                //     gal.bgMenu.className += " hide";
-                // }
+                gal.play.addEventListener("click", function () {
+                    moveToTarget(positions[Math.floor(Math.random() * positions.length)]);
+                    setInterval(
+                        function () {
+                            moveToTarget(positions[Math.floor(Math.random() * positions.length)]);
+                        }, 6500
+                    );
+                });
 
-                // gal.play.addEventListener("click", mobile);
-                // gal.bgMenu.addEventListener("click", mobile);
+                function moveToTarget(target) {
+                    console.log(`moving to target (${target.z}, ${target.x})`);
+
+                    var targetPos = new THREE.Vector2(target.z, target.x)
+                    var currentPos = new THREE.Vector2(gal.camera.position.z, gal.camera.position.x)
+
+                    var angle = currentPos.sub(targetPos).angle()
+
+                    gal.queue = [];
+
+                    // look at target
+                    gal.queue.push(function () {
+                        gal.camera.quaternionTarget = new THREE.Quaternion()
+                            .setFromAxisAngle(gal.axis, angle)
+                    })
+
+                    // walk to target
+                    gal.queue.push(function () {
+                        gal.targetPosition = { "x": target.x, "y": 1.75, "z": target.z }
+                    })
+
+                    // look at art
+                    gal.queue.push(function () {
+                        angle = new THREE.Vector2(-1 * target.z, 0).angle()
+                        gal.camera.quaternionTarget = new THREE.Quaternion()
+                            .setFromAxisAngle(gal.axis, angle)
+                    })
+
+                    gal.queue.shift()()
+                }
             }
         },
 
