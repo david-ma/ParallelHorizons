@@ -160,6 +160,30 @@
 
 
 
+        var material = new THREE.LineBasicMaterial( { color: 0x0000ff } );
+
+        var distance = 60;
+
+        for ( var i = - distance; i < distance; i += 3 ) {
+            // draw horizontal lines?
+            var geometry1 = new THREE.BufferGeometry().setAttribute( 'position', 
+            new THREE.Float32BufferAttribute([
+                i, 0, - distance, 
+                i, 0, distance
+            ], 3) ); 
+
+            gal.scene.add(new THREE.Line( geometry1, material ));
+
+            var geometry2 = new THREE.BufferGeometry().setAttribute( 'position', 
+            new THREE.Float32BufferAttribute([
+                - distance, 0, i,
+                distance,   0, i
+            ], 3) );
+
+            gal.scene.add(new THREE.Line( geometry2, material ));
+        }
+
+
 // Stuff copied from Rick Bross http://rickbross.com/wave/
         var params = {
             radius: 4,
