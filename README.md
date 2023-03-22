@@ -1,5 +1,30 @@
 Gallery
 ===========
+
+This is a digital twin of David Ma's first solo photography exhibition, using code originally written by OwlSketch.
+
+This version of the gallery can be visited at [https://www.david-ma.net/gallery](https://www.david-ma.net/gallery).
+
+I have uploaded this code as example code for the Monash class CDS2704 - Web design - S1 2023.
+
+
+Quickstart:
+
+1. Clone the repository
+2. `npm install` in the root directory
+3. `npm start` to start the server
+4. Navigate to `localhost:8888/gallery` in your browser
+
+Todo:
+* Clean it up so it can run from the public folder
+* Make it easier to for others to change their images
+* Add descriptions / labels for images
+* Dynamic floor layout
+* Make it more mobile friendly, giving the user their own navigation
+
+===========
+
+From @OwlSketch:
 Online automated art gallery based on your search input.
 
 There is now a functional alpha version currently being hosted at [owlsketch.com/gallery](http://www.owlsketch.com/gallery)
