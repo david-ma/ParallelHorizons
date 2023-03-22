@@ -22,9 +22,10 @@ Todo:
 * Dynamic floor layout
 * Make it more mobile friendly, giving the user their own navigation
 
+-----------
+Original README.md From @OwlSketch:
 ===========
 
-From @OwlSketch:
 Online automated art gallery based on your search input.
 
 There is now a functional alpha version currently being hosted at [owlsketch.com/gallery](http://www.owlsketch.com/gallery)
