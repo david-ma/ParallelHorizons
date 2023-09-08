@@ -730,6 +730,7 @@ gal.camera.position.y += gal.moveVelocity.y;
             }
         }
     };
+    globalThis.gal = gal;
 
     gal.raycastSetUp();
     gal.boot();
