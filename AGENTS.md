@@ -19,11 +19,11 @@ This file is for AI agents (and maintainers) working on this codebase. It summar
 
 We **do not** add a `config.vendor` (or similar) to Thalia. Rationale:
 
-- **Client-side deps:** The 3D app needs Three.js in the browser. Options are: (1) copy/symlink a built file from `node_modules/three` into `public/`, or (2) **bundle** our app with a build step so `three` is included in the output.
-- **Chosen approach:** Gallery uses **npm `three`** and a **single bundle step**: `bun build src/js/gallery.ts --outdir=public/js --target=browser` produces `public/js/main.js` (renamed from `gallery.js`) with Three.js and our code. No copying of vendor files into `public/`; no new Thalia concept.
-- **Why not Thalia config.vendor:** A generic “copy these npm paths into public” would help other sites but adds API surface and behaviour (when to copy, where, how to name). Keeping it **project-level** (each site that needs vendor JS uses a script or a bundler) avoids framework complexity and breaking changes. If several Thalia projects later need the same pattern, we can revisit a small convention (e.g. optional `scripts.vendor` or a one-line doc in the Thalia skill).
+- **Client-side deps:** The 3D app needs Three.js in the browser. Options are: (1) copy/symlink a built file from `node_modules/three` into `public/`, or (2) bundle our app so `three` is included in the output.
+- **Chosen approach:** Gallery uses **npm `three`** and Thalia’s built-in **TypeScript handler**. In development, a request to `/js/main.js` triggers Bun to compile and serve `src/js/main.ts` (into `dist/js/main.js`), so there is **no manual build step required** when running under Thalia.
+- **Why not Thalia config.vendor:** A generic “copy these npm paths into public” would help other sites but adds API surface and behaviour (when to copy, where, how to name). Keeping it **project-level** (each site that needs vendor JS uses a script or a bundler if it wants static export) avoids framework complexity and breaking changes. If several Thalia projects later need the same pattern, we can revisit a small convention (e.g. optional `scripts.vendor` or a one-line doc in the Thalia skill).
 
-**Gallery specifics:** `package.json` has `"three": "^0.183.2"` and script `build:js`; run `bun install` and `bun run build:js` in the gallery repo so `public/js/main.js` exists. Thalia compiles `src/js/Detector.ts` and `src/js/gamepadtest.ts` on-the-fly when `/js/Detector.js` and `/js/gamepadtest.js` are requested; the main app is only the pre-built bundle.
+**Gallery specifics:** `package.json` has `"three": "0.183.2"`. Thalia compiles `src/js/main.ts`, `src/js/Detector.ts` and `src/js/gamepadtest.ts` on-the-fly to `dist/js/*.js` when `/js/*.js` is requested in development. For a static export (e.g. GitHub Pages), we can add a one-off `build:js` script later that writes a bundle into `public/js/`, but this is **not** required for normal Thalia usage.
 
 ---
 
@@ -134,14 +134,14 @@ gallery/
 │   └── partials/         # head.hbs, etc.
 ├── src/
 │   └── js/
-│       ├── gallery.ts    # Main 3D app (bundled with three → public/js/main.js)
+│       ├── main.ts       # Main 3D app; entry for `/js/main.js` (compiled to `dist/js/main.js` by Thalia)
 │       ├── Detector.ts    # WebGL check (compiled on-the-fly by Thalia)
 │       └── gamepadtest.ts # Gamepad UI (compiled on-the-fly by Thalia)
 ├── public/               # Served at root by Thalia
 │   ├── index.html        # Shell: menu, canvas, scripts
 │   ├── css/index.css
 │   ├── js/
-│   │   ├── main.js       # Bundle: three + gallery (from bun run build:js)
+│   │   ├── main.js       # Served JS for viewer (compiled from src/js/main.ts during development)
 │   │   ├── three.module.js, GLTFLoader.js, soundcloud-api.js  # Legacy/demos
 │   ├── img/
 │   │   ├── Artworks/     # 0.jpg … 29.jpg (used by main.js)

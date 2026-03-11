@@ -12,9 +12,9 @@ Quickstart (Thalia):
 
 1. Clone the repository and symlink it into Thalia’s websites:  
    `ln -snf /path/to/gallery /path/to/Thalia/websites/gallery`
-2. In the **gallery** repo: `bun install` then `bun run build:js` (builds Three.js + gallery into `public/js/main.js`).
+2. In the **gallery** repo: `bun install` (installs `three` so `src/js/main.ts` can import it).
 3. From the Thalia repo: `bun run bin/develop.ts gallery`
-4. Open the URL shown (e.g. `http://localhost:1339`). Homepage: `/`. 3D demo gallery: `/view`.
+4. Open the URL shown (e.g. `http://localhost:1339`). Homepage: `/`. 3D demo gallery: `/view`. Thalia compiles `src/js/main.ts` → `/dist/js/main.js` on-the-fly when `/js/main.js` is requested in development.
 
 Todo (see AGENTS.md for full roadmap):
 * Thalia conversion done: homepage at `/`, 3D viewer at `/view`

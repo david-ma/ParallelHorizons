@@ -10,8 +10,7 @@
   "author": "Gibran Garcia <satimidus@gmail.com> (http://owlsketch.com)",
   "license": "ISC",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "build:js": "bun build src/js/gallery.ts --outdir=public/js --target=browser && mv public/js/gallery.js public/js/main.js"
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
     "three": "0.183.2"
