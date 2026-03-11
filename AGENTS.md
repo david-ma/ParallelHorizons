@@ -15,6 +15,18 @@ This file is for AI agents (and maintainers) working on this codebase. It summar
 
 ---
 
+## Vendor code / Three.js (no Thalia change)
+
+We **do not** add a `config.vendor` (or similar) to Thalia. Rationale:
+
+- **Client-side deps:** The 3D app needs Three.js in the browser. Options are: (1) copy/symlink a built file from `node_modules/three` into `public/`, or (2) **bundle** our app with a build step so `three` is included in the output.
+- **Chosen approach:** Gallery uses **npm `three`** and a **single bundle step**: `bun build src/js/gallery.ts --outdir=public/js --target=browser` produces `public/js/main.js` (renamed from `gallery.js`) with Three.js and our code. No copying of vendor files into `public/`; no new Thalia concept.
+- **Why not Thalia config.vendor:** A generic “copy these npm paths into public” would help other sites but adds API surface and behaviour (when to copy, where, how to name). Keeping it **project-level** (each site that needs vendor JS uses a script or a bundler) avoids framework complexity and breaking changes. If several Thalia projects later need the same pattern, we can revisit a small convention (e.g. optional `scripts.vendor` or a one-line doc in the Thalia skill).
+
+**Gallery specifics:** `package.json` has `"three": "^0.183.2"` and script `build:js`; run `bun install` and `bun run build:js` in the gallery repo so `public/js/main.js` exists. Thalia compiles `src/js/Detector.ts` and `src/js/gamepadtest.ts` on-the-fly when `/js/Detector.js` and `/js/gamepadtest.js` are requested; the main app is only the pre-built bundle.
+
+---
+
 ## Thalia gallery roadmap (prioritised)
 
 Reference: `thalia_skill.md`, `thalia_uploadthing_skill.md`, `thalia_security_skill.md` in `/usr/local/dev/scripts/skills/`.
@@ -120,13 +132,17 @@ gallery/
 │   ├── index.hbs         # Homepage template
 │   ├── gallery.hbs       # 3D gallery viewer page (later)
 │   └── partials/         # head.hbs, etc.
+├── src/
+│   └── js/
+│       ├── gallery.ts    # Main 3D app (bundled with three → public/js/main.js)
+│       ├── Detector.ts    # WebGL check (compiled on-the-fly by Thalia)
+│       └── gamepadtest.ts # Gamepad UI (compiled on-the-fly by Thalia)
 ├── public/               # Served at root by Thalia
 │   ├── index.html        # Shell: menu, canvas, scripts
 │   ├── css/index.css
 │   ├── js/
-│   │   ├── main.js       # Core: gal object, scene, controls, paintings, movement
-│   │   ├── three.module.js, PointerLockControls.js, GLTFLoader.js, etc.
-│   │   └── gamepadtest.js, soundcloud-api.js, ...
+│   │   ├── main.js       # Bundle: three + gallery (from bun run build:js)
+│   │   ├── three.module.js, GLTFLoader.js, soundcloud-api.js  # Legacy/demos
 │   ├── img/
 │   │   ├── Artworks/     # 0.jpg … 29.jpg (used by main.js)
 │   │   ├── Textures/     # Floor.jpg, etc.
