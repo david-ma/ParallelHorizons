@@ -11,6 +11,67 @@ This file is for AI agents (and maintainers) working on this codebase. It summar
 - **Live**: [https://www.david-ma.net/gallery](https://www.david-ma.net/gallery)
 - **Class use**: Example for Monash CDS2704 – Web design, S1 2023
 
+**Direction:** Convert to a **Thalia-based** service where users can upload their own photos, describe gallery layout and placement, and generate navigable 3D galleries. Auth and uploads via Thalia security and UploadThing (see skill files under `/usr/local/dev/scripts/skills/`).
+
+---
+
+## Thalia gallery roadmap (prioritised)
+
+Reference: `thalia_skill.md`, `thalia_uploadthing_skill.md`, `thalia_security_skill.md` in `/usr/local/dev/scripts/skills/`.
+
+### Phase 1 — Thalia conversion (do first)
+
+| # | Task | Notes |
+|---|------|------|
+| 1.1 | **Remove Express** | Delete `index.js`, `config/express.js`, `config/config.js`, `config/env/`. Drop `express` and `body-parser` from `package.json`. |
+| 1.2 | **Add Thalia project structure** | Create `config/config.ts` (Thalia config), `src/` with Handlebars templates. Serve `public/` at root; homepage introduces the service. |
+| 1.3 | **Register as Thalia website** | Symlink repo into `Thalia/websites/gallery` (or add to Thalia’s website list) so `bun dev gallery` runs the site. |
+| 1.4 | **Asset paths** | Front end currently uses `/gallery/` prefix. With Thalia serving the project at its own domain/path, switch to root-relative paths (e.g. `/js/`, `/img/`) or a single base path so the 3D viewer and assets load correctly. |
+
+### Phase 2 — Auth and user galleries
+
+| # | Task | Notes |
+|---|------|------|
+| 2.1 | **Thalia security** | Use `ThaliaSecurity` + `RoleRouteRule` (see `thalia_security_skill.md`). Roles: guest (homepage, public gallery view), user (own dashboard, upload, edit), admin. |
+| 2.2 | **Homepage** | Public landing: explain the service, link to “Create gallery” / “Log in”. |
+| 2.3 | **Secure “my gallery” dashboard** | Protected route for logged-in users: list their galleries, create new gallery, upload photos, annotate artworks, define layout. |
+| 2.4 | **UploadThing integration** | Per `thalia_uploadthing_skill.md`: browser → UploadThing, then server-side processing if needed. Use for user photo uploads; optional cleanup/tagging for temp files. |
+
+### Phase 3 — Gallery model and 3D engine
+
+| # | Task | Notes |
+|---|------|------|
+| 3.1 | **Gallery + layout as data** | Store per-user galleries (e.g. Drizzle). **Layout/placement**: JSON blob describing room(s), wall positions, which art goes where (image URL, position, optional caption). Ingest this when rendering the 3D view. |
+| 3.2 | **Refactor main.js → TypeScript** | Rewrite in TS: modular, reusable. Entry point builds scene from **layout JSON** (not hardcoded 30 images). Keep behaviour: pointer lock, WASD, collision (walls), raycast for artwork click. |
+| 3.3 | **Upgrade Three.js to r183** | Replace vendored r120 with current r183; update imports and any deprecated APIs. Use ES modules + npm or CDN. |
+| 3.4 | **3D viewer API** | Single entry (e.g. `viewer.ts` or `main.ts`) that: loads layout JSON, creates scene (floor, walls, art from URLs), runs render loop and controls. Used by “View gallery” from dashboard and by public gallery links. |
+
+### Phase 4 — Features and polish
+
+| # | Task | Notes |
+|---|------|------|
+| 4.1 | **Descriptions / labels** | In dashboard: let users add title/caption per artwork. In 3D: raycast click on art → show overlay or panel with title/description. |
+| 4.2 | **Dynamic floor layout** | Layout JSON describes room shape/size (e.g. rectangular, L-shaped); viewer builds floor and walls from that instead of a single fixed layout. |
+| 4.3 | **Public gallery URLs** | Shareable link for a gallery (e.g. `/gallery/view/:id` or slug) that loads layout JSON and runs the 3D viewer (read-only; no edit). |
+
+### Stretch goals (later)
+
+| # | Task | Notes |
+|---|------|------|
+| S1 | **3D objects in scene** | Support placing 3D models (e.g. statue, GLTF) in the layout JSON; load with Three.js GLTFLoader. Existing `statue/` demo as reference. |
+| S2 | **Collision for 3D objects** | Extend collision so the camera doesn’t pass through placed 3D objects (not just walls). |
+| S3 | **Music / SoundCloud** | Optional background music per gallery (e.g. SoundCloud embed or URL in layout JSON). Reuse pattern from `wave/index.html` + `soundcloud-api.js`. |
+| S4 | **Gamepad support** | Map gamepad axes/buttons to movement and look; optional for accessibility and big-screen use. Existing `gamepadtest.js` as reference. |
+| S5 | **Mobile-friendly controls** | Touch-friendly navigation (virtual joystick or tap-to-move) so the 3D gallery is usable on phones/tablets. |
+
+### Implementation order (summary)
+
+1. **Phase 1** — Remove Express, add Thalia config and templates, serve at root; confirm site runs under Thalia.
+2. **Phase 2** — Add security, homepage, dashboard, UploadThing for uploads.
+3. **Phase 3** — Define gallery/layout schema and JSON format; refactor main.js to TypeScript + Three r183; viewer consumes layout JSON.
+4. **Phase 4** — Labels, dynamic layout, public share URLs.
+5. **Stretch** — 3D objects, collision, SoundCloud, gamepad, mobile.
+
 ---
 
 ## Tech stack
@@ -49,16 +110,17 @@ This file is for AI agents (and maintainers) working on this codebase. It summar
 
 ## Layout (high level)
 
+After Thalia conversion (Phase 1):
+
 ```
 gallery/
-├── index.js              # Entry: loads config, express app, listens on port
 ├── config/
-│   ├── config.js         # Dispatches to env-specific config
-│   ├── express.js        # Express app: static at /gallery, body-parser
-│   └── env/
-│       ├── development.js
-│       └── production.js
-├── public/               # Served at /gallery
+│   └── config.ts         # Thalia: domains, controllers (homepage, static)
+├── src/
+│   ├── index.hbs         # Homepage template
+│   ├── gallery.hbs       # 3D gallery viewer page (later)
+│   └── partials/         # head.hbs, etc.
+├── public/               # Served at root by Thalia
 │   ├── index.html        # Shell: menu, canvas, scripts
 │   ├── css/index.css
 │   ├── js/
@@ -78,8 +140,8 @@ gallery/
 
 ## Behaviour worth knowing
 
-1. **Route and static serving**  
-   In `config/express.js`, `express.static('public')` is mounted at `/gallery`. There is also `app.get('/gallery', ...)` that does `res.sendFile(path.join(__dirname, '/index.html'))`. `__dirname` is `config/`, so that path is **wrong** (it would try to send `config/index.html`, which doesn’t exist). In practice, requests to `/gallery` or `/gallery/` are usually handled by the static middleware and `public/index.html` is served, so the bug may not show until the explicit route is hit (e.g. exact `/gallery` with no trailing slash, depending on Express ordering). Fix: send `path.join(__dirname, '../public/index.html')` or remove the route and rely on static + default index.
+1. **Routes (Thalia)**  
+   `config/config.ts`: `''` → homepage (`src/index.hbs`), `view` → 3D app (`public/index.html`). Static files in `public/` are served at root (`/js/`, `/img/`, `/css/`). Asset paths in the 3D app are root-relative so they work when the page is served at `/view`.
 
 2. **How paintings are loaded**  
    `public/js/main.js` expects exactly **30** images:  
@@ -131,12 +193,12 @@ Examples:
 
 ---
 
-## Quick run (with Express)
+## Quick run (Thalia)
 
 ```bash
-npm install
-npm start
-# Open http://localhost:8888/gallery
+# From Thalia repo; gallery must be linked under websites/
+cd /usr/local/dev/Thalia && bun dev gallery
+# Open http://localhost:1337 (or port shown in log)
 ```
 
-Default port is 8888 (development config).
+Legacy (pre–Thalia): `npm install && npm start` then http://localhost:8888/gallery — to be removed in Phase 1.

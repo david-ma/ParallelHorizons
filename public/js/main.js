@@ -1,5 +1,5 @@
-import * as THREE from '/gallery/js/three.module.js';
-import { PointerLockControls } from '/gallery/js/PointerLockControls.js';
+import * as THREE from '/js/three.module.js';
+import { PointerLockControls } from '/js/PointerLockControls.js';
 
 var lastCalledTime;
 var fps;
@@ -344,7 +344,7 @@ else {
             gal.scene.add(gal.worldLight);
 
             //set the floor up
-            gal.floorText = new THREE.TextureLoader().load("/gallery/img/Textures/Floor.jpg");
+            gal.floorText = new THREE.TextureLoader().load("/img/Textures/Floor.jpg");
             gal.floorText.wrapS = THREE.RepeatWrapping;
             gal.floorText.wrapT = THREE.RepeatWrapping;
             gal.floorText.repeat.set(24, 24);
@@ -429,7 +429,7 @@ else {
                     var ratiow = 0;
                     var ratioh = 0;
 
-                    var source = '/gallery/img/Artworks/' + (index).toString() + '.jpg';
+                    var source = '/img/Artworks/' + (index).toString() + '.jpg';
                     artwork.src = source;
 
                     var texture = new THREE.TextureLoader().load(artwork.src);

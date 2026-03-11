@@ -8,19 +8,18 @@ This version of the gallery can be visited at [https://www.david-ma.net/gallery]
 I have uploaded this code as example code for the Monash class CDS2704 - Web design - S1 2023.
 
 
-Quickstart:
+Quickstart (Thalia):
 
-1. Clone the repository
-2. `npm install` in the root directory
-3. `npm start` to start the server
-4. Navigate to `localhost:8888/gallery` in your browser
+1. Clone the repository and symlink it into Thalia’s websites:  
+   `ln -snf /path/to/gallery /path/to/Thalia/websites/gallery`
+2. From the Thalia repo: `bun run bin/develop.ts gallery`
+3. Open the URL shown (e.g. `http://localhost:1339`). Homepage: `/`. 3D demo gallery: `/view`.
 
-Todo:
-* Clean it up so it can run from the public folder
-* Make it easier to for others to change their images
-* Add descriptions / labels for images
-* Dynamic floor layout
-* Make it more mobile friendly, giving the user their own navigation
+Todo (see AGENTS.md for full roadmap):
+* Thalia conversion done: homepage at `/`, 3D viewer at `/view`
+* Phase 2: auth (Thalia security), user dashboard, UploadThing for uploads
+* Phase 3: gallery/layout as JSON, refactor main.js to TypeScript, Three.js r183
+* Add descriptions/labels for images, dynamic floor layout, mobile-friendly controls
 
 -----------
 Original README.md From @OwlSketch:
