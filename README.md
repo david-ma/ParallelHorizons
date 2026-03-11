@@ -22,6 +22,9 @@ Todo (see AGENTS.md for full roadmap):
 * Phase 3: gallery/layout as JSON, refactor main.js to TypeScript, Three.js r183
 * Add descriptions/labels for images, dynamic floor layout, mobile-friendly controls
 
+Credits:
+* Spotlight 3D model by [iPoly3D](https://poly.pizza/u/ipoly3d) from [Poly Pizza](https://poly.pizza/m/YohOCmn0hO) - License: CC0 (public domain)
+
 -----------
 Original README.md From @OwlSketch:
 ===========

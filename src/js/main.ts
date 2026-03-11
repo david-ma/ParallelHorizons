@@ -154,7 +154,16 @@ if (Detector && !Detector.webgl) {
       gal!.initialRender = true
       ;(gal!.scene as any).fog = new THREE.FogExp2(0x666666, 0.05)
 
-      gal!.renderer.setSize(window.innerWidth, window.innerHeight)
+      const resizeViewport = () => {
+        const width = Math.max(1, window.innerWidth || document.documentElement.clientWidth || 1)
+        const height = Math.max(1, window.innerHeight || document.documentElement.clientHeight || 1)
+        gal!.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2))
+        gal!.renderer.setSize(width, height)
+        gal!.camera.aspect = width / height
+        gal!.camera.updateProjectionMatrix()
+      }
+
+      resizeViewport()
       gal!.renderer.setClearColor(0xffffff, 1)
       // Use sRGB canvas output so colors are not rendered too dark.
       gal!.renderer.toneMapping = THREE.NoToneMapping
@@ -193,11 +202,9 @@ if (Detector && !Detector.webgl) {
       gal!.analogX = 0
       gal!.analogY = 0
 
-      window.addEventListener('resize', () => {
-        gal!.renderer.setSize(window.innerWidth, window.innerHeight)
-        gal!.camera.aspect = window.innerWidth / window.innerHeight
-        gal!.camera.updateProjectionMatrix()
-      })
+      window.addEventListener('resize', resizeViewport)
+      window.addEventListener('orientationchange', resizeViewport)
+      window.visualViewport?.addEventListener('resize', resizeViewport)
     },
 
     pointerControls() {
@@ -228,6 +235,40 @@ if (Detector && !Detector.webgl) {
         document.addEventListener('pointerlockerror', g.errorCallback, false)
         document.addEventListener('mozpointerlockerror', g.errorCallback, false)
         document.addEventListener('webkitpointerlockerror', g.errorCallback, false)
+
+        const releaseToMenu = () => {
+          // Reset movement state and show intro menu so user can re-click PLAY after alt-tab.
+          g.moveForward = false
+          g.moveBackward = false
+          g.moveLeft = false
+          g.moveRight = false
+          g.analogForward = 0
+          g.analogBackward = 0
+          g.analogLeft = 0
+          g.analogRight = 0
+          g.analogX = 0
+          g.analogY = 0
+          const d = g.canvas?.ownerDocument ?? document
+          const hasLock =
+            d.pointerLockElement === g.canvas ||
+            (d as any).mozPointerLockElement === g.canvas ||
+            (d as any).webkitPointerLockElement === g.canvas
+          if (hasLock) {
+            d.exitPointerLock?.()
+            ;(d as any).mozExitPointerLock?.()
+            ;(d as any).webkitExitPointerLock?.()
+          } else {
+            g.controls.enabled = false
+            if (g.menu) g.menu.className = g.menu.className.replace(/(?:^|\\s)hide(?!\\S)/g, '')
+            if (g.bgMenu) g.bgMenu.className = g.bgMenu.className.replace(/(?:^|\\s)hide(?!\\S)/g, '')
+          }
+        }
+
+        window.addEventListener('blur', releaseToMenu)
+        window.addEventListener('pagehide', releaseToMenu)
+        document.addEventListener('visibilitychange', () => {
+          if (document.visibilityState === 'hidden') releaseToMenu()
+        })
       } else {
         g.screensaver = true
         const positions: { z: number; x: number }[] = []
