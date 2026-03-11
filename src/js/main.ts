@@ -210,10 +210,6 @@ if (Detector && !Detector.webgl) {
     pointerControls() {
       const g = gal!
       const doc = g.canvas?.ownerDocument ?? document
-      const setFocusHintVisible = (visible: boolean) => {
-        const hint = document.getElementById('focus_hint')
-        if (hint) hint.style.display = visible ? 'block' : 'none'
-      }
       if ('pointerLockElement' in doc || 'mozPointerLockElement' in doc || 'webkitPointerLockElement' in doc) {
         function releaseToMenu() {
           // Reset movement state and show intro menu so user can re-click PLAY after alt-tab/esc.
@@ -241,7 +237,7 @@ if (Detector && !Detector.webgl) {
             g.menu?.classList.remove('hide')
             g.bgMenu?.classList.remove('hide')
           }
-          setFocusHintVisible(true)
+          console.debug('Pointer lock released; showing menu for re-entry.')
         }
 
         ;(g.canvas as any).requestPointerLock =
@@ -263,11 +259,9 @@ if (Detector && !Detector.webgl) {
         })
 
         g.bgMenu?.addEventListener('click', () => {
-          setFocusHintVisible(false)
           ;(g.canvas as any).requestPointerLock?.()
         })
         g.play?.addEventListener('click', () => {
-          setFocusHintVisible(false)
           ;(g.canvas as any).requestPointerLock?.()
         })
         document.addEventListener('pointerlockchange', g.changeCallback, false)
@@ -317,7 +311,6 @@ if (Detector && !Detector.webgl) {
     changeCallback() {
       const g = gal!
       const doc = g.canvas?.ownerDocument ?? document
-      const hint = document.getElementById('focus_hint')
       const locked =
         doc.pointerLockElement === g.canvas ||
         (doc as any).mozPointerLockElement === g.canvas ||
@@ -326,7 +319,6 @@ if (Detector && !Detector.webgl) {
         g.controls.enabled = true
         g.menu?.classList.add('hide')
         g.bgMenu?.classList.add('hide')
-        if (hint) hint.style.display = 'none'
         document.addEventListener('mousemove', g.moveCallback as any, false)
       } else {
         g.controls.enabled = false
@@ -434,6 +426,82 @@ if (Detector && !Detector.webgl) {
       g.paintings = []
       const half = Math.floor(g.num_of_paintings / 2) - 1
       const featuredSpotlightIndex = Math.floor(half / 2) // center-ish on the front wall
+      const spotlightModelLoader = new GLTFLoader()
+
+      type SpotlightRigOptions = {
+        lightOrigin: THREE.Vector3
+        lightTarget: THREE.Vector3
+        modelUrl: string
+        intensity: number
+        distance: number
+        angle: number
+        penumbra: number
+        decay: number
+        emitterRadius: number
+        emitterOffset: number
+        emitterOpacity: number
+        fixtureScale: number
+        wallZ: number
+        wallMountOffset: number
+      }
+
+      const addArtworkSpotlightRig = (options: SpotlightRigOptions): void => {
+        const spotlight = new THREE.SpotLight(
+          0xffffff,
+          options.intensity,
+          options.distance,
+          options.angle,
+          options.penumbra,
+          options.decay
+        )
+        const spotlightTarget = new THREE.Object3D()
+        spotlight.position.copy(options.lightOrigin)
+        spotlightTarget.position.copy(options.lightTarget)
+        spotlight.target = spotlightTarget
+        g.scene.add(spotlightTarget)
+        g.scene.add(spotlight)
+
+        const beamDir = new THREE.Vector3().subVectors(spotlightTarget.position, spotlight.position).normalize()
+        const emitterDisc = new THREE.Mesh(
+          new THREE.CircleGeometry(options.emitterRadius, 16),
+          new THREE.MeshBasicMaterial({
+            color: 0xffffff,
+            transparent: true,
+            opacity: options.emitterOpacity,
+            side: THREE.DoubleSide,
+          })
+        )
+        emitterDisc.position.copy(spotlight.position).add(beamDir.clone().multiplyScalar(options.emitterOffset))
+        emitterDisc.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), beamDir)
+        g.scene.add(emitterDisc)
+
+        spotlightModelLoader.load(
+          options.modelUrl,
+          (gltf) => {
+            const fixture = gltf.scene.clone(true)
+            fixture.position.copy(spotlight.position)
+            fixture.scale.setScalar(options.fixtureScale)
+            fixture.lookAt(spotlightTarget.position)
+            const bbox = new THREE.Box3().setFromObject(fixture)
+            const size = new THREE.Vector3()
+            bbox.getSize(size)
+            fixture.position.z = options.wallZ + size.z * 0.5 + options.wallMountOffset
+            g.scene.add(fixture)
+          },
+          undefined,
+          (err) => {
+            console.error('Failed to load spotlight model:', err)
+            const fallback = new THREE.Mesh(
+              new THREE.ConeGeometry(0.08, 0.25, 12),
+              new THREE.MeshBasicMaterial({ color: 0x222222 })
+            )
+            fallback.position.copy(spotlight.position)
+            fallback.lookAt(spotlightTarget.position)
+            g.scene.add(fallback)
+          }
+        )
+      }
+
       for (let i = 0; i < g.num_of_paintings; i++) {
         const index = i
         const source = '/img/Artworks/' + index + '.jpg'
@@ -472,56 +540,40 @@ if (Detector && !Detector.webgl) {
 
           // Add one "real gallery" spotlight fixture + light above a visible front-wall artwork.
           if (index === featuredSpotlightIndex) {
-            const spotlight = new THREE.SpotLight(0xffffff, 1.9, 8, Math.PI / 7, 0.45, 1.2)
-            const spotlightTarget = new THREE.Object3D()
-            spotlight.position.set(plane.position.x, 3.35, -2.72)
-            spotlightTarget.position.set(plane.position.x, 2, -2.96)
-            spotlight.target = spotlightTarget
-            g.scene.add(spotlightTarget)
-            g.scene.add(spotlight)
+            // Spotlight tuning constants for quick iteration on one featured piece.
+            const SPOTLIGHT_INTENSITY = 1.9
+            const SPOTLIGHT_DISTANCE = 8
+            const SPOTLIGHT_ANGLE = Math.PI / 7
+            const SPOTLIGHT_PENUMBRA = 0.45
+            const SPOTLIGHT_DECAY = 1.2
+            const SPOTLIGHT_Y = 3.35
+            const SPOTLIGHT_Z = -2.72
+            const TARGET_Y = 2
+            const TARGET_Z = -2.96
+            const EMITTER_DISC_RADIUS = 0.045
+            const EMITTER_DISC_OFFSET = 0.07
+            const EMITTER_DISC_OPACITY = 0.95
+            const FIXTURE_SCALE = 0.35
+            const WALL_Z = -2.96
+            const WALL_MOUNT_OFFSET = 0.02
+            const SPOTLIGHT_MODEL_URL = '/models/spotlight/Spotlight.glb'
 
-            const beamDir = new THREE.Vector3().subVectors(spotlightTarget.position, spotlight.position).normalize()
-            const emitterDisc = new THREE.Mesh(
-              new THREE.CircleGeometry(0.045, 16),
-              new THREE.MeshBasicMaterial({
-                color: 0xffffff,
-                transparent: true,
-                opacity: 0.95,
-                side: THREE.DoubleSide,
-              })
-            )
-            emitterDisc.position.copy(spotlight.position).add(beamDir.clone().multiplyScalar(0.07))
-            emitterDisc.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), beamDir)
-            g.scene.add(emitterDisc)
-
-            const loader = new GLTFLoader()
-            loader.load(
-              '/models/spotlight/Spotlight.glb',
-              (gltf) => {
-                const fixture = gltf.scene.clone(true)
-                fixture.position.copy(spotlight.position)
-                fixture.scale.setScalar(0.35)
-                fixture.lookAt(spotlightTarget.position)
-                // Use model dimensions to sit the fixture close to the wall instead of floating.
-                const bbox = new THREE.Box3().setFromObject(fixture)
-                const size = new THREE.Vector3()
-                bbox.getSize(size)
-                fixture.position.z = -2.96 + size.z * 0.5 + 0.02
-                g.scene.add(fixture)
-              },
-              undefined,
-              (err) => {
-                console.error('Failed to load spotlight model:', err)
-                // Visible fallback so we can still see where the fixture should be.
-                const fallback = new THREE.Mesh(
-                  new THREE.ConeGeometry(0.08, 0.25, 12),
-                  new THREE.MeshBasicMaterial({ color: 0x222222 })
-                )
-                fallback.position.copy(spotlight.position)
-                fallback.lookAt(spotlightTarget.position)
-                g.scene.add(fallback)
-              }
-            )
+            addArtworkSpotlightRig({
+              lightOrigin: new THREE.Vector3(plane.position.x, SPOTLIGHT_Y, SPOTLIGHT_Z),
+              lightTarget: new THREE.Vector3(plane.position.x, TARGET_Y, TARGET_Z),
+              modelUrl: SPOTLIGHT_MODEL_URL,
+              intensity: SPOTLIGHT_INTENSITY,
+              distance: SPOTLIGHT_DISTANCE,
+              angle: SPOTLIGHT_ANGLE,
+              penumbra: SPOTLIGHT_PENUMBRA,
+              decay: SPOTLIGHT_DECAY,
+              emitterRadius: EMITTER_DISC_RADIUS,
+              emitterOffset: EMITTER_DISC_OFFSET,
+              emitterOpacity: EMITTER_DISC_OPACITY,
+              fixtureScale: FIXTURE_SCALE,
+              wallZ: WALL_Z,
+              wallMountOffset: WALL_MOUNT_OFFSET,
+            })
           }
 
           art.add(plane)
