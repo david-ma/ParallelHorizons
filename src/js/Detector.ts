@@ -73,4 +73,5 @@ declare global {
   }
 }
 
-window.Detector = Detector
+;(window as Window & { Detector: typeof Detector }).Detector = Detector
+export {}

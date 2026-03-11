@@ -2,7 +2,7 @@
  * Gamepad API test / integration for gallery controls.
  * Loaded after the main gallery module; uses global gal and jQuery ($).
  */
-/* global gal, $ */
+/* global gal */
 
 declare const gal: {
   moveForward: boolean
@@ -81,9 +81,10 @@ function framerate(): void {
   delta = (performance.now() - lastCalledTime) / 1000
   lastCalledTime = performance.now()
   const fps = 1 / delta
-  if (typeof $ !== 'undefined' && (window as any).counter === undefined) (window as any).counter = 0
-  const counter = ((window as any).counter = ((window as any).counter || 0) + 1)
-  if (counter % 30 === 0 && typeof $ !== 'undefined') $('#fps').text(Math.floor(fps))
+  const win = window as Window & { counter?: number; $?: (sel: string) => { text: (v: unknown) => void } }
+  if (typeof win.$ !== 'undefined' && win.counter === undefined) win.counter = 0
+  const counter = (win.counter = (win.counter || 0) + 1)
+  if (counter % 30 === 0 && typeof win.$ !== 'undefined') win.$('#fps').text(Math.floor(fps))
 }
 
 const buttonActions: Record<number, (action: 'on' | 'off') => void> = {
@@ -118,12 +119,9 @@ function updateStatus(): void {
     for (let i = 0; i < controller.buttons.length; i++) {
       const b = buttons[i] as HTMLElement
       const val = controller.buttons[i]
-      let pressed = val === 1.0
-      let value = val as number
-      if (typeof val === 'object') {
-        pressed = (val as GamepadButton).pressed
-        value = (val as GamepadButton).value
-      }
+      const button = typeof val === 'object' ? val : { pressed: val === 1, value: val as number }
+      const pressed = button.pressed
+      const value = typeof button.value === 'number' ? button.value : (button as GamepadButton).value
       const pct = Math.round(value * 100) + '%'
       ;(b.style as any).backgroundSize = pct + ' ' + pct
       if (pressed) {
@@ -186,8 +184,8 @@ if (haveEvents) {
   window.addEventListener('gamepadconnected', connecthandler)
   window.addEventListener('gamepaddisconnected', disconnecthandler)
 } else if (haveWebkitEvents) {
-  window.addEventListener('webkitgamepadconnected', connecthandler)
-  window.addEventListener('webkitgamepaddisconnected', disconnecthandler)
+  window.addEventListener('webkitgamepadconnected', connecthandler as EventListener)
+  window.addEventListener('webkitgamepaddisconnected', disconnecthandler as EventListener)
 } else {
   setInterval(scangamepads, 500)
 }

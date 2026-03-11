@@ -155,6 +155,10 @@ if (Detector && !Detector.webgl) {
 
       gal!.renderer.setSize(window.innerWidth, window.innerHeight)
       gal!.renderer.setClearColor(0xffffff, 1)
+      // Match pre-r152 look: linear output, no tone mapping (avoids muted greys/colours in r183)
+      gal!.renderer.toneMapping = THREE.NoToneMapping
+      gal!.renderer.toneMappingExposure = 1
+      gal!.renderer.outputColorSpace = THREE.LinearSRGBColorSpace
       document.body.appendChild(gal!.renderer.domElement)
 
       const userBoxGeo = new THREE.BoxGeometry(2, 1, 2)
@@ -287,7 +291,7 @@ if (Detector && !Detector.webgl) {
         if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen()
         else if ((document.documentElement as any).mozRequestFullScreen) (document.documentElement as any).mozRequestFullScreen()
         else if ((document.documentElement as any).webkitRequestFullscreen)
-          (document.documentElement as any).webkitRequestFullscreen(Element.ALLOW_KEYBOARD_INPUT)
+          (document.documentElement as any).webkitRequestFullscreen(1)
       } else {
         if (document.exitFullscreen) document.exitFullscreen()
         else if ((document as any).mozCancelFullScreen) (document as any).mozCancelFullScreen()
@@ -320,6 +324,7 @@ if (Detector && !Detector.webgl) {
       g.scene.add(new THREE.AmbientLight(0xffffff))
 
       const floorText = new THREE.TextureLoader().load('/img/Textures/Floor.jpg')
+      floorText.colorSpace = THREE.SRGBColorSpace
       floorText.wrapS = THREE.RepeatWrapping
       floorText.wrapT = THREE.RepeatWrapping
       floorText.repeat.set(24, 24)
@@ -373,6 +378,7 @@ if (Detector && !Detector.webgl) {
         const index = i
         const source = '/img/Artworks/' + index + '.jpg'
         const texture = new THREE.TextureLoader().load(source)
+        texture.colorSpace = THREE.SRGBColorSpace
         texture.minFilter = THREE.LinearFilter
         const img = new THREE.MeshBasicMaterial({ map: texture })
         const artwork = new Image()
@@ -502,7 +508,7 @@ if (Detector && !Detector.webgl) {
         g.renderer.render(g.scene, g.camera)
       }
     },
-  }
+  } as unknown as Gal
 
   ;(globalThis as any).gal = gal
   gal!.raycastSetUp()
