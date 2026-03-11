@@ -7,6 +7,7 @@
  */
 import * as THREE from 'three'
 import { PointerLockControls } from 'three/examples/jsm/controls/PointerLockControls.js'
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 
 const PI_2 = Math.PI / 2
 const speed = 38.0
@@ -155,10 +156,10 @@ if (Detector && !Detector.webgl) {
 
       gal!.renderer.setSize(window.innerWidth, window.innerHeight)
       gal!.renderer.setClearColor(0xffffff, 1)
-      // Match pre-r152 look: linear output, no tone mapping (avoids muted greys/colours in r183)
+      // Use sRGB canvas output so colors are not rendered too dark.
       gal!.renderer.toneMapping = THREE.NoToneMapping
       gal!.renderer.toneMappingExposure = 1
-      gal!.renderer.outputColorSpace = THREE.LinearSRGBColorSpace
+      gal!.renderer.outputColorSpace = THREE.SRGBColorSpace
       document.body.appendChild(gal!.renderer.domElement)
 
       const userBoxGeo = new THREE.BoxGeometry(2, 1, 2)
@@ -321,7 +322,9 @@ if (Detector && !Detector.webgl) {
 
     create() {
       const g = gal!
-      g.scene.add(new THREE.AmbientLight(0xffffff))
+      g.scene.add(new THREE.AmbientLight(0xffffff, 0.8))
+      // Balanced room lighting (no front/back directional bias).
+      g.scene.add(new THREE.HemisphereLight(0xffffff, 0xf2f2f2, 0.6))
 
       const floorText = new THREE.TextureLoader().load('/img/Textures/Floor.jpg')
       floorText.colorSpace = THREE.SRGBColorSpace
@@ -374,13 +377,14 @@ if (Detector && !Detector.webgl) {
       g.num_of_paintings = 30
       g.paintings = []
       const half = Math.floor(g.num_of_paintings / 2) - 1
+      const featuredSpotlightIndex = Math.floor(half / 2) // center-ish on the front wall
       for (let i = 0; i < g.num_of_paintings; i++) {
         const index = i
         const source = '/img/Artworks/' + index + '.jpg'
         const texture = new THREE.TextureLoader().load(source)
         texture.colorSpace = THREE.SRGBColorSpace
         texture.minFilter = THREE.LinearFilter
-        const img = new THREE.MeshBasicMaterial({ map: texture })
+        const img = new THREE.MeshLambertMaterial({ map: texture })
         const artwork = new Image()
         artwork.src = source
         artwork.onload = () => {
@@ -409,6 +413,61 @@ if (Detector && !Detector.webgl) {
             mesh.rotation.y = Math.PI
             art.add(mesh)
           }
+
+          // Add one "real gallery" spotlight fixture + light above a visible front-wall artwork.
+          if (index === featuredSpotlightIndex) {
+            const spotlight = new THREE.SpotLight(0xffffff, 1.9, 8, Math.PI / 7, 0.45, 1.2)
+            const spotlightTarget = new THREE.Object3D()
+            spotlight.position.set(plane.position.x, 3.35, -2.72)
+            spotlightTarget.position.set(plane.position.x, 2, -2.96)
+            spotlight.target = spotlightTarget
+            g.scene.add(spotlightTarget)
+            g.scene.add(spotlight)
+
+            const beamDir = new THREE.Vector3().subVectors(spotlightTarget.position, spotlight.position).normalize()
+            const emitterDisc = new THREE.Mesh(
+              new THREE.CircleGeometry(0.045, 16),
+              new THREE.MeshBasicMaterial({
+                color: 0xffffff,
+                transparent: true,
+                opacity: 0.95,
+                side: THREE.DoubleSide,
+              })
+            )
+            emitterDisc.position.copy(spotlight.position).add(beamDir.clone().multiplyScalar(0.07))
+            emitterDisc.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), beamDir)
+            g.scene.add(emitterDisc)
+
+            const loader = new GLTFLoader()
+            loader.load(
+              '/models/spotlight/Spotlight.glb',
+              (gltf) => {
+                const fixture = gltf.scene.clone(true)
+                fixture.position.copy(spotlight.position)
+                fixture.scale.setScalar(0.35)
+                fixture.lookAt(spotlightTarget.position)
+                // Use model dimensions to sit the fixture close to the wall instead of floating.
+                const bbox = new THREE.Box3().setFromObject(fixture)
+                const size = new THREE.Vector3()
+                bbox.getSize(size)
+                fixture.position.z = -2.96 + size.z * 0.5 + 0.02
+                g.scene.add(fixture)
+              },
+              undefined,
+              (err) => {
+                console.error('Failed to load spotlight model:', err)
+                // Visible fallback so we can still see where the fixture should be.
+                const fallback = new THREE.Mesh(
+                  new THREE.ConeGeometry(0.08, 0.25, 12),
+                  new THREE.MeshBasicMaterial({ color: 0x222222 })
+                )
+                fallback.position.copy(spotlight.position)
+                fallback.lookAt(spotlightTarget.position)
+                g.scene.add(fallback)
+              }
+            )
+          }
+
           art.add(plane)
           g.scene.add(art)
           g.paintings.push(art)
