@@ -210,34 +210,13 @@ if (Detector && !Detector.webgl) {
     pointerControls() {
       const g = gal!
       const doc = g.canvas?.ownerDocument ?? document
+      const setFocusHintVisible = (visible: boolean) => {
+        const hint = document.getElementById('focus_hint')
+        if (hint) hint.style.display = visible ? 'block' : 'none'
+      }
       if ('pointerLockElement' in doc || 'mozPointerLockElement' in doc || 'webkitPointerLockElement' in doc) {
-        ;(g.canvas as any).requestPointerLock =
-          (g.canvas as any).requestPointerLock ||
-          (g.canvas as any).mozRequestPointerLock ||
-          (g.canvas as any).webkitRequestPointerLock
-        ;(g.canvas as any).exitPointerLock =
-          (g.canvas as any).exitPointerLock ||
-          (g.canvas as any).mozExitPointerLock ||
-          (g.canvas as any).webkitExitPointerLock
-
-        document.addEventListener('keydown', (e) => {
-          if (e.keyCode === 102 || e.keyCode === 70) {
-            g.toggleFullscreen()
-            ;(g.canvas as any).requestPointerLock?.()
-          }
-        })
-
-        g.bgMenu?.addEventListener('click', () => (g.canvas as any).requestPointerLock?.())
-        g.play?.addEventListener('click', () => (g.canvas as any).requestPointerLock?.())
-        document.addEventListener('pointerlockchange', g.changeCallback, false)
-        document.addEventListener('mozpointerlockchange', g.changeCallback, false)
-        document.addEventListener('webkitpointerlockchange', g.changeCallback, false)
-        document.addEventListener('pointerlockerror', g.errorCallback, false)
-        document.addEventListener('mozpointerlockerror', g.errorCallback, false)
-        document.addEventListener('webkitpointerlockerror', g.errorCallback, false)
-
-        const releaseToMenu = () => {
-          // Reset movement state and show intro menu so user can re-click PLAY after alt-tab.
+        function releaseToMenu() {
+          // Reset movement state and show intro menu so user can re-click PLAY after alt-tab/esc.
           g.moveForward = false
           g.moveBackward = false
           g.moveLeft = false
@@ -259,10 +238,44 @@ if (Detector && !Detector.webgl) {
             ;(d as any).webkitExitPointerLock?.()
           } else {
             g.controls.enabled = false
-            if (g.menu) g.menu.className = g.menu.className.replace(/(?:^|\\s)hide(?!\\S)/g, '')
-            if (g.bgMenu) g.bgMenu.className = g.bgMenu.className.replace(/(?:^|\\s)hide(?!\\S)/g, '')
+            g.menu?.classList.remove('hide')
+            g.bgMenu?.classList.remove('hide')
           }
+          setFocusHintVisible(true)
         }
+
+        ;(g.canvas as any).requestPointerLock =
+          (g.canvas as any).requestPointerLock ||
+          (g.canvas as any).mozRequestPointerLock ||
+          (g.canvas as any).webkitRequestPointerLock
+        ;(g.canvas as any).exitPointerLock =
+          (g.canvas as any).exitPointerLock ||
+          (g.canvas as any).mozExitPointerLock ||
+          (g.canvas as any).webkitExitPointerLock
+
+        document.addEventListener('keydown', (e) => {
+          if (e.keyCode === 102 || e.keyCode === 70) {
+            g.toggleFullscreen()
+            ;(g.canvas as any).requestPointerLock?.()
+          } else if (e.key === 'Escape' || e.keyCode === 27) {
+            releaseToMenu()
+          }
+        })
+
+        g.bgMenu?.addEventListener('click', () => {
+          setFocusHintVisible(false)
+          ;(g.canvas as any).requestPointerLock?.()
+        })
+        g.play?.addEventListener('click', () => {
+          setFocusHintVisible(false)
+          ;(g.canvas as any).requestPointerLock?.()
+        })
+        document.addEventListener('pointerlockchange', g.changeCallback, false)
+        document.addEventListener('mozpointerlockchange', g.changeCallback, false)
+        document.addEventListener('webkitpointerlockchange', g.changeCallback, false)
+        document.addEventListener('pointerlockerror', g.errorCallback, false)
+        document.addEventListener('mozpointerlockerror', g.errorCallback, false)
+        document.addEventListener('webkitpointerlockerror', g.errorCallback, false)
 
         window.addEventListener('blur', releaseToMenu)
         window.addEventListener('pagehide', releaseToMenu)
@@ -276,8 +289,8 @@ if (Detector && !Detector.webgl) {
           for (let i = 0; i < 9; i++) positions.push({ z, x: -10 + 2.5 * i })
         })
         g.play?.addEventListener('click', () => {
-          if (g.menu) g.menu.className += ' hide'
-          if (g.bgMenu) g.bgMenu.className += ' hide'
+          g.menu?.classList.add('hide')
+          g.bgMenu?.classList.add('hide')
           const moveToTarget = (target: { z: number; x: number }) => {
             const targetPos = new THREE.Vector2(target.z, target.x)
             const currentPos = new THREE.Vector2(g.camera.position.z, g.camera.position.x)
@@ -304,19 +317,21 @@ if (Detector && !Detector.webgl) {
     changeCallback() {
       const g = gal!
       const doc = g.canvas?.ownerDocument ?? document
+      const hint = document.getElementById('focus_hint')
       const locked =
         doc.pointerLockElement === g.canvas ||
         (doc as any).mozPointerLockElement === g.canvas ||
         (doc as any).webkitPointerLockElement === g.canvas
       if (locked) {
         g.controls.enabled = true
-        if (g.menu) g.menu.className += ' hide'
-        if (g.bgMenu) g.bgMenu.className += ' hide'
+        g.menu?.classList.add('hide')
+        g.bgMenu?.classList.add('hide')
+        if (hint) hint.style.display = 'none'
         document.addEventListener('mousemove', g.moveCallback as any, false)
       } else {
         g.controls.enabled = false
-        if (g.menu) g.menu.className = g.menu.className.replace(/(?:^|\\s)hide(?!\\S)/g, '')
-        if (g.bgMenu) g.bgMenu.className = g.bgMenu.className.replace(/(?:^|\\s)hide(?!\\S)/g, '')
+        g.menu?.classList.remove('hide')
+        g.bgMenu?.classList.remove('hide')
         document.removeEventListener('mousemove', g.moveCallback as any, false)
       }
     },
