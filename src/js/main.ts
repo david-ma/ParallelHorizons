@@ -439,7 +439,9 @@ if (Detector && !Detector.webgl) {
         penumbra: number
         decay: number
         emitterRadius: number
-        emitterOffset: number
+        emitterOffsetX: number
+        emitterOffsetY: number
+        emitterOffsetZ: number
         emitterOpacity: number
         fixtureScale: number
         wallZ: number
@@ -467,9 +469,16 @@ if (Detector && !Detector.webgl) {
         rig.spotlight.target = rig.spotlightTarget
 
         const beamDir = new THREE.Vector3().subVectors(rig.spotlightTarget.position, rig.spotlight.position).normalize()
+        const upReference = Math.abs(beamDir.y) > 0.98 ? new THREE.Vector3(1, 0, 0) : new THREE.Vector3(0, 1, 0)
+        const rightDir = new THREE.Vector3().crossVectors(beamDir, upReference).normalize()
+        const upDir = new THREE.Vector3().crossVectors(rightDir, beamDir).normalize()
         const emitterMat = rig.emitterDisc.material as THREE.MeshBasicMaterial
         emitterMat.opacity = options.emitterOpacity
-        rig.emitterDisc.position.copy(rig.spotlight.position).add(beamDir.clone().multiplyScalar(options.emitterOffset))
+        rig.emitterDisc.position
+          .copy(rig.spotlight.position)
+          .add(rightDir.multiplyScalar(options.emitterOffsetX))
+          .add(upDir.multiplyScalar(options.emitterOffsetY))
+          .add(beamDir.multiplyScalar(options.emitterOffsetZ))
         rig.emitterDisc.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), beamDir)
         rig.emitterDisc.scale.setScalar(options.emitterRadius)
 
@@ -559,13 +568,15 @@ if (Detector && !Detector.webgl) {
           spotlight_angle: 'SPOTLIGHT_ANGLE',
           spotlight_penumbra: 'SPOTLIGHT_PENUMBRA',
           spotlight_decay: 'SPOTLIGHT_DECAY',
-          spotlight_x_offset: 'SPOTLIGHT_X_OFFSET',
+          spotlight_x: 'SPOTLIGHT_X',
           spotlight_y: 'SPOTLIGHT_Y',
           spotlight_z: 'SPOTLIGHT_Z',
           target_y: 'TARGET_Y',
           target_z: 'TARGET_Z',
           emitter_disc_radius: 'EMITTER_DISC_RADIUS',
-          emitter_disc_offset: 'EMITTER_DISC_OFFSET',
+          emitter_disc_x: 'EMITTER_DISC_X',
+          emitter_disc_y: 'EMITTER_DISC_Y',
+          emitter_disc_z: 'EMITTER_DISC_Z',
           emitter_disc_opacity: 'EMITTER_DISC_OPACITY',
           fixture_scale: 'FIXTURE_SCALE',
           wall_mount_offset: 'WALL_MOUNT_OFFSET',
@@ -586,6 +597,41 @@ if (Detector && !Detector.webgl) {
               tuning[key] = Number(input.value)
               onInputChange()
             })
+          })
+
+          const exportButton = document.getElementById('export_button') as HTMLButtonElement | null
+          const exportStatus = document.getElementById('export_status') as HTMLElement | null
+          exportButton?.addEventListener('click', async () => {
+            const json = JSON.stringify(tuning, null, 2)
+            let copied = false
+            try {
+              if (navigator.clipboard?.writeText) {
+                await navigator.clipboard.writeText(json)
+                copied = true
+              }
+            } catch (_err) {
+              copied = false
+            }
+
+            if (!copied) {
+              const textArea = document.createElement('textarea')
+              textArea.value = json
+              textArea.setAttribute('readonly', 'true')
+              textArea.style.position = 'fixed'
+              textArea.style.opacity = '0'
+              document.body.appendChild(textArea)
+              textArea.select()
+              copied = document.execCommand('copy')
+              document.body.removeChild(textArea)
+            }
+
+            if (copied) {
+              if (exportStatus) exportStatus.textContent = 'Copied.'
+              console.debug('Spotlight tuning JSON copied:', json)
+            } else {
+              if (exportStatus) exportStatus.textContent = 'Copy failed.'
+              console.debug('Spotlight tuning JSON:', json)
+            }
           })
         }
 
@@ -638,13 +684,15 @@ if (Detector && !Detector.webgl) {
               SPOTLIGHT_ANGLE: Math.PI / 7,
               SPOTLIGHT_PENUMBRA: 0.45,
               SPOTLIGHT_DECAY: 1.2,
-              SPOTLIGHT_X_OFFSET: 0,
+              SPOTLIGHT_X: plane.position.x,
               SPOTLIGHT_Y: 5.35,
               SPOTLIGHT_Z: -2.95,
               TARGET_Y: 2,
               TARGET_Z: -2.96,
               EMITTER_DISC_RADIUS: 0.1,
-              EMITTER_DISC_OFFSET: 0.17,
+              EMITTER_DISC_X: 0,
+              EMITTER_DISC_Y: 0,
+              EMITTER_DISC_Z: 0.17,
               EMITTER_DISC_OPACITY: 0.95,
               FIXTURE_SCALE: 0.35,
               WALL_Z: -2.96,
@@ -654,7 +702,7 @@ if (Detector && !Detector.webgl) {
 
             const spotlightRig = addArtworkSpotlightRig({
               lightOrigin: new THREE.Vector3(
-                plane.position.x + spotlightTuning.SPOTLIGHT_X_OFFSET,
+                spotlightTuning.SPOTLIGHT_X,
                 spotlightTuning.SPOTLIGHT_Y,
                 spotlightTuning.SPOTLIGHT_Z
               ),
@@ -666,7 +714,9 @@ if (Detector && !Detector.webgl) {
               penumbra: spotlightTuning.SPOTLIGHT_PENUMBRA,
               decay: spotlightTuning.SPOTLIGHT_DECAY,
               emitterRadius: spotlightTuning.EMITTER_DISC_RADIUS,
-              emitterOffset: spotlightTuning.EMITTER_DISC_OFFSET,
+              emitterOffsetX: spotlightTuning.EMITTER_DISC_X,
+              emitterOffsetY: spotlightTuning.EMITTER_DISC_Y,
+              emitterOffsetZ: spotlightTuning.EMITTER_DISC_Z,
               emitterOpacity: spotlightTuning.EMITTER_DISC_OPACITY,
               fixtureScale: spotlightTuning.FIXTURE_SCALE,
               wallZ: spotlightTuning.WALL_Z,
@@ -675,7 +725,7 @@ if (Detector && !Detector.webgl) {
 
             bindSpotlightSliderControls(spotlightTuning, () => {
               spotlightRig.options.lightOrigin.set(
-                plane.position.x + spotlightTuning.SPOTLIGHT_X_OFFSET,
+                spotlightTuning.SPOTLIGHT_X,
                 spotlightTuning.SPOTLIGHT_Y,
                 spotlightTuning.SPOTLIGHT_Z
               )
@@ -686,7 +736,9 @@ if (Detector && !Detector.webgl) {
               spotlightRig.options.penumbra = spotlightTuning.SPOTLIGHT_PENUMBRA
               spotlightRig.options.decay = spotlightTuning.SPOTLIGHT_DECAY
               spotlightRig.options.emitterRadius = spotlightTuning.EMITTER_DISC_RADIUS
-              spotlightRig.options.emitterOffset = spotlightTuning.EMITTER_DISC_OFFSET
+              spotlightRig.options.emitterOffsetX = spotlightTuning.EMITTER_DISC_X
+              spotlightRig.options.emitterOffsetY = spotlightTuning.EMITTER_DISC_Y
+              spotlightRig.options.emitterOffsetZ = spotlightTuning.EMITTER_DISC_Z
               spotlightRig.options.emitterOpacity = spotlightTuning.EMITTER_DISC_OPACITY
               spotlightRig.options.fixtureScale = spotlightTuning.FIXTURE_SCALE
               spotlightRig.options.wallZ = spotlightTuning.WALL_Z
