@@ -559,6 +559,7 @@ if (Detector && !Detector.webgl) {
           spotlight_angle: 'SPOTLIGHT_ANGLE',
           spotlight_penumbra: 'SPOTLIGHT_PENUMBRA',
           spotlight_decay: 'SPOTLIGHT_DECAY',
+          spotlight_x_offset: 'SPOTLIGHT_X_OFFSET',
           spotlight_y: 'SPOTLIGHT_Y',
           spotlight_z: 'SPOTLIGHT_Z',
           target_y: 'TARGET_Y',
@@ -637,6 +638,7 @@ if (Detector && !Detector.webgl) {
               SPOTLIGHT_ANGLE: Math.PI / 7,
               SPOTLIGHT_PENUMBRA: 0.45,
               SPOTLIGHT_DECAY: 1.2,
+              SPOTLIGHT_X_OFFSET: 0,
               SPOTLIGHT_Y: 5.35,
               SPOTLIGHT_Z: -2.95,
               TARGET_Y: 2,
@@ -651,7 +653,11 @@ if (Detector && !Detector.webgl) {
             const SPOTLIGHT_MODEL_URL = '/models/spotlight/Spotlight.glb'
 
             const spotlightRig = addArtworkSpotlightRig({
-              lightOrigin: new THREE.Vector3(plane.position.x, spotlightTuning.SPOTLIGHT_Y, spotlightTuning.SPOTLIGHT_Z),
+              lightOrigin: new THREE.Vector3(
+                plane.position.x + spotlightTuning.SPOTLIGHT_X_OFFSET,
+                spotlightTuning.SPOTLIGHT_Y,
+                spotlightTuning.SPOTLIGHT_Z
+              ),
               lightTarget: new THREE.Vector3(plane.position.x, spotlightTuning.TARGET_Y, spotlightTuning.TARGET_Z),
               modelUrl: SPOTLIGHT_MODEL_URL,
               intensity: spotlightTuning.SPOTLIGHT_INTENSITY,
@@ -668,7 +674,11 @@ if (Detector && !Detector.webgl) {
             })
 
             bindSpotlightSliderControls(spotlightTuning, () => {
-              spotlightRig.options.lightOrigin.set(plane.position.x, spotlightTuning.SPOTLIGHT_Y, spotlightTuning.SPOTLIGHT_Z)
+              spotlightRig.options.lightOrigin.set(
+                plane.position.x + spotlightTuning.SPOTLIGHT_X_OFFSET,
+                spotlightTuning.SPOTLIGHT_Y,
+                spotlightTuning.SPOTLIGHT_Z
+              )
               spotlightRig.options.lightTarget.set(plane.position.x, spotlightTuning.TARGET_Y, spotlightTuning.TARGET_Z)
               spotlightRig.options.intensity = spotlightTuning.SPOTLIGHT_INTENSITY
               spotlightRig.options.distance = spotlightTuning.SPOTLIGHT_DISTANCE
@@ -682,6 +692,8 @@ if (Detector && !Detector.webgl) {
               spotlightRig.options.wallZ = spotlightTuning.WALL_Z
               spotlightRig.options.wallMountOffset = spotlightTuning.WALL_MOUNT_OFFSET
               applyArtworkSpotlightRigOptions(spotlightRig)
+              // Sliders are used while menu is open; force an immediate redraw.
+              g.renderer.render(g.scene, g.camera)
             })
           }
 

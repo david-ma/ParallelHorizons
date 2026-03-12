@@ -127,15 +127,22 @@
 
   <script>
     function devmode() {
+      console.log("Toggling dev mode");
       $("#gamepadtest").toggleClass("devmode");
     }
 
-    (function toggleDevSpotlightPanel() {
+    function toggleDevSpotlightPanel() {
+      console.log("Toggling dev spotlight panel");
       var host = window.location.hostname;
       var isDev = host === "localhost" || host === "127.0.0.1";
+      if (isDev) document.body.classList.add("dev-mode");
       var panel = document.getElementById("spotlight_slider_panel");
       if (panel && !isDev) panel.style.display = "none";
-    })();
+    }
+
+    globalThis.toggleDevSpotlightPanel = toggleDevSpotlightPanel;
+    globalThis.devmode = devmode;
+    toggleDevSpotlightPanel();
   </script>
 </body>
 </html>

@@ -57,6 +57,16 @@ p, img, div, canvas {
 	box-shadow: 0em 0.25em .75em rgba(124,124,124, 0.5);
 }
 
+body.dev-mode #menu {
+  top: auto;
+  left: auto;
+  right: 1rem;
+  bottom: 1rem;
+  transform: none;
+  max-height: calc(100vh - 2rem);
+  overflow: auto;
+}
+
 	#menu #img_container {
 		height: 14.5em;
 

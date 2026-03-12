@@ -30,6 +30,21 @@ export const config: RawWebsiteConfig = {
 
   controllers: {
     '': page('index'),
+    'dev-spotlight-slider': (res, _req, website, requestInfo) => {
+      if (requestInfo.action && requestInfo.action !== '') {
+        res.statusCode = 404
+        res.end('Not found')
+        return
+      }
+      const html = website.handlebars?.partials?.spotlight_sidebar
+      if (!html) {
+        res.statusCode = 404
+        res.end('Partial not found: spotlight_sidebar')
+        return
+      }
+      res.setHeader('Content-Type', 'text/html; charset=utf-8')
+      res.end(html)
+    },
     view: (res, req, website, requestInfo) => {
       if (requestInfo.action && requestInfo.action !== '') {
         // e.g. /view/foo -> 404 or fall through
