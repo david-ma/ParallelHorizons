@@ -6,78 +6,66 @@
   },
   "activeCells": [
     "2,1",
-    "2,0",
     "2,2",
-    "3,2",
-    "4,2",
-    "4,1",
-    "4,0",
-    "3,0"
+    "2,3",
+    "2,4",
+    "2,0"
   ],
   "placements": {
     "2,1": {
-      "north": [],
+      "north": [
+        "photo-3"
+      ],
       "east": [],
-      "south": [],
+      "south": [
+        "photo-10"
+      ],
       "west": []
     },
-    "2,0": {
+    "2,2": {
+      "north": [
+        "photo-7"
+      ],
+      "east": [],
+      "south": [
+        "photo-11"
+      ],
+      "west": []
+    },
+    "2,3": {
+      "north": [],
+      "east": [
+        "photo-8"
+      ],
+      "south": [
+        "photo-9"
+      ],
+      "west": []
+    },
+    "2,4": {
       "north": [],
       "east": [
         "photo-6"
       ],
       "south": [
-        "photo-5"
-      ],
-      "west": []
-    },
-    "2,2": {
-      "north": [],
-      "east": [
-        "photo-9"
-      ],
-      "south": [],
-      "west": []
-    },
-    "3,2": {
-      "north": [],
-      "east": [
-        "photo-5"
-      ],
-      "south": [],
-      "west": []
-    },
-    "4,2": {
-      "north": [
+        "photo-11",
         "photo-7"
       ],
-      "east": [],
-      "south": [],
       "west": []
     },
-    "4,1": {
+    "2,0": {
       "north": [],
-      "east": [],
+      "east": [
+        "photo-9",
+        "photo-10"
+      ],
       "south": [
-        "photo-5"
+        "photo-11",
+        "photo-6"
       ],
-      "west": []
-    },
-    "4,0": {
-      "north": [],
-      "east": [],
-      "south": [],
       "west": [
-        "photo-3"
-      ]
-    },
-    "3,0": {
-      "north": [
         "photo-8"
-      ],
-      "east": [],
-      "south": [],
-      "west": []
+      ]
     }
   },
   "photoCatalog": [
