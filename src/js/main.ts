@@ -82,6 +82,10 @@ interface Gal {
   pastZ: number
   targetPosition?: { x: number; y: number; z: number }
   intersects: THREE.Intersection[]
+  minX: number
+  maxX: number
+  minZ: number
+  maxZ: number
 }
 
 function drawFrame(
@@ -142,6 +146,10 @@ if (Detector && !Detector.webgl) {
     pastX: 0,
     pastZ: 0,
     intersects: [],
+    minX: -18,
+    maxX: 18,
+    minZ: -2,
+    maxZ: 2,
 
     raycastSetUp() {
       gal!.mouse.x = 0
@@ -373,6 +381,177 @@ if (Detector && !Detector.webgl) {
       g.scene.add(new THREE.AmbientLight(0xffffff, 0.8))
       // Balanced room lighting (no front/back directional bias).
       g.scene.add(new THREE.HemisphereLight(0xffffff, 0xf2f2f2, 0.6))
+
+      type FloorplanWallPlacements = {
+        north?: string[]
+        east?: string[]
+        south?: string[]
+        west?: string[]
+      }
+      type FloorplanBlob = {
+        grid?: { rows?: number; cols?: number }
+        activeCells?: string[]
+        placements?: Record<string, string | FloorplanWallPlacements>
+        photoCatalog?: Array<{ id: string; src: string; title?: string }>
+      }
+
+      const floorplanUrl = ((globalThis as any).GALLERY_FLOORPLAN_URL as string | undefined) ?? '/gallery-floorplan.json'
+      let floorplanData: FloorplanBlob | null = null
+      try {
+        const req = new XMLHttpRequest()
+        req.open('GET', floorplanUrl, false)
+        req.send(null)
+        if (req.status >= 200 && req.status < 300) {
+          const parsed = JSON.parse(req.responseText) as FloorplanBlob
+          if (Array.isArray(parsed.activeCells) && parsed.placements) floorplanData = parsed
+        }
+      } catch (_err) {
+        floorplanData = null
+      }
+
+      if (floorplanData) {
+        const rows = Math.max(1, Number(floorplanData.grid?.rows) || 5)
+        const cols = Math.max(1, Number(floorplanData.grid?.cols) || 5)
+        const cellWorld = 6
+        const active = new Set((floorplanData.activeCells || []).map(String))
+        const photoById = new Map((floorplanData.photoCatalog || []).map((p) => [p.id, p.src]))
+
+        const floorText = new THREE.TextureLoader().load('/img/Textures/Floor.jpg')
+        floorText.colorSpace = THREE.SRGBColorSpace
+        floorText.wrapS = THREE.RepeatWrapping
+        floorText.wrapT = THREE.RepeatWrapping
+        floorText.repeat.set(cols * 2, rows * 2)
+        const floorMaterial = new THREE.MeshPhongMaterial({ map: floorText })
+        const floorWidth = cols * cellWorld + 8
+        const floorDepth = rows * cellWorld + 8
+        const floor = new THREE.Mesh(new THREE.PlaneGeometry(floorWidth, floorDepth), floorMaterial)
+        floor.rotation.x = Math.PI / 2
+        floor.rotation.y = Math.PI
+        g.scene.add(floor)
+
+        g.wallGroup = new THREE.Group()
+        g.scene.add(g.wallGroup)
+        g.paintings = []
+        g.num_of_paintings = 0
+        g.minX = -floorWidth / 2 + 1.5
+        g.maxX = floorWidth / 2 - 1.5
+        g.minZ = -floorDepth / 2 + 1.5
+        g.maxZ = floorDepth / 2 - 1.5
+
+        const wallMaterial = new THREE.MeshLambertMaterial({ color: 0xffffff })
+        const addWall = (x: number, z: number, rotateY: number) => {
+          const wall = new THREE.Mesh(new THREE.BoxGeometry(cellWorld, 6, 0.001), wallMaterial) as THREE.Mesh & { BBox?: THREE.Box3 }
+          wall.position.set(x, 3, z)
+          wall.rotation.y = rotateY
+          wall.BBox = new THREE.Box3().setFromObject(wall)
+          g.wallGroup.add(wall)
+        }
+        const hasCell = (r: number, c: number) => active.has(`${r},${c}`)
+        const cellCenter = (r: number, c: number) => ({
+          x: (c - (cols - 1) / 2) * cellWorld,
+          z: (r - (rows - 1) / 2) * cellWorld,
+        })
+        const placeOnWall = (wall: 'north' | 'south' | 'west' | 'east', cx: number, cz: number, offset: number) => {
+          if (wall === 'north') return { x: cx + offset, y: 2, z: cz - cellWorld / 2 + 0.06, ry: 0 }
+          if (wall === 'south') return { x: cx - offset, y: 2, z: cz + cellWorld / 2 - 0.06, ry: Math.PI }
+          if (wall === 'west') return { x: cx - cellWorld / 2 + 0.06, y: 2, z: cz - offset, ry: Math.PI / 2 }
+          return { x: cx + cellWorld / 2 - 0.06, y: 2, z: cz + offset, ry: -Math.PI / 2 }
+        }
+        const addFrameToArtwork = (parent: THREE.Group, artWidth: number, artHeight: number) => {
+          const frameThickness = 0.06
+          const frameDepth = 0.03
+          const frameColor = 0x111111
+          const matThickness = 0.045
+          const matDepth = 0.012
+          const matColor = 0xffffff
+          const mat = new THREE.MeshBasicMaterial({ color: frameColor })
+          const mouldingMat = new THREE.MeshBasicMaterial({ color: matColor })
+
+          // White inner moulding/mat between image and outer frame.
+          const matTop = new THREE.Mesh(new THREE.BoxGeometry(artWidth + matThickness * 2, matThickness, matDepth), mouldingMat)
+          matTop.position.set(0, artHeight / 2 + matThickness / 2, -matDepth / 2)
+          parent.add(matTop)
+
+          const matBottom = new THREE.Mesh(new THREE.BoxGeometry(artWidth + matThickness * 2, matThickness, matDepth), mouldingMat)
+          matBottom.position.set(0, -artHeight / 2 - matThickness / 2, -matDepth / 2)
+          parent.add(matBottom)
+
+          const matLeft = new THREE.Mesh(new THREE.BoxGeometry(matThickness, artHeight, matDepth), mouldingMat)
+          matLeft.position.set(-artWidth / 2 - matThickness / 2, 0, -matDepth / 2)
+          parent.add(matLeft)
+
+          const matRight = new THREE.Mesh(new THREE.BoxGeometry(matThickness, artHeight, matDepth), mouldingMat)
+          matRight.position.set(artWidth / 2 + matThickness / 2, 0, -matDepth / 2)
+          parent.add(matRight)
+
+          // Outer black frame sits outside the white moulding (no overlap).
+          const outerWidth = artWidth + (matThickness + frameThickness) * 2
+          const outerHeight = artHeight + (matThickness + frameThickness) * 2
+
+          const top = new THREE.Mesh(new THREE.BoxGeometry(outerWidth, frameThickness, frameDepth), mat)
+          top.position.set(0, artHeight / 2 + matThickness + frameThickness / 2, -frameDepth / 2)
+          parent.add(top)
+
+          const bottom = new THREE.Mesh(new THREE.BoxGeometry(outerWidth, frameThickness, frameDepth), mat)
+          bottom.position.set(0, -artHeight / 2 - matThickness - frameThickness / 2, -frameDepth / 2)
+          parent.add(bottom)
+
+          const left = new THREE.Mesh(new THREE.BoxGeometry(frameThickness, outerHeight, frameDepth), mat)
+          left.position.set(-artWidth / 2 - matThickness - frameThickness / 2, 0, -frameDepth / 2)
+          parent.add(left)
+
+          const right = new THREE.Mesh(new THREE.BoxGeometry(frameThickness, outerHeight, frameDepth), mat)
+          right.position.set(artWidth / 2 + matThickness + frameThickness / 2, 0, -frameDepth / 2)
+          parent.add(right)
+        }
+
+        active.forEach((key) => {
+          const [rRaw, cRaw] = key.split(',')
+          const r = Number(rRaw)
+          const c = Number(cRaw)
+          if (Number.isNaN(r) || Number.isNaN(c)) return
+          const center = cellCenter(r, c)
+          if (!hasCell(r - 1, c)) addWall(center.x, center.z - cellWorld / 2, 0) // north
+          if (!hasCell(r + 1, c)) addWall(center.x, center.z + cellWorld / 2, Math.PI) // south
+          if (!hasCell(r, c - 1)) addWall(center.x - cellWorld / 2, center.z, Math.PI / 2) // west
+          if (!hasCell(r, c + 1)) addWall(center.x + cellWorld / 2, center.z, -Math.PI / 2) // east
+
+          const placements = floorplanData!.placements?.[key]
+          const normalized: FloorplanWallPlacements =
+            typeof placements === 'string'
+              ? { north: [placements] }
+              : (placements as FloorplanWallPlacements) || {}
+
+          ;(['north', 'east', 'south', 'west'] as const).forEach((wallName) => {
+            const ids = Array.isArray(normalized[wallName]) ? normalized[wallName]! : []
+            const step = Math.min(1.5, (cellWorld - 1) / Math.max(1, ids.length + 1))
+            const start = -((ids.length - 1) * step) / 2
+            ids.forEach((photoId, idx) => {
+              const source = photoById.get(photoId) || `/img/Artworks/${idx % 30}.jpg`
+              const tex = new THREE.TextureLoader().load(source)
+              tex.colorSpace = THREE.SRGBColorSpace
+              tex.minFilter = THREE.LinearFilter
+              const mat = new THREE.MeshLambertMaterial({ map: tex })
+              const art = new THREE.Group()
+              const plane = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 0.8), mat)
+              plane.position.z = 0.005
+              art.add(plane)
+              addFrameToArtwork(art, 1.2, 0.8)
+              const p = placeOnWall(wallName, center.x, center.z, start + idx * step)
+              art.position.set(p.x, p.y, p.z)
+              art.rotation.y = p.ry
+              g.scene.add(art)
+              g.paintings.push(art)
+              g.num_of_paintings++
+            })
+          })
+        })
+
+        g.wallGroup.children.forEach((child) => {
+          ;(child as THREE.Mesh & { BBox?: THREE.Box3 }).BBox = new THREE.Box3().setFromObject(child)
+        })
+        return
+      }
 
       const floorText = new THREE.TextureLoader().load('/img/Textures/Floor.jpg')
       floorText.colorSpace = THREE.SRGBColorSpace
@@ -807,8 +986,8 @@ if (Detector && !Detector.webgl) {
           }
         }
 
-        g.camera.position.z = Math.max(-2, Math.min(2, g.camera.position.z))
-        g.camera.position.x = Math.max(-18, Math.min(18, g.camera.position.x))
+        g.camera.position.z = Math.max(g.minZ, Math.min(g.maxZ, g.camera.position.z))
+        g.camera.position.x = Math.max(g.minX, Math.min(g.maxX, g.camera.position.x))
         g.moveVelocity.y -= 0.6 * delta
         g.camera.position.y += g.moveVelocity.y
         if (g.camera.position.y < 1.75) {

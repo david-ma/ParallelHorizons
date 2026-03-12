@@ -1,6 +1,7 @@
 declare const d3: any
 
 type CellKey = string
+type Wall = 'north' | 'east' | 'south' | 'west'
 
 type PhotoItem = {
   id: string
@@ -8,11 +9,14 @@ type PhotoItem = {
   src: string
 }
 
+type WallPlacements = Record<Wall, string[]>
+type CellPlacements = Record<CellKey, WallPlacements>
+
 type FloorplanData = {
-  version: 1
+  version: 2
   grid: { rows: number; cols: number }
   activeCells: CellKey[]
-  placements: Record<CellKey, string>
+  placements: CellPlacements
   photoCatalog: PhotoItem[]
 }
 
@@ -21,6 +25,9 @@ const GRID_COLS = 5
 const CELL_SIZE = 120
 const CELL_GAP = 14
 const PADDING = 18
+const WALL_BAND = 24
+const THUMB_SIZE = 14
+const THUMB_GAP = 2
 
 const photoCatalog: PhotoItem[] = Array.from({ length: 12 }, (_, i) => ({
   id: `photo-${i}`,
@@ -29,18 +36,54 @@ const photoCatalog: PhotoItem[] = Array.from({ length: 12 }, (_, i) => ({
 }))
 
 const activeCells = new Set<CellKey>()
-const placements: Record<CellKey, string> = {}
+const placements: CellPlacements = {}
 
 function cellKey(row: number, col: number): CellKey {
   return `${row},${col}`
 }
 
+function emptyWalls(): WallPlacements {
+  return { north: [], east: [], south: [], west: [] }
+}
+
+function ensureCellWalls(key: CellKey): WallPlacements {
+  if (!placements[key]) placements[key] = emptyWalls()
+  return placements[key]
+}
+
+function nearestWall(
+  cell: { x: number; y: number },
+  clientX: number,
+  clientY: number,
+  svgRect: DOMRect
+): Wall {
+  const px = clientX - svgRect.left
+  const py = clientY - svgRect.top
+  const leftDist = Math.abs(px - cell.x)
+  const rightDist = Math.abs(px - (cell.x + CELL_SIZE))
+  const topDist = Math.abs(py - cell.y)
+  const bottomDist = Math.abs(py - (cell.y + CELL_SIZE))
+
+  const min = Math.min(leftDist, rightDist, topDist, bottomDist)
+  if (min === topDist) return 'north'
+  if (min === rightDist) return 'east'
+  if (min === bottomDist) return 'south'
+  return 'west'
+}
+
+function placePhoto(cell: { key: CellKey }, wall: Wall, photoId: string): void {
+  const walls = ensureCellWalls(cell.key)
+  walls[wall].push(photoId)
+  drawGrid()
+  updatePreview()
+}
+
 function toData(): FloorplanData {
   return {
-    version: 1,
+    version: 2,
     grid: { rows: GRID_ROWS, cols: GRID_COLS },
     activeCells: Array.from(activeCells),
-    placements: { ...placements },
+    placements: JSON.parse(JSON.stringify(placements)),
     photoCatalog,
   }
 }
@@ -57,15 +100,21 @@ function renderPhotoList(): void {
   list.innerHTML = ''
 
   photoCatalog.forEach((photo) => {
+    const bindDragPayload = (node: HTMLElement) => {
+      node.draggable = true
+      node.addEventListener('dragstart', (event) => {
+        event.dataTransfer?.setData('text/plain', photo.id)
+        if (event.dataTransfer) event.dataTransfer.effectAllowed = 'copyMove'
+      })
+    }
+
     const tile = document.createElement('div')
     tile.className = 'photo-tile'
-    tile.draggable = true
     tile.dataset.photoId = photo.id
     tile.innerHTML = `<img src="${photo.src}" alt="${photo.title}"><p class="photo-title">${photo.title}</p>`
-    tile.addEventListener('dragstart', (event) => {
-      event.dataTransfer?.setData('text/plain', photo.id)
-      event.dataTransfer!.effectAllowed = 'move'
-    })
+    bindDragPayload(tile)
+    const img = tile.querySelector('img') as HTMLImageElement | null
+    if (img) bindDragPayload(img)
     list.appendChild(tile)
   })
 }
@@ -74,13 +123,36 @@ function applyData(data: FloorplanData): void {
   activeCells.clear()
   Object.keys(placements).forEach((k) => delete placements[k])
 
-  ;(data.activeCells || []).forEach((k) => activeCells.add(k))
-  Object.entries(data.placements || {}).forEach(([k, photoId]) => {
-    if (activeCells.has(k)) placements[k] = photoId
+  ;(data.activeCells || []).forEach((k) => activeCells.add(k as CellKey))
+
+  Object.entries((data as any).placements || {}).forEach(([k, value]) => {
+    if (!activeCells.has(k)) return
+    // Backward compatibility for older layout shape: { "row,col": "photo-id" }.
+    if (typeof value === 'string') {
+      placements[k] = emptyWalls()
+      placements[k].north.push(value)
+      return
+    }
+
+    const source = value as Partial<WallPlacements>
+    placements[k] = {
+      north: Array.isArray(source.north) ? source.north : [],
+      east: Array.isArray(source.east) ? source.east : [],
+      south: Array.isArray(source.south) ? source.south : [],
+      west: Array.isArray(source.west) ? source.west : [],
+    }
   })
 
   drawGrid()
   updatePreview()
+}
+
+function thumbPosition(cell: { x: number; y: number }, wall: Wall, index: number): { x: number; y: number } {
+  const offset = 4 + index * (THUMB_SIZE + THUMB_GAP)
+  if (wall === 'north') return { x: cell.x + offset, y: cell.y + 1 }
+  if (wall === 'south') return { x: cell.x + offset, y: cell.y + CELL_SIZE - THUMB_SIZE - 1 }
+  if (wall === 'west') return { x: cell.x + 1, y: cell.y + offset }
+  return { x: cell.x + CELL_SIZE - THUMB_SIZE - 1, y: cell.y + offset }
 }
 
 function drawGrid(): void {
@@ -112,6 +184,7 @@ function drawGrid(): void {
         delete placements[d.key]
       } else {
         activeCells.add(d.key)
+        ensureCellWalls(d.key)
       }
       drawGrid()
       updatePreview()
@@ -119,20 +192,17 @@ function drawGrid(): void {
     .on('dragover', (event: DragEvent, d: { key: CellKey }) => {
       if (!activeCells.has(d.key)) return
       event.preventDefault()
-      event.dataTransfer!.dropEffect = 'move'
+      if (event.dataTransfer) event.dataTransfer.dropEffect = 'copy'
     })
-    .on('drop', (event: DragEvent, d: { key: CellKey }) => {
+    .on('drop', (event: DragEvent, d: { key: CellKey; x: number; y: number }) => {
       if (!activeCells.has(d.key)) return
       event.preventDefault()
       const photoId = event.dataTransfer?.getData('text/plain')
       if (!photoId) return
-
-      Object.keys(placements).forEach((k) => {
-        if (placements[k] === photoId) delete placements[k]
-      })
-      placements[d.key] = photoId
-      drawGrid()
-      updatePreview()
+      const svgEl = document.getElementById('floorplan-svg') as SVGSVGElement | null
+      if (!svgEl) return
+      const wall = nearestWall(d, event.clientX, event.clientY, svgEl.getBoundingClientRect())
+      placePhoto(d, wall, photoId)
     })
 
   group
@@ -142,17 +212,59 @@ function drawGrid(): void {
     .attr('y', (d: { y: number }) => d.y + 16)
     .text((d: { row: number; col: number }) => `${d.row},${d.col}`)
 
-  group
-    .append('text')
-    .attr('class', 'placed')
-    .attr('x', (d: { x: number }) => d.x + 8)
-    .attr('y', (d: { y: number }) => d.y + 36)
-    .text((d: { key: CellKey }) => {
-      const photoId = placements[d.key]
-      if (!photoId) return ''
-      const item = photoCatalog.find((p) => p.id === photoId)
-      return item ? item.title : photoId
+  const wallZones = group
+    .selectAll('rect.wall-zone')
+    .data((cell: { key: CellKey; x: number; y: number }) => {
+      return (['north', 'east', 'south', 'west'] as Wall[]).map((wall) => ({ cell, wall }))
     })
+    .enter()
+    .append('rect')
+    .attr('class', 'wall-zone')
+    .attr('x', (d: { cell: { x: number }; wall: Wall }) => {
+      if (d.wall === 'west') return d.cell.x
+      if (d.wall === 'east') return d.cell.x + CELL_SIZE - WALL_BAND
+      return d.cell.x
+    })
+    .attr('y', (d: { cell: { y: number }; wall: Wall }) => {
+      if (d.wall === 'north') return d.cell.y
+      if (d.wall === 'south') return d.cell.y + CELL_SIZE - WALL_BAND
+      return d.cell.y
+    })
+    .attr('width', (d: { wall: Wall }) => (d.wall === 'north' || d.wall === 'south' ? CELL_SIZE : WALL_BAND))
+    .attr('height', (d: { wall: Wall }) => (d.wall === 'west' || d.wall === 'east' ? CELL_SIZE : WALL_BAND))
+    .attr('fill', 'transparent')
+    .attr('stroke', '#d4d4d4')
+    .attr('stroke-dasharray', '2,2')
+    .on('dragover', (event: DragEvent, d: { cell: { key: CellKey } }) => {
+      if (!activeCells.has(d.cell.key)) return
+      event.preventDefault()
+      if (event.dataTransfer) event.dataTransfer.dropEffect = 'copy'
+    })
+    .on('drop', (event: DragEvent, d: { cell: { key: CellKey }; wall: Wall }) => {
+      if (!activeCells.has(d.cell.key)) return
+      event.preventDefault()
+      const photoId = event.dataTransfer?.getData('text/plain')
+      if (!photoId) return
+      placePhoto(d.cell, d.wall, photoId)
+    })
+
+  wallZones.each(function (this: SVGRectElement, d: { cell: { key: CellKey; x: number; y: number }; wall: Wall }) {
+    const wallEntries = placements[d.cell.key]?.[d.wall] ?? []
+    wallEntries.forEach((photoId, index) => {
+      const photo = photoCatalog.find((p) => p.id === photoId)
+      if (!photo) return
+      const pos = thumbPosition(d.cell, d.wall, index)
+      d3.select(this.parentNode as SVGGElement)
+        .append('image')
+        .attr('href', photo.src)
+        .attr('x', pos.x)
+        .attr('y', pos.y)
+        .attr('width', THUMB_SIZE)
+        .attr('height', THUMB_SIZE)
+        .attr('pointer-events', 'none')
+        .attr('preserveAspectRatio', 'xMidYMid slice')
+    })
+  })
 }
 
 function downloadJsonFile(filename: string, data: unknown): void {

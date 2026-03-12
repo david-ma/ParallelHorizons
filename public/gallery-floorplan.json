@@ -1,0 +1,145 @@
+{
+  "version": 2,
+  "grid": {
+    "rows": 5,
+    "cols": 5
+  },
+  "activeCells": [
+    "2,1",
+    "2,0",
+    "2,2",
+    "3,2",
+    "4,2",
+    "4,1",
+    "4,0",
+    "3,0"
+  ],
+  "placements": {
+    "2,1": {
+      "north": [],
+      "east": [],
+      "south": [],
+      "west": []
+    },
+    "2,0": {
+      "north": [],
+      "east": [
+        "photo-6"
+      ],
+      "south": [
+        "photo-5"
+      ],
+      "west": []
+    },
+    "2,2": {
+      "north": [],
+      "east": [
+        "photo-9"
+      ],
+      "south": [],
+      "west": []
+    },
+    "3,2": {
+      "north": [],
+      "east": [
+        "photo-5"
+      ],
+      "south": [],
+      "west": []
+    },
+    "4,2": {
+      "north": [
+        "photo-7"
+      ],
+      "east": [],
+      "south": [],
+      "west": []
+    },
+    "4,1": {
+      "north": [],
+      "east": [],
+      "south": [
+        "photo-5"
+      ],
+      "west": []
+    },
+    "4,0": {
+      "north": [],
+      "east": [],
+      "south": [],
+      "west": [
+        "photo-3"
+      ]
+    },
+    "3,0": {
+      "north": [
+        "photo-8"
+      ],
+      "east": [],
+      "south": [],
+      "west": []
+    }
+  },
+  "photoCatalog": [
+    {
+      "id": "photo-0",
+      "title": "Photo 1",
+      "src": "/img/Artworks/0.jpg"
+    },
+    {
+      "id": "photo-1",
+      "title": "Photo 2",
+      "src": "/img/Artworks/1.jpg"
+    },
+    {
+      "id": "photo-2",
+      "title": "Photo 3",
+      "src": "/img/Artworks/2.jpg"
+    },
+    {
+      "id": "photo-3",
+      "title": "Photo 4",
+      "src": "/img/Artworks/3.jpg"
+    },
+    {
+      "id": "photo-4",
+      "title": "Photo 5",
+      "src": "/img/Artworks/4.jpg"
+    },
+    {
+      "id": "photo-5",
+      "title": "Photo 6",
+      "src": "/img/Artworks/5.jpg"
+    },
+    {
+      "id": "photo-6",
+      "title": "Photo 7",
+      "src": "/img/Artworks/6.jpg"
+    },
+    {
+      "id": "photo-7",
+      "title": "Photo 8",
+      "src": "/img/Artworks/7.jpg"
+    },
+    {
+      "id": "photo-8",
+      "title": "Photo 9",
+      "src": "/img/Artworks/8.jpg"
+    },
+    {
+      "id": "photo-9",
+      "title": "Photo 10",
+      "src": "/img/Artworks/9.jpg"
+    },
+    {
+      "id": "photo-10",
+      "title": "Photo 11",
+      "src": "/img/Artworks/10.jpg"
+    },
+    {
+      "id": "photo-11",
+      "title": "Photo 12",
+      "src": "/img/Artworks/11.jpg"
+    }
+  ]
+}
