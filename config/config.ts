@@ -30,6 +30,7 @@ export const config: RawWebsiteConfig = {
 
   controllers: {
     '': page('index'),
+    create: page('gallery_creation'),
     'dev-spotlight-slider': (res, _req, website, requestInfo) => {
       if (requestInfo.action && requestInfo.action !== '') {
         res.statusCode = 404
