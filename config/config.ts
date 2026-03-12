@@ -6,8 +6,6 @@ import type { RawWebsiteConfig } from 'thalia/types'
 import type { ServerResponse, IncomingMessage } from 'http'
 import type { Website } from 'thalia/website'
 import type { RequestInfo } from 'thalia/server'
-import path from 'path'
-import fs from 'fs'
 
 /** Render a full standalone page from a Handlebars template (no Thalia wrapper). */
 function page(
@@ -27,18 +25,6 @@ function page(
   }
 }
 
-/** Serve the 3D gallery app (public/index.html) at /view. Assets are at root (/js/, /img/, etc.). */
-function serveView(res: ServerResponse) {
-  const filePath = path.join(import.meta.dirname, '..', 'public', 'index.html')
-  if (!fs.existsSync(filePath)) {
-    res.statusCode = 404
-    res.end('View not found')
-    return
-  }
-  res.setHeader('Content-Type', 'text/html; charset=utf-8')
-  fs.createReadStream(filePath).pipe(res)
-}
-
 export const config: RawWebsiteConfig = {
   domains: ['localhost', '127.0.0.1'],
 
@@ -51,7 +37,7 @@ export const config: RawWebsiteConfig = {
         res.end('Not found')
         return
       }
-      serveView(res)
+      page('gallery')(res, req, website, requestInfo)
     },
   },
 }

@@ -427,6 +427,7 @@ if (Detector && !Detector.webgl) {
       const half = Math.floor(g.num_of_paintings / 2) - 1
       const featuredSpotlightIndex = Math.floor(half / 2) // center-ish on the front wall
       const spotlightModelLoader = new GLTFLoader()
+      const isDevHost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
 
       type SpotlightRigOptions = {
         lightOrigin: THREE.Vector3
@@ -445,7 +446,49 @@ if (Detector && !Detector.webgl) {
         wallMountOffset: number
       }
 
-      const addArtworkSpotlightRig = (options: SpotlightRigOptions): void => {
+      type ArtworkSpotlightRig = {
+        spotlight: THREE.SpotLight
+        spotlightTarget: THREE.Object3D
+        emitterDisc: THREE.Mesh
+        fixture?: THREE.Object3D
+        fallback?: THREE.Object3D
+        options: SpotlightRigOptions
+      }
+
+      const applyArtworkSpotlightRigOptions = (rig: ArtworkSpotlightRig): void => {
+        const options = rig.options
+        rig.spotlight.intensity = options.intensity
+        rig.spotlight.distance = options.distance
+        rig.spotlight.angle = options.angle
+        rig.spotlight.penumbra = options.penumbra
+        rig.spotlight.decay = options.decay
+        rig.spotlight.position.copy(options.lightOrigin)
+        rig.spotlightTarget.position.copy(options.lightTarget)
+        rig.spotlight.target = rig.spotlightTarget
+
+        const beamDir = new THREE.Vector3().subVectors(rig.spotlightTarget.position, rig.spotlight.position).normalize()
+        const emitterMat = rig.emitterDisc.material as THREE.MeshBasicMaterial
+        emitterMat.opacity = options.emitterOpacity
+        rig.emitterDisc.position.copy(rig.spotlight.position).add(beamDir.clone().multiplyScalar(options.emitterOffset))
+        rig.emitterDisc.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), beamDir)
+        rig.emitterDisc.scale.setScalar(options.emitterRadius)
+
+        if (rig.fixture) {
+          rig.fixture.position.copy(rig.spotlight.position)
+          rig.fixture.scale.setScalar(options.fixtureScale)
+          rig.fixture.lookAt(rig.spotlightTarget.position)
+          const bbox = new THREE.Box3().setFromObject(rig.fixture)
+          const size = new THREE.Vector3()
+          bbox.getSize(size)
+          rig.fixture.position.z = options.wallZ + size.z * 0.5 + options.wallMountOffset
+        }
+        if (rig.fallback) {
+          rig.fallback.position.copy(rig.spotlight.position)
+          rig.fallback.lookAt(rig.spotlightTarget.position)
+        }
+      }
+
+      const addArtworkSpotlightRig = (options: SpotlightRigOptions): ArtworkSpotlightRig => {
         const spotlight = new THREE.SpotLight(
           0xffffff,
           options.intensity,
@@ -461,9 +504,8 @@ if (Detector && !Detector.webgl) {
         g.scene.add(spotlightTarget)
         g.scene.add(spotlight)
 
-        const beamDir = new THREE.Vector3().subVectors(spotlightTarget.position, spotlight.position).normalize()
         const emitterDisc = new THREE.Mesh(
-          new THREE.CircleGeometry(options.emitterRadius, 16),
+          new THREE.CircleGeometry(1, 16),
           new THREE.MeshBasicMaterial({
             color: 0xffffff,
             transparent: true,
@@ -471,21 +513,22 @@ if (Detector && !Detector.webgl) {
             side: THREE.DoubleSide,
           })
         )
-        emitterDisc.position.copy(spotlight.position).add(beamDir.clone().multiplyScalar(options.emitterOffset))
-        emitterDisc.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), beamDir)
         g.scene.add(emitterDisc)
+
+        const rig: ArtworkSpotlightRig = {
+          spotlight,
+          spotlightTarget,
+          emitterDisc,
+          options,
+        }
+        applyArtworkSpotlightRigOptions(rig)
 
         spotlightModelLoader.load(
           options.modelUrl,
           (gltf) => {
             const fixture = gltf.scene.clone(true)
-            fixture.position.copy(spotlight.position)
-            fixture.scale.setScalar(options.fixtureScale)
-            fixture.lookAt(spotlightTarget.position)
-            const bbox = new THREE.Box3().setFromObject(fixture)
-            const size = new THREE.Vector3()
-            bbox.getSize(size)
-            fixture.position.z = options.wallZ + size.z * 0.5 + options.wallMountOffset
+            rig.fixture = fixture
+            applyArtworkSpotlightRigOptions(rig)
             g.scene.add(fixture)
           },
           undefined,
@@ -495,11 +538,58 @@ if (Detector && !Detector.webgl) {
               new THREE.ConeGeometry(0.08, 0.25, 12),
               new THREE.MeshBasicMaterial({ color: 0x222222 })
             )
-            fallback.position.copy(spotlight.position)
-            fallback.lookAt(spotlightTarget.position)
+            rig.fallback = fallback
+            applyArtworkSpotlightRigOptions(rig)
             g.scene.add(fallback)
           }
         )
+
+        return rig
+      }
+
+      const bindSpotlightSliderControls = (
+        tuning: Record<string, number>,
+        onInputChange: () => void
+      ): void => {
+        if (!isDevHost) return
+
+        const sliderMap: Record<string, string> = {
+          spotlight_intensity: 'SPOTLIGHT_INTENSITY',
+          spotlight_distance: 'SPOTLIGHT_DISTANCE',
+          spotlight_angle: 'SPOTLIGHT_ANGLE',
+          spotlight_penumbra: 'SPOTLIGHT_PENUMBRA',
+          spotlight_decay: 'SPOTLIGHT_DECAY',
+          spotlight_y: 'SPOTLIGHT_Y',
+          spotlight_z: 'SPOTLIGHT_Z',
+          target_y: 'TARGET_Y',
+          target_z: 'TARGET_Z',
+          emitter_disc_radius: 'EMITTER_DISC_RADIUS',
+          emitter_disc_offset: 'EMITTER_DISC_OFFSET',
+          emitter_disc_opacity: 'EMITTER_DISC_OPACITY',
+          fixture_scale: 'FIXTURE_SCALE',
+          wall_mount_offset: 'WALL_MOUNT_OFFSET',
+        }
+
+        const wireControls = () => {
+          const firstControl = document.getElementById('spotlight_intensity') as HTMLInputElement | null
+          if (!firstControl) return
+          const panel = document.getElementById('spotlight_slider_panel')
+          if (panel?.dataset.wired === 'true') return
+          if (panel) panel.dataset.wired = 'true'
+
+          Object.entries(sliderMap).forEach(([id, key]) => {
+            const input = document.getElementById(id) as HTMLInputElement | null
+            if (!input) return
+            input.value = String(tuning[key] ?? 0)
+            input.addEventListener('input', () => {
+              tuning[key] = Number(input.value)
+              onInputChange()
+            })
+          })
+        }
+
+        wireControls()
+        window.addEventListener('spotlight-slider-ready', wireControls as EventListener)
       }
 
       for (let i = 0; i < g.num_of_paintings; i++) {
@@ -541,38 +631,57 @@ if (Detector && !Detector.webgl) {
           // Add one "real gallery" spotlight fixture + light above a visible front-wall artwork.
           if (index === featuredSpotlightIndex) {
             // Spotlight tuning constants for quick iteration on one featured piece.
-            const SPOTLIGHT_INTENSITY = 1.9
-            const SPOTLIGHT_DISTANCE = 8
-            const SPOTLIGHT_ANGLE = Math.PI / 7
-            const SPOTLIGHT_PENUMBRA = 0.45
-            const SPOTLIGHT_DECAY = 1.2
-            const SPOTLIGHT_Y = 3.35
-            const SPOTLIGHT_Z = -2.72
-            const TARGET_Y = 2
-            const TARGET_Z = -2.96
-            const EMITTER_DISC_RADIUS = 0.045
-            const EMITTER_DISC_OFFSET = 0.07
-            const EMITTER_DISC_OPACITY = 0.95
-            const FIXTURE_SCALE = 0.35
-            const WALL_Z = -2.96
-            const WALL_MOUNT_OFFSET = 0.02
+            const spotlightTuning = {
+              SPOTLIGHT_INTENSITY: 1.9,
+              SPOTLIGHT_DISTANCE: 8,
+              SPOTLIGHT_ANGLE: Math.PI / 7,
+              SPOTLIGHT_PENUMBRA: 0.45,
+              SPOTLIGHT_DECAY: 1.2,
+              SPOTLIGHT_Y: 5.35,
+              SPOTLIGHT_Z: -2.95,
+              TARGET_Y: 2,
+              TARGET_Z: -2.96,
+              EMITTER_DISC_RADIUS: 0.1,
+              EMITTER_DISC_OFFSET: 0.17,
+              EMITTER_DISC_OPACITY: 0.95,
+              FIXTURE_SCALE: 0.35,
+              WALL_Z: -2.96,
+              WALL_MOUNT_OFFSET: 0.02,
+            }
             const SPOTLIGHT_MODEL_URL = '/models/spotlight/Spotlight.glb'
 
-            addArtworkSpotlightRig({
-              lightOrigin: new THREE.Vector3(plane.position.x, SPOTLIGHT_Y, SPOTLIGHT_Z),
-              lightTarget: new THREE.Vector3(plane.position.x, TARGET_Y, TARGET_Z),
+            const spotlightRig = addArtworkSpotlightRig({
+              lightOrigin: new THREE.Vector3(plane.position.x, spotlightTuning.SPOTLIGHT_Y, spotlightTuning.SPOTLIGHT_Z),
+              lightTarget: new THREE.Vector3(plane.position.x, spotlightTuning.TARGET_Y, spotlightTuning.TARGET_Z),
               modelUrl: SPOTLIGHT_MODEL_URL,
-              intensity: SPOTLIGHT_INTENSITY,
-              distance: SPOTLIGHT_DISTANCE,
-              angle: SPOTLIGHT_ANGLE,
-              penumbra: SPOTLIGHT_PENUMBRA,
-              decay: SPOTLIGHT_DECAY,
-              emitterRadius: EMITTER_DISC_RADIUS,
-              emitterOffset: EMITTER_DISC_OFFSET,
-              emitterOpacity: EMITTER_DISC_OPACITY,
-              fixtureScale: FIXTURE_SCALE,
-              wallZ: WALL_Z,
-              wallMountOffset: WALL_MOUNT_OFFSET,
+              intensity: spotlightTuning.SPOTLIGHT_INTENSITY,
+              distance: spotlightTuning.SPOTLIGHT_DISTANCE,
+              angle: spotlightTuning.SPOTLIGHT_ANGLE,
+              penumbra: spotlightTuning.SPOTLIGHT_PENUMBRA,
+              decay: spotlightTuning.SPOTLIGHT_DECAY,
+              emitterRadius: spotlightTuning.EMITTER_DISC_RADIUS,
+              emitterOffset: spotlightTuning.EMITTER_DISC_OFFSET,
+              emitterOpacity: spotlightTuning.EMITTER_DISC_OPACITY,
+              fixtureScale: spotlightTuning.FIXTURE_SCALE,
+              wallZ: spotlightTuning.WALL_Z,
+              wallMountOffset: spotlightTuning.WALL_MOUNT_OFFSET,
+            })
+
+            bindSpotlightSliderControls(spotlightTuning, () => {
+              spotlightRig.options.lightOrigin.set(plane.position.x, spotlightTuning.SPOTLIGHT_Y, spotlightTuning.SPOTLIGHT_Z)
+              spotlightRig.options.lightTarget.set(plane.position.x, spotlightTuning.TARGET_Y, spotlightTuning.TARGET_Z)
+              spotlightRig.options.intensity = spotlightTuning.SPOTLIGHT_INTENSITY
+              spotlightRig.options.distance = spotlightTuning.SPOTLIGHT_DISTANCE
+              spotlightRig.options.angle = spotlightTuning.SPOTLIGHT_ANGLE
+              spotlightRig.options.penumbra = spotlightTuning.SPOTLIGHT_PENUMBRA
+              spotlightRig.options.decay = spotlightTuning.SPOTLIGHT_DECAY
+              spotlightRig.options.emitterRadius = spotlightTuning.EMITTER_DISC_RADIUS
+              spotlightRig.options.emitterOffset = spotlightTuning.EMITTER_DISC_OFFSET
+              spotlightRig.options.emitterOpacity = spotlightTuning.EMITTER_DISC_OPACITY
+              spotlightRig.options.fixtureScale = spotlightTuning.FIXTURE_SCALE
+              spotlightRig.options.wallZ = spotlightTuning.WALL_Z
+              spotlightRig.options.wallMountOffset = spotlightTuning.WALL_MOUNT_OFFSET
+              applyArtworkSpotlightRigOptions(spotlightRig)
             })
           }
 

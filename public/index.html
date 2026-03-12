@@ -108,6 +108,7 @@
 			<div id="play_button">
 				<p>PLAY</p>
 			</div>
+            <div id="spotlight_slider_mount"></div>
             <div id="gamepadtest"></div>
 		</div>
     </div>
@@ -133,6 +134,24 @@
         function devmode() {
             $("#gamepadtest").toggleClass("devmode");
         }
+
+        (function mountSpotlightSlider() {
+            var host = window.location.hostname;
+            var isDev = host === 'localhost' || host === '127.0.0.1';
+            if (!isDev) return;
+            fetch('/dev/spotlight-slider')
+              .then(function (res) { return res.ok ? res.text() : ''; })
+              .then(function (html) {
+                if (!html) return;
+                var mount = document.getElementById('spotlight_slider_mount');
+                if (!mount) return;
+                mount.innerHTML = html;
+                window.dispatchEvent(new Event('spotlight-slider-ready'));
+              })
+              .catch(function (err) {
+                console.debug('Could not load spotlight slider partial:', err);
+              });
+        })();
     </script>
 
 </body>
