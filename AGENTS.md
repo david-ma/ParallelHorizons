@@ -6,6 +6,7 @@ This file is a practical handoff for maintainers and coding agents.
 
 | Date       | Change |
 |------------|--------|
+| 2025-03-12 | Split `main.ts` into modules: `types.ts`, `artwork.ts`, `layout.ts`, `spotlight.ts`, `gallery.ts`, `movement.ts`; main.ts is entry + boot/pointer lock/render loop. |
 | 2025-03-12 | AGENTS.md: added changelog, summary, roadmap, and resource links. Create page: dark mode (Charcoal Studio), scrollable Photos sidebar. |
 | 2025-03-12 | Create page: overflow scroll on Photos list; Charcoal Studio palette from `thalia_ubc/src/colours.hbs`. |
 | 2025-03-12 | View: JSON-driven artworks get black frame + white inner moulding; fixed frame/moulding overlap. |
@@ -29,9 +30,14 @@ The gallery is now running as a Thalia website and no longer depends on the old 
 - `/` renders homepage (`src/index.hbs`).
 - `/view` renders gallery page from Handlebars (`src/gallery.hbs`), not `public/index.html`.
 - Client runtime is TypeScript in `src/js/`:
-  - `src/js/main.ts`
-  - `src/js/gamepadtest.ts`
-  - `src/js/Detector.ts`
+  - `src/js/main.ts` — entry: boot, pointer lock, create/render delegates
+  - `src/js/types.ts` — `Gal` interface, `FloorplanBlob` / `FloorplanWallPlacements`
+  - `src/js/artwork.ts` — `drawFrame`, `addFrameToArtwork` (frames and moulding)
+  - `src/js/layout.ts` — `loadFloorplan`, `buildSceneFromFloorplan` (JSON layout → scene)
+  - `src/js/spotlight.ts` — spotlight rig (add/apply), dev slider bindings + export
+  - `src/js/gallery.ts` — `buildDefaultGallery` (hardcoded floor/walls/paintings + one spotlight)
+  - `src/js/movement.ts` — `attachMovementKeys`, `updateMovement` (WASD + camera/velocity)
+  - `src/js/gamepadtest.ts`, `src/js/Detector.ts`
 - Three.js is upgraded to npm package `three@0.183.2`.
 - Type-check path is working (`bunx tsc --noEmit`) with `typescript` and `@types/three`.
 
@@ -67,8 +73,8 @@ The gallery is now running as a Thalia website and no longer depends on the old 
 ## Current plan (near-term)
 
 1. Stabilize JSON schema and document it as the contract between `/create` and `/view`.
-2. Replace synchronous JSON load in `main.ts` with an async load + loading state.
-3. Move JSON gallery-build logic into dedicated module/class (separate from legacy fallback path).
+2. Replace synchronous JSON load in `layout.ts` with an async load + loading state.
+3. (Done) JSON gallery-build logic lives in `layout.ts`; legacy fallback in `gallery.ts`.
 4. Apply tuned spotlight settings from one fixture to all generated fixtures when requested.
 5. Add basic placards (title/artist/year) support in JSON and render beside artworks.
 
@@ -78,10 +84,9 @@ The gallery is now running as a Thalia website and no longer depends on the old 
 
 ### Phase A: data model + rendering architecture
 
-- Introduce explicit classes/modules:
-  - `Artwork` (mesh, frame, moulding, placard metadata)
-  - `SpotlightRig` (light, target, emitter, fixture)
-  - `GalleryLayout` (JSON parsing/validation + runtime world builder)
+- Introduce explicit classes where useful:
+  - `Artwork` (mesh, frame, moulding, placard metadata) — currently helpers in `artwork.ts` + usage in `layout.ts`/`gallery.ts`
+  - `SpotlightRig` already in `spotlight.ts`; `GalleryLayout` (JSON parsing/validation + runtime world builder) partially in `layout.ts`
 - Add schema versioning + migration helpers (`v1`/`v2` compatibility).
 
 ### Phase B: user features
@@ -119,12 +124,18 @@ The gallery is now running as a Thalia website and no longer depends on the old 
 
 - Routing/config:
   - `config/config.ts`
+- Viewer modules (`src/js/`):
+  - `main.ts` — entry, boot, pointer lock, create/render
+  - `layout.ts` — load + build from floorplan JSON
+  - `gallery.ts` — default (hardcoded) gallery
+  - `artwork.ts` — frames/moulding
+  - `spotlight.ts` — rig + dev sliders
+  - `movement.ts` — keys + movement update
+  - `types.ts` — shared types
 - Public pages:
   - `src/index.hbs`
   - `src/gallery.hbs`
   - `src/gallery_creation.hbs`
-- 3D runtime:
-  - `src/js/main.ts`
 - Floorplan editor:
   - `src/js/gallery_creation.ts`
 - Spotlight controls partial:
@@ -156,7 +167,7 @@ The gallery is now running as a Thalia website and no longer depends on the old 
 ### Example code in repo
 
 - Spotlight rig + tuning:
-  - `src/js/main.ts` (inside `create()`)
+  - `src/js/layout.ts` (`loadFloorplan`) and `main.ts` (`create()` calls it)
 - JSON floorplan editor behavior:
   - `src/js/gallery_creation.ts`
 - Dev spotlight tuning UI:
