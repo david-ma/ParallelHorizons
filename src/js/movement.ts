@@ -16,7 +16,11 @@ export function attachMovementKeys(g: Gal): void {
     else if (e.keyCode === 83 || e.keyCode === 40) g.moveBackward = true
     else if (e.keyCode === 68 || e.keyCode === 39) g.moveRight = true
     else if (e.keyCode === 32 && g.jump) {
-      g.moveVelocity.y += 0.2
+      if ((g as { physicsWorld?: unknown }).physicsWorld) {
+        g.moveVelocity.y = 5.5
+      } else {
+        g.moveVelocity.y += 0.2
+      }
       g.jump = false
     }
   })
@@ -29,7 +33,32 @@ export function attachMovementKeys(g: Gal): void {
 }
 
 /**
- * Updates velocity, position, and camera bounds for one frame. Call from render loop when controls are active.
+ * Updates only velocity (and look) from input. Use with physics: call this then stepPhysics.
+ * Does not move the camera or apply gravity (physics handles that).
+ */
+export function updateVelocityOnly(g: Gal, delta: number): void {
+  // Analog/gamepad look
+  if (g.analogX || g.analogY) {
+    g.euler.setFromQuaternion(g.camera.quaternion)
+    g.euler.y -= g.analogY * 0.04
+    g.euler.x -= g.analogX * 0.04
+    g.euler.x = Math.max(-PI_2, Math.min(PI_2, g.euler.x))
+    g.camera.quaternion.setFromEuler(g.euler)
+  }
+  g.moveVelocity.x -= g.moveVelocity.x * 10.0 * delta
+  g.moveVelocity.z -= g.moveVelocity.z * 10.0 * delta
+  if (g.moveForward) g.moveVelocity.z -= speed * delta
+  if (g.moveBackward) g.moveVelocity.z += speed * delta
+  if (g.moveLeft) g.moveVelocity.x -= speed * delta
+  if (g.moveRight) g.moveVelocity.x += speed * delta
+  if (g.analogForward) g.moveVelocity.z -= speed * g.analogForward * delta
+  if (g.analogBackward) g.moveVelocity.z += speed * g.analogBackward * delta
+  if (g.analogLeft) g.moveVelocity.x -= speed * g.analogLeft * delta
+  if (g.analogRight) g.moveVelocity.x += speed * g.analogRight * delta
+}
+
+/**
+ * Updates velocity, position, and camera bounds for one frame. Call from render loop when controls are active (non-physics path).
  */
 export function updateMovement(g: Gal, delta: number): void {
   const prevX = g.camera.position.x

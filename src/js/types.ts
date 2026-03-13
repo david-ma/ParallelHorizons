@@ -70,4 +70,7 @@ export interface Gal {
   maxX: number
   minZ: number
   maxZ: number
+  /** Set after create() when Rapier is used for collision. */
+  physicsWorld?: import('@dimforge/rapier3d-compat').World
+  playerBody?: import('@dimforge/rapier3d-compat').RigidBody
 }
