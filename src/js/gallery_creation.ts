@@ -9,7 +9,8 @@ type PhotoItem = {
   src: string
 }
 
-type WallPlacements = Record<Wall, string[]>
+/** One photo id per wall (empty string = none). Paintings only on walls, not in the middle of cells. */
+type WallPlacements = Record<Wall, string>
 type CellPlacements = Record<CellKey, WallPlacements>
 
 type FloorplanData = {
@@ -43,7 +44,7 @@ function cellKey(row: number, col: number): CellKey {
 }
 
 function emptyWalls(): WallPlacements {
-  return { north: [], east: [], south: [], west: [] }
+  return { north: '', east: '', south: '', west: '' }
 }
 
 function ensureCellWalls(key: CellKey): WallPlacements {
@@ -71,9 +72,10 @@ function nearestWall(
   return 'west'
 }
 
+/** Place one photo on a wall section (replaces any existing). Only walls get art. */
 function placePhoto(cell: { key: CellKey }, wall: Wall, photoId: string): void {
   const walls = ensureCellWalls(cell.key)
-  walls[wall].push(photoId)
+  walls[wall] = photoId
   drawGrid()
   updatePreview()
 }
@@ -127,19 +129,19 @@ function applyData(data: FloorplanData): void {
 
   Object.entries((data as any).placements || {}).forEach(([k, value]) => {
     if (!activeCells.has(k)) return
-    // Backward compatibility for older layout shape: { "row,col": "photo-id" }.
+    // Backward compatibility: whole-cell string or old array-per-wall shape.
     if (typeof value === 'string') {
       placements[k] = emptyWalls()
-      placements[k].north.push(value)
+      placements[k].north = value
       return
     }
-
-    const source = value as Partial<WallPlacements>
+    const source = value as Partial<Record<Wall, string | string[]>>
+    const asId = (v: string | string[] | undefined): string => (Array.isArray(v) ? (v[0] ?? '') : (v ?? ''))
     placements[k] = {
-      north: Array.isArray(source.north) ? source.north : [],
-      east: Array.isArray(source.east) ? source.east : [],
-      south: Array.isArray(source.south) ? source.south : [],
-      west: Array.isArray(source.west) ? source.west : [],
+      north: asId(source.north),
+      east: asId(source.east),
+      south: asId(source.south),
+      west: asId(source.west),
     }
   })
 
@@ -147,12 +149,15 @@ function applyData(data: FloorplanData): void {
   updatePreview()
 }
 
-function thumbPosition(cell: { x: number; y: number }, wall: Wall, index: number): { x: number; y: number } {
-  const offset = 4 + index * (THUMB_SIZE + THUMB_GAP)
-  if (wall === 'north') return { x: cell.x + offset, y: cell.y + 1 }
-  if (wall === 'south') return { x: cell.x + offset, y: cell.y + CELL_SIZE - THUMB_SIZE - 1 }
-  if (wall === 'west') return { x: cell.x + 1, y: cell.y + offset }
-  return { x: cell.x + CELL_SIZE - THUMB_SIZE - 1, y: cell.y + offset }
+/** Position for the single thumbnail: center of the wall section (edge band), not at corners. */
+function thumbPositionCenter(cell: { x: number; y: number }, wall: Wall): { x: number; y: number } {
+  const cx = cell.x + CELL_SIZE / 2 - THUMB_SIZE / 2
+  const cy = cell.y + CELL_SIZE / 2 - THUMB_SIZE / 2
+  const bandMid = WALL_BAND / 2 - THUMB_SIZE / 2
+  if (wall === 'north') return { x: cx, y: cell.y + Math.max(0, bandMid) }
+  if (wall === 'south') return { x: cx, y: cell.y + CELL_SIZE - WALL_BAND + Math.max(0, bandMid) }
+  if (wall === 'west') return { x: cell.x + Math.max(0, bandMid), y: cy }
+  return { x: cell.x + CELL_SIZE - WALL_BAND + Math.max(0, bandMid), y: cy }
 }
 
 function drawGrid(): void {
@@ -181,28 +186,13 @@ function drawGrid(): void {
     .on('click', (_event: MouseEvent, d: { key: CellKey }) => {
       if (activeCells.has(d.key)) {
         activeCells.delete(d.key)
-        delete placements[d.key]
+        delete placements[d.key] // Deactivating a square removes all its artworks
       } else {
         activeCells.add(d.key)
         ensureCellWalls(d.key)
       }
       drawGrid()
       updatePreview()
-    })
-    .on('dragover', (event: DragEvent, d: { key: CellKey }) => {
-      if (!activeCells.has(d.key)) return
-      event.preventDefault()
-      if (event.dataTransfer) event.dataTransfer.dropEffect = 'copy'
-    })
-    .on('drop', (event: DragEvent, d: { key: CellKey; x: number; y: number }) => {
-      if (!activeCells.has(d.key)) return
-      event.preventDefault()
-      const photoId = event.dataTransfer?.getData('text/plain')
-      if (!photoId) return
-      const svgEl = document.getElementById('floorplan-svg') as SVGSVGElement | null
-      if (!svgEl) return
-      const wall = nearestWall(d, event.clientX, event.clientY, svgEl.getBoundingClientRect())
-      placePhoto(d, wall, photoId)
     })
 
   group
@@ -248,22 +238,22 @@ function drawGrid(): void {
       placePhoto(d.cell, d.wall, photoId)
     })
 
+  // One thumbnail per wall section, centered on the wall band (not at corners)
   wallZones.each(function (this: SVGRectElement, d: { cell: { key: CellKey; x: number; y: number }; wall: Wall }) {
-    const wallEntries = placements[d.cell.key]?.[d.wall] ?? []
-    wallEntries.forEach((photoId, index) => {
-      const photo = photoCatalog.find((p) => p.id === photoId)
-      if (!photo) return
-      const pos = thumbPosition(d.cell, d.wall, index)
-      d3.select(this.parentNode as SVGGElement)
-        .append('image')
-        .attr('href', photo.src)
-        .attr('x', pos.x)
-        .attr('y', pos.y)
-        .attr('width', THUMB_SIZE)
-        .attr('height', THUMB_SIZE)
-        .attr('pointer-events', 'none')
-        .attr('preserveAspectRatio', 'xMidYMid slice')
-    })
+    const photoId = placements[d.cell.key]?.[d.wall] ?? ''
+    if (!photoId) return
+    const photo = photoCatalog.find((p) => p.id === photoId)
+    if (!photo) return
+    const pos = thumbPositionCenter(d.cell, d.wall)
+    d3.select(this.parentNode as SVGGElement)
+      .append('image')
+      .attr('href', photo.src)
+      .attr('x', pos.x)
+      .attr('y', pos.y)
+      .attr('width', THUMB_SIZE)
+      .attr('height', THUMB_SIZE)
+      .attr('pointer-events', 'none')
+      .attr('preserveAspectRatio', 'xMidYMid slice')
   })
 }
 

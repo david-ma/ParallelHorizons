@@ -4,11 +4,12 @@
 import type * as THREE from 'three'
 import type { PointerLockControls } from 'three/examples/jsm/controls/PointerLockControls.js'
 
+/** Editor exports one id per wall (string); viewer accepts string or string[] for backward compat. */
 export interface FloorplanWallPlacements {
-  north?: string[]
-  east?: string[]
-  south?: string[]
-  west?: string[]
+  north?: string | string[]
+  east?: string | string[]
+  south?: string | string[]
+  west?: string | string[]
 }
 
 export interface FloorplanBlob {

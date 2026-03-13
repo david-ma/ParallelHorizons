@@ -101,7 +101,8 @@ export function buildSceneFromFloorplan(g: Gal, data: FloorplanBlob): void {
         : (placements as FloorplanWallPlacements) || {}
 
     ;(['north', 'east', 'south', 'west'] as const).forEach((wallName) => {
-      const ids = Array.isArray(normalized[wallName]) ? normalized[wallName]! : []
+      const raw = normalized[wallName]
+      const ids = Array.isArray(raw) ? raw : typeof raw === 'string' && raw ? [raw] : []
       const step = Math.min(1.5, (cellWorld - 1) / Math.max(1, ids.length + 1))
       const start = -((ids.length - 1) * step) / 2
       ids.forEach((photoId, idx) => {
