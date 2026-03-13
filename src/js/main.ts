@@ -293,6 +293,7 @@ if (Detector && !Detector.webgl) {
         g.initialRender = false
         const currentTime = performance.now()
         const delta = (currentTime - g.prevTime) / 1000
+        // Physics path when Rapier is set up and we have pointer lock (not screensaver)
         const usePhysics = g.physicsWorld && g.playerBody && !g.screensaver
         if (usePhysics) {
           updateVelocityOnly(g, delta)
@@ -308,6 +309,7 @@ if (Detector && !Detector.webgl) {
             }
           }
         } else {
+          // Legacy path: updateMovement (camera-relative velocity + manual collision) and wall color reset
           updateMovement(g, delta)
           g.raycaster.setFromCamera(g.mouse.clone(), g.camera)
           g.intersects = g.raycaster.intersectObjects(g.paintings)

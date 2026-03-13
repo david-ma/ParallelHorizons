@@ -6,6 +6,7 @@ This file is a practical handoff for maintainers and coding agents.
 
 | Date       | Change |
 |------------|--------|
+| 2025-03-12 | Rapier physics: wall/floor collision via `@dimforge/rapier3d-compat`; `physics.ts` (init, createGalleryPhysics, stepPhysics); WASD/camera-relative movement (forward/right in view direction). |
 | 2025-03-12 | Split `main.ts` into modules: `types.ts`, `artwork.ts`, `layout.ts`, `spotlight.ts`, `gallery.ts`, `movement.ts`; main.ts is entry + boot/pointer lock/render loop. |
 | 2025-03-12 | AGENTS.md: added changelog, summary, roadmap, and resource links. Create page: dark mode (Charcoal Studio), scrollable Photos sidebar. |
 | 2025-03-12 | Create page: overflow scroll on Photos list; Charcoal Studio palette from `thalia_ubc/src/colours.hbs`. |
@@ -36,7 +37,8 @@ The gallery is now running as a Thalia website and no longer depends on the old 
   - `src/js/layout.ts` — `loadFloorplan`, `buildSceneFromFloorplan` (JSON layout → scene)
   - `src/js/spotlight.ts` — spotlight rig (add/apply), dev slider bindings + export
   - `src/js/gallery.ts` — `buildDefaultGallery` (hardcoded floor/walls/paintings + one spotlight)
-  - `src/js/movement.ts` — `attachMovementKeys`, `updateMovement` (WASD + camera/velocity)
+  - `src/js/movement.ts` — `attachMovementKeys`, `updateVelocityOnly`, `updateMovement` (WASD camera-relative + velocity)
+  - `src/js/physics.ts` — Rapier: `initRapier`, `createGalleryPhysics`, `stepPhysics` (floor/walls/player body)
   - `src/js/gamepadtest.ts`, `src/js/Detector.ts`
 - Three.js is upgraded to npm package `three@0.183.2`.
 - Type-check path is working (`bunx tsc --noEmit`) with `typescript` and `@types/three`.
@@ -60,6 +62,11 @@ The gallery is now running as a Thalia website and no longer depends on the old 
   - JSON export/import/download
 - `/view` now supports loading layout from `public/gallery-floorplan.json`.
 - If no JSON exists (or invalid), `/view` falls back to current hardcoded gallery layout.
+
+### Completed physics and movement
+
+- **Rapier** (`@dimforge/rapier3d-compat`): async init, then world with floor + wall colliders (from `wallGroup`) and dynamic player body; pointer-lock path uses `updateVelocityOnly` + `stepPhysics` for sliding and no walk-through-walls; screensaver path keeps legacy movement.
+- **WASD / arrows** are camera-relative: forward/back/left/right in the direction the camera is facing (XZ plane); same for gamepad analog stick; applies to both physics and non-physics paths.
 
 ### Completed artwork framing in JSON mode
 
@@ -125,12 +132,13 @@ The gallery is now running as a Thalia website and no longer depends on the old 
 - Routing/config:
   - `config/config.ts`
 - Viewer modules (`src/js/`):
-  - `main.ts` — entry, boot, pointer lock, create/render
+  - `main.ts` — entry, boot, pointer lock, create/render; async Rapier init then physics-driven or legacy movement
+  - `physics.ts` — Rapier world, floor/wall colliders, player body, step + camera sync
   - `layout.ts` — load + build from floorplan JSON
   - `gallery.ts` — default (hardcoded) gallery
   - `artwork.ts` — frames/moulding
   - `spotlight.ts` — rig + dev sliders
-  - `movement.ts` — keys + movement update
+  - `movement.ts` — keys + camera-relative velocity (forward/right from camera quaternion)
   - `types.ts` — shared types
 - Public pages:
   - `src/index.hbs`
@@ -140,6 +148,14 @@ The gallery is now running as a Thalia website and no longer depends on the old 
   - `src/js/gallery_creation.ts`
 - Spotlight controls partial:
   - `src/partials/spotlight_sidebar.hbs`
+
+---
+
+## Code notes (implementation details)
+
+- **Camera-relative movement** (`movement.ts`): Forward = camera look direction flattened to XZ; right = `dir × up` (right-hand rule). Use **dir×up** for right so A/D map to left/right; **up×dir** would flip them.
+- **Physics vs legacy**: In `main.ts` render, `usePhysics = g.physicsWorld && g.playerBody && !g.screensaver`. When true we call `updateVelocityOnly` + `stepPhysics` (Rapier); else `updateMovement` (velocity + manual wall collision + PointerLockControls moveForward/moveRight).
+- **Rapier**: Used only with pointer lock. Screensaver keeps legacy movement. Floor top at y=1.25, player center 1.75; walls built from `g.wallGroup` (world matrix + BoxGeometry params).
 
 ---
 

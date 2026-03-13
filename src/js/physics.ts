@@ -1,6 +1,7 @@
 /**
  * Rapier physics for the gallery: floor, walls, and player body.
  * Keeps the camera from passing through walls and provides sliding.
+ * Used only when pointer lock is active; screensaver uses legacy movement + manual collision.
  */
 import type RAPIER from '@dimforge/rapier3d-compat'
 import * as THREE from 'three'
@@ -20,6 +21,7 @@ export async function initRapier(): Promise<void> {
 /**
  * Create the physics world, floor, wall colliders from g.wallGroup, and player rigid body.
  * Call after the scene (and wallGroup) has been built (e.g. after create()).
+ * Walls are one static cuboid per mesh; player is dynamic, rotations locked, cuboid 1.2×1×1.2.
  */
 export function createGalleryPhysics(g: Gal): {
   world: RAPIER.World
@@ -35,7 +37,7 @@ export function createGalleryPhysics(g: Gal): {
   const floorDesc = R.ColliderDesc.cuboid(floorHalfX, floorHalfY, floorHalfZ).setTranslation(0, 0.625, 0)
   world.createCollider(floorDesc)
 
-  // Walls: one static cuboid per mesh in g.wallGroup (use world matrix + geometry size)
+  // Walls: one static cuboid per mesh in g.wallGroup; world position/rotation from Three.js mesh
   g.wallGroup.updateMatrixWorld(true)
   const pos = new THREE.Vector3()
   const quat = new THREE.Quaternion()
@@ -77,7 +79,7 @@ export function createGalleryPhysics(g: Gal): {
 
 /**
  * Step the physics world and sync the camera to the player body.
- * Call after updating g.moveVelocity from input; this applies velocity, steps, then copies body position back to camera and updates moveVelocity from body linvel.
+ * Call after updateVelocityOnly: sets body linvel from g.moveVelocity, steps, copies body translation to camera, writes linvel back to g.moveVelocity. Also sets g.jump = true when on ground.
  */
 export function stepPhysics(
   world: RAPIER.World,

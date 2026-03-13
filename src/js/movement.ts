@@ -1,10 +1,27 @@
 /**
  * Movement: keyboard input and camera/velocity updates.
+ * WASD / arrows are relative to the camera’s facing direction (forward/right in XZ).
  */
+import * as THREE from 'three'
 import type { Gal } from './types.js'
 
 const speed = 38.0
 const PI_2 = Math.PI / 2
+
+const _dir = new THREE.Vector3()
+const _right = new THREE.Vector3()
+
+/**
+ * Camera’s forward and right in the XZ plane (Y up). Used so WASD move relative to view.
+ * Right = dir × up (right-hand rule). Use dir×up not up×dir so A/D map to left/right correctly.
+ */
+function getCameraForwardRight(g: Gal): { dir: THREE.Vector3; right: THREE.Vector3 } {
+  _dir.set(0, 0, -1).applyQuaternion(g.camera.quaternion)
+  _dir.y = 0
+  _dir.normalize()
+  _right.crossVectors(_dir, new THREE.Vector3(0, 1, 0)).normalize()
+  return { dir: _dir, right: _right }
+}
 
 /**
  * Attaches keydown/keyup listeners for WASD, arrows, and space (jump).
@@ -35,6 +52,7 @@ export function attachMovementKeys(g: Gal): void {
 /**
  * Updates only velocity (and look) from input. Use with physics: call this then stepPhysics.
  * Does not move the camera or apply gravity (physics handles that).
+ * Velocity is built in world space from camera-relative dir/right so Rapier gets correct sliding.
  */
 export function updateVelocityOnly(g: Gal, delta: number): void {
   // Analog/gamepad look
@@ -45,16 +63,17 @@ export function updateVelocityOnly(g: Gal, delta: number): void {
     g.euler.x = Math.max(-PI_2, Math.min(PI_2, g.euler.x))
     g.camera.quaternion.setFromEuler(g.euler)
   }
+  const { dir, right } = getCameraForwardRight(g)
   g.moveVelocity.x -= g.moveVelocity.x * 10.0 * delta
   g.moveVelocity.z -= g.moveVelocity.z * 10.0 * delta
-  if (g.moveForward) g.moveVelocity.z -= speed * delta
-  if (g.moveBackward) g.moveVelocity.z += speed * delta
-  if (g.moveLeft) g.moveVelocity.x -= speed * delta
-  if (g.moveRight) g.moveVelocity.x += speed * delta
-  if (g.analogForward) g.moveVelocity.z -= speed * g.analogForward * delta
-  if (g.analogBackward) g.moveVelocity.z += speed * g.analogBackward * delta
-  if (g.analogLeft) g.moveVelocity.x -= speed * g.analogLeft * delta
-  if (g.analogRight) g.moveVelocity.x += speed * g.analogRight * delta
+  if (g.moveForward) g.moveVelocity.addScaledVector(dir, speed * delta)
+  if (g.moveBackward) g.moveVelocity.addScaledVector(dir, -speed * delta)
+  if (g.moveLeft) g.moveVelocity.addScaledVector(right, -speed * delta)
+  if (g.moveRight) g.moveVelocity.addScaledVector(right, speed * delta)
+  if (g.analogForward) g.moveVelocity.addScaledVector(dir, speed * g.analogForward * delta)
+  if (g.analogBackward) g.moveVelocity.addScaledVector(dir, -speed * g.analogBackward * delta)
+  if (g.analogLeft) g.moveVelocity.addScaledVector(right, -speed * g.analogLeft * delta)
+  if (g.analogRight) g.moveVelocity.addScaledVector(right, speed * g.analogRight * delta)
 }
 
 /**
@@ -73,18 +92,22 @@ export function updateMovement(g: Gal, delta: number): void {
     g.camera.quaternion.setFromEuler(g.euler)
   }
 
+  const { dir, right } = getCameraForwardRight(g)
   g.moveVelocity.x -= g.moveVelocity.x * 10.0 * delta
   g.moveVelocity.z -= g.moveVelocity.z * 10.0 * delta
-  if (g.moveForward) g.moveVelocity.z -= speed * delta
-  if (g.moveBackward) g.moveVelocity.z += speed * delta
-  if (g.moveLeft) g.moveVelocity.x -= speed * delta
-  if (g.moveRight) g.moveVelocity.x += speed * delta
-  if (g.analogForward) g.moveVelocity.z -= speed * g.analogForward * delta
-  if (g.analogBackward) g.moveVelocity.z += speed * g.analogBackward * delta
-  if (g.analogLeft) g.moveVelocity.x -= speed * g.analogLeft * delta
-  if (g.analogRight) g.moveVelocity.x += speed * g.analogRight * delta
-  g.controls.moveForward(-g.moveVelocity.z * delta)
-  g.controls.moveRight(g.moveVelocity.x * delta)
+  if (g.moveForward) g.moveVelocity.addScaledVector(dir, speed * delta)
+  if (g.moveBackward) g.moveVelocity.addScaledVector(dir, -speed * delta)
+  if (g.moveLeft) g.moveVelocity.addScaledVector(right, -speed * delta)
+  if (g.moveRight) g.moveVelocity.addScaledVector(right, speed * delta)
+  if (g.analogForward) g.moveVelocity.addScaledVector(dir, speed * g.analogForward * delta)
+  if (g.analogBackward) g.moveVelocity.addScaledVector(dir, -speed * g.analogBackward * delta)
+  if (g.analogLeft) g.moveVelocity.addScaledVector(right, -speed * g.analogLeft * delta)
+  if (g.analogRight) g.moveVelocity.addScaledVector(right, speed * g.analogRight * delta)
+  // Apply horizontal velocity: project world (v.x,v.z) onto camera forward/right for PointerLockControls
+  const forwardDist = (g.moveVelocity.x * dir.x + g.moveVelocity.z * dir.z) * delta
+  const rightDist = (g.moveVelocity.x * right.x + g.moveVelocity.z * right.z) * delta
+  g.controls.moveForward(-forwardDist)
+  g.controls.moveRight(rightDist)
 
   if (g.targetPosition) {
     const deltaX = g.camera.position.x - g.targetPosition.x
