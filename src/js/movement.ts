@@ -32,6 +32,9 @@ export function attachMovementKeys(g: Gal): void {
  * Updates velocity, position, and camera bounds for one frame. Call from render loop when controls are active.
  */
 export function updateMovement(g: Gal, delta: number): void {
+  const prevX = g.camera.position.x
+  const prevZ = g.camera.position.z
+
   // Analog/gamepad look
   if (g.analogX || g.analogY) {
     g.euler.setFromQuaternion(g.camera.quaternion)
@@ -87,7 +90,7 @@ export function updateMovement(g: Gal, delta: number): void {
     g.camera.position.y = 5
   }
 
-  g.pastX = g.camera.position.x
-  g.pastZ = g.camera.position.z
+  g.pastX = prevX
+  g.pastZ = prevZ
   g.user.BBox?.setFromObject(g.user)
 }

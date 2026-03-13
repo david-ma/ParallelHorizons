@@ -81,7 +81,9 @@ if (Detector && !Detector.webgl) {
       gal!.renderer.outputColorSpace = THREE.SRGBColorSpace
       document.body.appendChild(gal!.renderer.domElement)
 
-      const userBoxGeo = new THREE.BoxGeometry(2, 1, 2)
+      // Player collision box (width, height, depth). Slightly smaller than original 2×1×2
+      // so the camera can get closer to the walls without feeling bulky.
+      const userBoxGeo = new THREE.BoxGeometry(1.2, 1, 1.2)
       const userBoxMat = new THREE.MeshBasicMaterial({ color: 0xeeee99, wireframe: true })
       gal!.user = new THREE.Mesh(userBoxGeo, userBoxMat) as THREE.Mesh & { BBox?: THREE.Box3 }
       gal!.user.visible = false
@@ -284,13 +286,52 @@ if (Detector && !Detector.webgl) {
         updateMovement(g, delta)
         g.raycaster.setFromCamera(g.mouse.clone(), g.camera)
         g.intersects = g.raycaster.intersectObjects(g.paintings)
+
+        const desiredX = g.camera.position.x
+        const desiredZ = g.camera.position.z
+        const prevX = g.pastX
+        const prevZ = g.pastZ
+
+        const hasCollision = (): boolean => {
+          g.user.BBox?.setFromObject(g.user)
+          for (let i = 0; i < g.wallGroup.children.length; i++) {
+            const child = g.wallGroup.children[i] as THREE.Mesh & { BBox?: THREE.Box3 }
+            if (child.BBox && g.user.BBox && g.user.BBox.intersectsBox(child.BBox)) {
+              return true
+            }
+          }
+          return false
+        }
+
+        // Reset wall colors each frame (non-colliding state).
         for (let i = 0; i < g.wallGroup.children.length; i++) {
           const child = g.wallGroup.children[i] as THREE.Mesh & { BBox?: THREE.Box3 }
-          if (child.BBox && g.user.BBox && g.user.BBox.intersectsBox(child.BBox)) {
-            g.user.BBox.setFromObject(g.user)
-          } else if (child.material && (child.material as THREE.MeshLambertMaterial).color) {
+          if (child.material && (child.material as THREE.MeshLambertMaterial).color) {
             ;(child.material as THREE.MeshLambertMaterial).color.set(0xffffff)
           }
+        }
+
+        // Start from the moved position and resolve collisions with simple axis-separated sliding.
+        if (hasCollision()) {
+          // Try X movement only (slide along Z)
+          g.camera.position.set(desiredX, g.camera.position.y, prevZ)
+          if (hasCollision()) {
+            // X-only still collides; try Z movement only (slide along X)
+            g.camera.position.set(prevX, g.camera.position.y, desiredZ)
+            if (hasCollision()) {
+              // Both axes collide; revert fully
+              g.camera.position.set(prevX, g.camera.position.y, prevZ)
+              g.moveVelocity.x = 0
+              g.moveVelocity.z = 0
+            } else {
+              // Only Z move is valid; stop X motion
+              g.moveVelocity.x = 0
+            }
+          } else {
+            // Only X move is valid; stop Z motion
+            g.moveVelocity.z = 0
+          }
+          g.user.BBox?.setFromObject(g.user)
         }
         g.prevTime = currentTime
         g.renderer.render(g.scene, g.camera)
