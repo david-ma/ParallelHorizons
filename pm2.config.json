@@ -1,0 +1,13 @@
+{
+  "apps": [
+    {
+      "name": "parallelhorizons",
+      "script": "bun",
+      "args": "index.js",
+      "env": {
+        "NODE_ENV": "production",
+        "PORT": 8888
+      }
+    }
+  ]
+}
