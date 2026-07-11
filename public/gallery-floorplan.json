@@ -20,7 +20,16 @@
     "0,1",
     "0,0",
     "1,0",
-    "2,0"
+    "2,0",
+    "3,1",
+    "2,1",
+    "1,1",
+    "1,2",
+    "2,2",
+    "3,2",
+    "3,3",
+    "2,3",
+    "1,3"
   ],
   "placements": {
     "4,1": {
@@ -79,7 +88,7 @@
     },
     "1,4": {
       "north": "",
-      "east": "",
+      "east": "photo-6",
       "south": "",
       "west": ""
     },
@@ -92,11 +101,11 @@
     "0,2": {
       "north": "",
       "east": "",
-      "south": "",
+      "south": "photo-5",
       "west": ""
     },
     "0,1": {
-      "north": "",
+      "north": "photo-4",
       "east": "",
       "south": "",
       "west": ""
@@ -108,16 +117,70 @@
       "west": ""
     },
     "1,0": {
-      "north": "",
+      "north": "photo-3",
       "east": "",
-      "south": "",
+      "south": "photo-3",
       "west": ""
     },
     "2,0": {
       "north": "",
-      "east": "",
+      "east": "photo-3",
       "south": "",
       "west": "photo-11"
+    },
+    "3,1": {
+      "north": "",
+      "east": "photo-7",
+      "south": "photo-9",
+      "west": ""
+    },
+    "2,1": {
+      "north": "",
+      "east": "",
+      "south": "photo-3",
+      "west": ""
+    },
+    "1,1": {
+      "north": "",
+      "east": "photo-11",
+      "south": "",
+      "west": ""
+    },
+    "1,2": {
+      "north": "",
+      "east": "",
+      "south": "photo-11",
+      "west": ""
+    },
+    "2,2": {
+      "north": "",
+      "east": "",
+      "south": "photo-10",
+      "west": ""
+    },
+    "3,2": {
+      "north": "",
+      "east": "",
+      "south": "photo-7",
+      "west": ""
+    },
+    "3,3": {
+      "north": "",
+      "east": "",
+      "south": "",
+      "west": "photo-10"
+    },
+    "2,3": {
+      "north": "",
+      "east": "photo-6",
+      "south": "",
+      "west": ""
+    },
+    "1,3": {
+      "north": "",
+      "east": "photo-8",
+      "south": "",
+      "west": ""
     }
   },
   "photoCatalog": [

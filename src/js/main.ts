@@ -11,15 +11,22 @@ import { initRapier, createGalleryPhysics, stepPhysics } from './physics.js'
 import { initSpotlightDevPanel, updateSpotlightCulling, resolveMaxPixelRatio } from './spotlight.js'
 import { initDevMinimap, updateDevMinimap } from './minimap.js'
 import { initSpotlightDebug, updateSpotlightDebug } from './spotlight-debug.js'
+import { initDevPerf, markPhase, recordFrame, type FramePhases } from './perf.js'
 
 /** When the pause menu is up, refresh the frozen scene at 1 FPS instead of display rate. */
 const PAUSED_FRAME_MS = 1000
 
-let lastCalledTime: number | undefined
-let fps = 0
-let counter = 0
 let animationFrameId: number | null = null
 let pauseTimeoutId: ReturnType<typeof setTimeout> | null = null
+
+const emptyPhases = (): FramePhases => ({
+  anim: 0,
+  move: 0,
+  spotCull: 0,
+  minimap: 0,
+  debug: 0,
+  render: 0,
+})
 
 function isGameplayActive(g: Gal): boolean {
   return !!g.screensaver || g.controls.enabled === true
@@ -77,22 +84,6 @@ function initWallBoundingBoxes(g: Gal): void {
   for (let i = 0; i < g.wallGroup.children.length; i++) {
     const child = g.wallGroup.children[i] as THREE.Mesh & { BBox?: THREE.Box3 }
     child.BBox?.setFromObject(child)
-  }
-}
-
-function framerate(): void {
-  if (!(globalThis as { GALLERY_DEV_TOOLS?: boolean }).GALLERY_DEV_TOOLS) return
-  if (!lastCalledTime) {
-    lastCalledTime = performance.now()
-    fps = 0
-    return
-  }
-  const delta = (performance.now() - lastCalledTime) / 1000
-  lastCalledTime = performance.now()
-  fps = 1 / delta
-  if (counter++ % 15 === 0) {
-    const el = document.getElementById('fps')
-    if (el) el.textContent = String(Math.floor(fps))
   }
 }
 
@@ -337,6 +328,7 @@ if (Detector && !Detector.webgl) {
         setLayoutLoading(false)
         applyViewportSize(gal!)
         initDevMinimap()
+        initDevPerf()
         initSpotlightDebug(gal!)
         initSpotlightDevPanel(() => {
           gal!.renderer.render(gal!.scene, gal!.camera)
@@ -348,11 +340,16 @@ if (Detector && !Detector.webgl) {
 
     render() {
       const g = gal!
-      framerate()
+      const frameStart = performance.now()
+      let phaseStart = frameStart
+      const phases = emptyPhases()
 
       if (isGameplayActive(g)) {
         g.initialRender = false
         g.animatedObjects.forEach((obj) => obj.render(obj))
+        phases.anim = markPhase(phaseStart)
+        phaseStart = performance.now()
+
         const currentTime = performance.now()
         const delta = (currentTime - g.prevTime) / 1000
         const usePhysics = g.physicsWorld && g.playerBody && !g.screensaver
@@ -409,10 +406,23 @@ if (Detector && !Detector.webgl) {
           }
         }
         g.prevTime = currentTime
+        phases.move = markPhase(phaseStart)
+        phaseStart = performance.now()
+
         updateSpotlightCulling(g.camera, g.wallGroup.children)
+        phases.spotCull = markPhase(phaseStart)
+        phaseStart = performance.now()
+
         updateDevMinimap(g)
+        phases.minimap = markPhase(phaseStart)
+        phaseStart = performance.now()
+
         updateSpotlightDebug(g)
+        phases.debug = markPhase(phaseStart)
+        phaseStart = performance.now()
+
         g.renderer.render(g.scene, g.camera)
+        phases.render = markPhase(phaseStart)
       } else {
         g.prevTime = performance.now()
         if (g.initialRender) {
@@ -420,11 +430,22 @@ if (Detector && !Detector.webgl) {
           g.initialRender = false
         }
         updateSpotlightCulling(g.camera, g.wallGroup.children)
+        phases.spotCull = markPhase(phaseStart)
+        phaseStart = performance.now()
+
         updateDevMinimap(g)
+        phases.minimap = markPhase(phaseStart)
+        phaseStart = performance.now()
+
         updateSpotlightDebug(g)
+        phases.debug = markPhase(phaseStart)
+        phaseStart = performance.now()
+
         g.renderer.render(g.scene, g.camera)
+        phases.render = markPhase(phaseStart)
       }
 
+      recordFrame(g, frameStart, phases)
       scheduleNextRender(g)
     },
   } as unknown as Gal

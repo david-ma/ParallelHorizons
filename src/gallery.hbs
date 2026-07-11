@@ -101,7 +101,12 @@
 
   {{#unless production}}
   <div id="devonly">
-    FPS: <span id="fps"></span>
+    <div id="perf-hud">
+      <span id="perf-profile-badge" aria-hidden="true"></span>
+      FPS: <span id="fps">—</span> · <span id="perf-frame-ms">—</span> ms
+    </div>
+    <div id="perf-detail">perf idle</div>
+    <button type="button" id="perf-dump-btn" class="perf-dump-btn" title="Console: galleryDumpPerf() · profile walk: ?profile=1">Dump perf</button>
   </div>
   <div id="gallery-minimap-wrap" aria-hidden="true">
     <canvas id="gallery-minimap"></canvas>

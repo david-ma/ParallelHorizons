@@ -77,6 +77,51 @@ body.dev-mode #devonly {
   display: block;
 }
 
+#perf-hud {
+  font-weight: 600;
+}
+
+#perf-detail {
+  margin-top: 0.2rem;
+  font-size: 10px;
+  color: #aeaeb2;
+  max-width: 14rem;
+  line-height: 1.35;
+}
+
+#perf-profile-badge {
+  display: none;
+  margin-right: 0.35rem;
+  padding: 0.05rem 0.35rem;
+  border-radius: 3px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: #1c1c1e;
+  background: #ff453a;
+}
+
+#perf-profile-badge.active {
+  display: inline-block;
+}
+
+.perf-dump-btn {
+  display: block;
+  margin-top: 0.35rem;
+  padding: 0.2rem 0.45rem;
+  border: 1px solid #48484a;
+  border-radius: 4px;
+  background: #2c2c2e;
+  color: #f2f2f7;
+  font-family: Lato, sans-serif;
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.perf-dump-btn:hover {
+  background: #3a3a3c;
+}
+
 #gallery-minimap-wrap {
   display: none;
   position: fixed;
