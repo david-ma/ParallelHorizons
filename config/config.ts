@@ -9,7 +9,9 @@ import type { RequestInfo } from 'thalia/server'
 import { recursiveObjectMerge } from 'thalia/website'
 import { ThaliaSecurity, ProfileControllerFactory, validateProfilePhotoHttpHttpsUrl, type RoleRouteRule } from 'thalia/security'
 import { isValidFloorplan } from '../src/js/floorplan.js'
-import { galleries as galleriesTable } from '../models/gallery-schema.js'
+import { galleries as galleriesTable, photos as photosTable } from '../models/gallery-schema.js'
+import { handleUploadPhoto } from './photo-upload.js'
+import { listPhotosForOwner, softDeletePhoto } from './photo-store.js'
 import { galleryRoutes } from './gallery-routes.js'
 import {
   defaultGallerySlug,
@@ -172,6 +174,7 @@ const galleryDatabaseConfig = {
   database: {
     schemas: {
       galleries: galleriesTable,
+      photos: photosTable,
     },
   },
 }
@@ -186,6 +189,57 @@ const galleryControllers: RawWebsiteConfig['controllers'] = {
         ...authNavData(requestInfo),
       })(res, req, website, requestInfo)
     })()
+  },
+
+  library: (res, req, website, requestInfo) => {
+    void (async () => {
+      const userId = requireUserId(requestInfo)
+      if (!userId) {
+        redirect(res, '/logon?next=/library')
+        return
+      }
+      page('library', authNavData(requestInfo))(res, req, website, requestInfo)
+    })()
+  },
+
+  uploadPhoto: async (res, req, website, requestInfo) => {
+    if (req.method !== 'POST') {
+      res.statusCode = 405
+      res.setHeader('Allow', 'POST')
+      res.end('Method not allowed')
+      return
+    }
+    const userId = requireUserId(requestInfo)
+    if (!userId) {
+      json(res, 401, { ok: false, error: 'Sign in to upload' })
+      return
+    }
+    await handleUploadPhoto(res, req, website, userId)
+  },
+
+  'photo-delete': async (res, req, website, requestInfo) => {
+    if (req.method !== 'POST') {
+      res.statusCode = 405
+      res.setHeader('Allow', 'POST')
+      res.end('Method not allowed')
+      return
+    }
+    const userId = requireUserId(requestInfo)
+    if (!userId) {
+      json(res, 401, { ok: false, error: 'Sign in to delete' })
+      return
+    }
+    const id = parseActionId(requestInfo.action)
+    if (!id) {
+      json(res, 400, { ok: false, error: 'Missing photo id' })
+      return
+    }
+    const ok = await softDeletePhoto(website, id, userId)
+    if (!ok) {
+      json(res, 404, { ok: false, error: 'Photo not found' })
+      return
+    }
+    json(res, 200, { ok: true })
   },
 
   dashboard: (res, req, website, requestInfo) => {
@@ -335,6 +389,18 @@ const galleryControllers: RawWebsiteConfig['controllers'] = {
   },
 
   api: {
+    photos: (res, req, website, requestInfo) => {
+      void (async () => {
+        const userId = requireUserId(requestInfo)
+        if (!userId) {
+          json(res, 401, { ok: false, error: 'Sign in required' })
+          return
+        }
+        const photos = await listPhotosForOwner(website, userId)
+        json(res, 200, { ok: true, photos })
+      })()
+    },
+
     floorplan: (res, req, website, requestInfo) => {
       void (async () => {
         const slug = requestInfo.slug?.trim() || requestInfo.action?.trim()

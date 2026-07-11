@@ -15,3 +15,19 @@ export const galleries: MySqlTableWithColumns<any> = mysqlTable('galleries', {
   floorplanJson: text('floorplan_json'),
   isPublished: boolean('is_published').notNull().default(false),
 })
+
+export const photos: MySqlTableWithColumns<any> = mysqlTable('photos', {
+  ...util.baseTableConfig,
+  ownerUserId: int('owner_user_id')
+    .notNull()
+    .references(() => users.id),
+  /** Reserved for D4 folder tree */
+  folderId: int('folder_id'),
+  title: util.vc('title'),
+  artist: util.vc('artist'),
+  year: util.vc('year'),
+  caption: text('caption'),
+  filename: util.vc('filename'),
+  url: util.vc('url').notNull(),
+  thumbnailUrl: util.vc('thumbnail_url'),
+})

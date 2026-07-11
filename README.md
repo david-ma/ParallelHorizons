@@ -18,6 +18,7 @@ Quickstart (Thalia):
    - `/` — homepage
    - `/view/:slug` — 3D walkthrough
    - `/dashboard` — your galleries (requires sign-in)
+   - `/library` — upload and manage your photos
    - `/create/:id` — floorplan editor for a saved gallery
 
 ### Auth + database (D1)
@@ -42,8 +43,9 @@ Floorplan JSON contract: see [docs/floorplan-schema.md](docs/floorplan-schema.md
 
 Done:
 
-- Thalia site: `/`, `/view/:slug`, `/dashboard`, `/create/:id`
+- Thalia site: `/`, `/view/:slug`, `/dashboard`, `/library`, `/create/:id`
 - **D1 auth:** ThaliaSecurity, MariaDB `galleries` table, save/publish floorplans
+- **D2 photos:** owner-scoped `photos` table, `/library`, local upload to `public/uploads/`
 - TypeScript viewer modules, Three.js r183, Rapier physics
 - JSON floorplan layout + demo galleries (`parallel-horizons`, `met-monet`)
 - Placards (title/artist/year) on JSON artworks
@@ -51,7 +53,6 @@ Done:
 
 Next (see [docs/2026-07-11_phase_1_smugmug_and_auth.md](docs/2026-07-11_phase_1_smugmug_and_auth.md)):
 
-- **D2:** local-disk photo uploads + library grid
 - **D3:** SmugMug + UploadThing
 - **D4:** folder library UX
 - Mobile-friendly controls

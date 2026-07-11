@@ -11,6 +11,7 @@
       <nav class="home-nav" aria-label="Primary">
         <a href="/">Home</a>
         <a href="/dashboard" aria-current="page">Dashboard</a>
+        <a href="/library">Library</a>
         {{#if loggedIn}}
         <a href="/profile">{{userName}}</a>
         <a href="/logout">Log out</a>
@@ -28,9 +29,12 @@
       <p class="home-lead">
         Create a floorplan, save your layout, then publish to share a walkthrough link with visitors.
       </p>
-      <form method="post" action="/gallery-create" class="dashboard-create-form">
-        <button type="submit" class="home-btn home-btn-primary">Create new gallery</button>
-      </form>
+      <div class="dashboard-create-form">
+        <form method="post" action="/gallery-create" class="dashboard-inline-form">
+          <button type="submit" class="home-btn home-btn-primary">Create new gallery</button>
+        </form>
+        <a class="home-btn" href="/library">Photo library</a>
+      </div>
     </section>
 
     <section class="home-galleries" aria-labelledby="my-galleries-heading">

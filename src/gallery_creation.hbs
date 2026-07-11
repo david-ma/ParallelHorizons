@@ -171,6 +171,23 @@
       cursor: grabbing;
     }
     .hint { margin: 0 0 8px; font-size: 12px; color: var(--muted); line-height: 1.45; }
+    .editor-upload-zone {
+      margin-bottom: 8px;
+      padding: 10px;
+      border: 1px dashed var(--border);
+      border-radius: 6px;
+      background: var(--surface-2);
+      text-align: center;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .editor-upload-zone.drag-over { border-color: var(--primary); background: #1f3651; }
+    .editor-upload-label span {
+      color: var(--primary);
+      cursor: pointer;
+      text-decoration: underline;
+    }
+    .photo-list-empty { grid-column: 1 / -1; font-size: 12px; color: var(--muted); margin: 0; }
   </style>
 </head>
 <body
@@ -184,6 +201,7 @@
         <h2>{{galleryTitle}}</h2>
         <div class="panel-head-links">
           <a href="/dashboard">Dashboard</a>
+          <a href="/library">Library</a>
           <a href="/view/{{gallerySlug}}" target="_blank" rel="noopener">Preview</a>
         </div>
       </div>
@@ -223,6 +241,12 @@
 
       <div class="tab-panel" data-panel="photos" role="tabpanel">
         <p class="hint">Drag a photo onto a wall band on the grid. Click to select for label editing.</p>
+        <div id="editor-upload-zone" class="editor-upload-zone" tabindex="0">
+          <label class="editor-upload-label">
+            <span>Upload photos</span>
+            <input id="editor-upload-input" type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple hidden>
+          </label>
+        </div>
         <label class="filter-row"><input id="filter-unplaced" type="checkbox"> Show unplaced only</label>
         <div id="photo-list"></div>
       </div>

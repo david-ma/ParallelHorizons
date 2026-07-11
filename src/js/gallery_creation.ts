@@ -60,11 +60,7 @@ type ArtPointerDrag = {
   moved: boolean
 }
 
-const photoCatalog: PhotoItem[] = Array.from({ length: 12 }, (_, i) => ({
-  id: `photo-${i}`,
-  title: `Photo ${i + 1}`,
-  src: `/img/Artworks/${i}.jpg`,
-}))
+const photoCatalog: PhotoItem[] = []
 
 const activeCells = new Set<CellKey>()
 const placements: CellPlacements = {}
@@ -319,10 +315,12 @@ function renderPhotoList(): void {
   if (!list) return
   list.innerHTML = ''
   const placed = getPlacedPhotoIds()
+  let shown = 0
 
   photoCatalog.forEach((photo) => {
     const isPlaced = placed.has(photo.id)
     if (showUnplacedOnly && isPlaced) return
+    shown += 1
 
     const bindDragPayload = (node: HTMLElement) => {
       node.draggable = true
@@ -348,6 +346,15 @@ function renderPhotoList(): void {
     if (img) bindDragPayload(img)
     list.appendChild(tile)
   })
+
+  if (shown === 0) {
+    const empty = document.createElement('p')
+    empty.className = 'photo-list-empty'
+    empty.textContent = photoCatalog.length
+      ? 'All photos are placed — uncheck “Show unplaced only”.'
+      : 'No photos yet — upload above or add them in your library.'
+    list.appendChild(empty)
+  }
 }
 
 function mergePhotoCatalog(incoming: PhotoItem[]): void {
@@ -836,6 +843,66 @@ function setupWallStyleSelect(): void {
   updateWallStyleUI()
 }
 
+async function loadOwnerPhotos(): Promise<void> {
+  try {
+    const res = await fetch('/api/photos', { credentials: 'same-origin' })
+    if (!res.ok) return
+    const payload = (await res.json()) as { photos?: PhotoItem[] }
+    if (!Array.isArray(payload.photos)) return
+    photoCatalog.length = 0
+    payload.photos.forEach((p) => photoCatalog.push({ ...p }))
+    renderPhotoList()
+    drawGrid()
+  } catch {
+    // floorplan catalog may still apply
+  }
+}
+
+async function uploadEditorPhotos(files: FileList | File[]): Promise<void> {
+  const list = Array.from(files).filter((f) => f.type.startsWith('image/'))
+  if (list.length === 0) {
+    showToast('No image files selected', true)
+    return
+  }
+  showToast(`Uploading ${list.length} file${list.length === 1 ? '' : 's'}…`)
+  let ok = 0
+  for (const file of list) {
+    const form = new FormData()
+    form.append('fileToUpload', file)
+    form.append('title', file.name.replace(/\.[^.]+$/, ''))
+    try {
+      const res = await fetch('/uploadPhoto', { method: 'POST', body: form, credentials: 'same-origin' })
+      const payload = (await res.json()) as { ok?: boolean; error?: string }
+      if (res.ok && payload.ok) ok += 1
+      else showToast(payload.error || 'Upload failed', true)
+    } catch {
+      showToast('Upload failed', true)
+    }
+  }
+  await loadOwnerPhotos()
+  updatePreview()
+  if (ok > 0) showToast(`Uploaded ${ok} photo${ok === 1 ? '' : 's'}`)
+}
+
+function setupEditorUpload(): void {
+  const input = document.getElementById('editor-upload-input') as HTMLInputElement | null
+  const zone = document.getElementById('editor-upload-zone')
+  input?.addEventListener('change', () => {
+    if (input.files?.length) void uploadEditorPhotos(input.files)
+    input.value = ''
+  })
+  zone?.addEventListener('dragover', (e) => {
+    e.preventDefault()
+    zone.classList.add('drag-over')
+  })
+  zone?.addEventListener('dragleave', () => zone.classList.remove('drag-over'))
+  zone?.addEventListener('drop', (e) => {
+    e.preventDefault()
+    zone.classList.remove('drag-over')
+    if (e.dataTransfer?.files?.length) void uploadEditorPhotos(e.dataTransfer.files)
+  })
+}
+
 function setupButtons(): void {
   document.getElementById('save-preview')?.addEventListener('click', () => void saveAndPreview())
 
@@ -914,8 +981,11 @@ async function boot(): Promise<void> {
   setupPhotoListDragPassthrough()
   setupUndoRedo()
   setupWallStyleSelect()
+  setupEditorUpload()
   setupButtons()
   renderAll()
+
+  await loadOwnerPhotos()
 
   const { gallerySlug } = editorContext()
   const loadUrl = gallerySlug

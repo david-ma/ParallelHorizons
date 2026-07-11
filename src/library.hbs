@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en-AU">
+<head>
+  {{> head title="Photo library"}}
+  <link rel="stylesheet" href="/css/index.css">
+</head>
+<body class="page-home page-library">
+  <header class="home-header">
+    <div class="home-header-inner">
+      <a class="home-logo" href="/">Parallel Horizons</a>
+      <nav class="home-nav" aria-label="Primary">
+        <a href="/">Home</a>
+        <a href="/dashboard">Dashboard</a>
+        <a href="/library" aria-current="page">Library</a>
+        {{#if loggedIn}}
+        <a href="/profile">{{userName}}</a>
+        <a href="/logout">Log out</a>
+        {{else}}
+        <a href="/logon">Log in</a>
+        {{/if}}
+      </nav>
+    </div>
+  </header>
+
+  <main class="home-main">
+    <section class="home-hero">
+      <p class="home-eyebrow">Photo library</p>
+      <h1>Your photos</h1>
+      <p class="home-lead">
+        Upload images here, then drag them onto walls in the gallery editor. Only you can see this library.
+      </p>
+    </section>
+
+    <section class="library-upload" aria-labelledby="upload-heading">
+      <h2 id="upload-heading">Upload</h2>
+      <div id="library-dropzone" class="library-dropzone" tabindex="0">
+        <p>Drop images here or <label class="library-file-label"><span>browse</span><input id="library-file-input" type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple hidden></label></p>
+        <p class="library-upload-hint">JPEG, PNG, WebP, or GIF</p>
+      </div>
+      <p id="library-toast" class="library-toast" aria-live="polite"></p>
+    </section>
+
+    <section class="home-galleries" aria-labelledby="library-grid-heading">
+      <h2 id="library-grid-heading">Photos</h2>
+      <p id="library-empty" class="home-lead library-empty">No photos yet — upload your first image above.</p>
+      <ul id="library-grid" class="library-grid"></ul>
+    </section>
+  </main>
+
+  <footer class="home-footer">
+    <p><a href="/dashboard">Back to dashboard</a></p>
+  </footer>
+
+  <script type="module" src="/js/library.js"></script>
+</body>
+</html>

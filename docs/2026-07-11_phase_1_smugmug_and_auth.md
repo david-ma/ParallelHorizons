@@ -464,13 +464,16 @@ export const config = recursiveObjectMerge(
 
 ### D2 — Local-disk photos
 
-- [ ] `photos` table (`url`, `thumbnailUrl`, `ownerUserId`, labels)
-- [ ] **`ThaliaImageUploader`** with `THALIA_IMAGE_ADAPTER=local-disk` (default in dev)
-- [ ] **`/library`** — upload + grid; serve files from `/uploads/…`
-- [ ] Wire **`/create/:id`** sidebar to owner’s photos API
-- [ ] Floorplan `photoCatalog` uses DB photo ids + `/uploads/…` URLs
+- [x] `photos` table (`url`, `thumbnailUrl`, `ownerUserId`, labels)
+- [x] Local-disk upload (`POST /uploadPhoto` → `public/uploads/`)
+- [x] **`/library`** — upload + grid + soft delete
+- [x] Wire **`/create/:id`** sidebar to owner’s photos API + inline upload
+- [x] Floorplan `photoCatalog` uses DB photo ids + `/uploads/…` URLs
+- [x] Soft delete strips photo id from all owner `galleries.floorplan_json`
 
 **Exit:** creator uploads JPGs, places on walls, publishes — no SmugMug.
+
+**You run:** after pulling, `bun run db:generate -- --name=photos` then `bun run db:migrate`.
 
 ### D3 — SmugMug + UploadThing
 
@@ -497,6 +500,14 @@ export const config = recursiveObjectMerge(
 ### Phase 2 (later)
 
 - Per-wall textures, telemetry POST route, mobile controls, AI labelling
+
+### Future layout UX (documented — not scheduled)
+
+See [2026-07-11_user_experience.md](./2026-07-11_user_experience.md):
+
+- Share / duplicate gallery **layouts** (not photos)
+- **Rotate** room grid; **drag room cells** on the 2D plan
+- Optional co-edit / remix published layouts
 
 ---
 
