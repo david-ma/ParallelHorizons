@@ -3,6 +3,8 @@ import * as THREE from 'three'
 import {
   buildSpotlightOptions,
   formatSpotlightTuningAsCode,
+  isArtworkOccludedByWalls,
+  isPointInViewFrustum,
   maxActiveSpotlights,
   resolveMaxPixelRatio,
   selectActiveSpotlightFlags,
@@ -149,5 +151,43 @@ describe('resolveMaxPixelRatio', () => {
   test('honours quality query param', () => {
     expect(resolveMaxPixelRatio(30, '?quality=low')).toBe(1)
     expect(resolveMaxPixelRatio(30, '?quality=high')).toBe(2)
+  })
+})
+
+describe('isPointInViewFrustum', () => {
+  test('includes points ahead of camera inside FOV', () => {
+    const cam = new THREE.PerspectiveCamera(75, 1, 0.1, 100)
+    cam.position.set(0, 1.75, 0)
+    cam.lookAt(0, 2, -10)
+    cam.updateMatrixWorld(true)
+    expect(isPointInViewFrustum(cam, new THREE.Vector3(0, 2, -8))).toBe(true)
+  })
+
+  test('excludes points behind the camera', () => {
+    const cam = new THREE.PerspectiveCamera(75, 1, 0.1, 100)
+    cam.position.set(0, 1.75, 0)
+    cam.lookAt(0, 2, -10)
+    cam.updateMatrixWorld(true)
+    expect(isPointInViewFrustum(cam, new THREE.Vector3(0, 2, 5))).toBe(false)
+  })
+})
+
+describe('isArtworkOccludedByWalls', () => {
+  test('detects wall between camera and artwork', () => {
+    const wall = new THREE.Mesh(new THREE.BoxGeometry(10, 6, 0.2))
+    wall.position.set(0, 3, -5)
+    wall.updateMatrixWorld(true)
+    const cam = new THREE.Vector3(0, 1.75, 0)
+    const art = new THREE.Vector3(0, 2, -10)
+    expect(isArtworkOccludedByWalls(cam, art, [wall])).toBe(true)
+  })
+
+  test('clear line of sight when no wall in path', () => {
+    const sideWall = new THREE.Mesh(new THREE.BoxGeometry(0.2, 6, 10))
+    sideWall.position.set(8, 3, -5)
+    sideWall.updateMatrixWorld(true)
+    const cam = new THREE.Vector3(0, 1.75, 0)
+    const art = new THREE.Vector3(0, 2, -8)
+    expect(isArtworkOccludedByWalls(cam, art, [sideWall])).toBe(false)
   })
 })

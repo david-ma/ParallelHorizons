@@ -184,6 +184,6 @@ export function updateDevMinimap(g: Gal): void {
   draw.fill()
 
   if (legendEl) {
-    legendEl.textContent = `Player · ${activeCount}/${cull.length} beams in view · all lights on`
+    legendEl.textContent = `Player · ${activeCount}/${cull.length} active · ${cull.filter((e) => e.inView).length} in view`
   }
 }

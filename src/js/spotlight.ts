@@ -94,6 +94,7 @@ const STORAGE_KEY = 'gallery-spotlight-tuning-v1'
 
 const _forward = new THREE.Vector3()
 const _wallAnchor = new THREE.Vector3()
+const _mountedWorld = new THREE.Vector3()
 const _quat = new THREE.Quaternion()
 const _boxCorner = new THREE.Vector3()
 const _corners: THREE.Vector3[] = []
@@ -214,6 +215,35 @@ export function selectActiveSpotlightFlags(distancesSq: number[], maxActive: num
 const _cullCamPos = new THREE.Vector3()
 const _cullForward = new THREE.Vector3()
 const _cullPoint = new THREE.Vector3()
+const _cullRayDir = new THREE.Vector3()
+const _cullProjScreen = new THREE.Matrix4()
+const _cullFrustum = new THREE.Frustum()
+const _cullRaycaster = new THREE.Raycaster()
+
+/** True when a world point lies inside the camera frustum (respects FOV + near/far). */
+export function isPointInViewFrustum(camera: THREE.Camera, point: THREE.Vector3): boolean {
+  _cullProjScreen.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse)
+  _cullFrustum.setFromProjectionMatrix(_cullProjScreen)
+  return _cullFrustum.containsPoint(point)
+}
+
+/** Ray from camera to artwork blocked by a wall mesh before reaching the target. */
+export function isArtworkOccludedByWalls(
+  cameraPos: THREE.Vector3,
+  artworkCenter: THREE.Vector3,
+  wallMeshes: readonly THREE.Object3D[],
+  raycaster: THREE.Raycaster = _cullRaycaster
+): boolean {
+  if (wallMeshes.length === 0) return false
+  _cullRayDir.copy(artworkCenter).sub(cameraPos)
+  const distToArt = _cullRayDir.length()
+  if (distToArt < 0.05) return false
+  _cullRayDir.multiplyScalar(1 / distToArt)
+  raycaster.set(cameraPos, _cullRayDir)
+  raycaster.far = distToArt - 0.08
+  raycaster.near = 0.05
+  return raycaster.intersectObjects(wallMeshes as THREE.Object3D[], false).length > 0
+}
 
 let lastCullDebug: SpotlightCullDebugEntry[] = []
 
@@ -222,6 +252,7 @@ export type SpotlightCullDebugEntry = {
   z: number
   distance: number
   inView: boolean
+  occluded: boolean
   active: boolean
 }
 
@@ -300,7 +331,13 @@ function ensureRigFixtureOn(rig: ArtworkSpotlightRig): void {
   if (rig.fallback) rig.fallback.visible = true
 }
 
-/** Keep SpotLight fully active (all rigs lit). */
+function ensureRigFixtureOff(rig: ArtworkSpotlightRig): void {
+  rig.emitterDisc.visible = false
+  if (rig.fixture) rig.fixture.visible = false
+  if (rig.fallback) rig.fallback.visible = false
+}
+
+/** Restore SpotLight from rig options (after cull re-enable). */
 function ensureRigLightOn(rig: ArtworkSpotlightRig): void {
   const { intensity, distance, angle, penumbra, decay } = rig.options
   rig.spotlight.visible = true
@@ -312,17 +349,24 @@ function ensureRigLightOn(rig: ArtworkSpotlightRig): void {
   rig.spotlight.target = rig.spotlightTarget
 }
 
-/** Emitter disc brightness — visual “beam on” hint; lighting stays on via ensureRigLightOn. */
+function ensureRigLightOff(rig: ArtworkSpotlightRig): void {
+  rig.spotlight.visible = false
+  rig.spotlight.intensity = 0
+}
+
+/** Emitter disc brightness — visual “beam on” hint when rig is active. */
 function setRigEmitterBeamLook(rig: ArtworkSpotlightRig, showBeam: boolean): void {
   const emitterMat = rig.emitterDisc.material as THREE.MeshBasicMaterial
   emitterMat.opacity = showBeam ? rig.options.emitterOpacity : rig.options.emitterOpacity * 0.15
 }
 
 /**
- * Fixtures + SpotLights always on. Emitter disc glows when artwork is in camera view.
- * (Light culling removed — prior visible/intensity toggling prevented beams from rendering.)
+ * Cap active SpotLights by in-frustum, unoccluded priority; hide fixtures/beams for culled rigs.
  */
-export function updateSpotlightCulling(camera: THREE.Camera): void {
+export function updateSpotlightCulling(
+  camera: THREE.Camera,
+  wallMeshes: readonly THREE.Object3D[] = []
+): void {
   const rigs = registeredRigs
   if (rigs.length === 0) {
     lastCullDebug = []
@@ -330,20 +374,50 @@ export function updateSpotlightCulling(camera: THREE.Camera): void {
   }
   camera.getWorldPosition(_cullCamPos)
   camera.getWorldDirection(_cullForward)
-  const debug: SpotlightCullDebugEntry[] = []
+  const maxActive = maxActiveSpotlights(rigs.length)
+  const sortKeys: number[] = []
+  const eligible: boolean[] = []
+  const meta: { distance: number; inView: boolean; occluded: boolean }[] = []
+
   for (let i = 0; i < rigs.length; i++) {
     const rig = rigs[i]!
     refreshRigCullPoint(rig, _cullPoint)
-    const { inView, distance } = spotlightCullPriority(_cullPoint, _cullCamPos, _cullForward)
-    ensureRigFixtureOn(rig)
-    ensureRigLightOn(rig)
-    setRigEmitterBeamLook(rig, inView)
+    const { sortKey, distance } = spotlightCullPriority(_cullPoint, _cullCamPos, _cullForward)
+    const inFrustum = isPointInViewFrustum(camera, _cullPoint)
+    const occluded = inFrustum
+      ? isArtworkOccludedByWalls(_cullCamPos, _cullPoint, wallMeshes)
+      : false
+    const inView = inFrustum && !occluded
+    eligible.push(inView)
+    sortKeys.push(inView ? sortKey : 1e12 + distance * distance)
+    meta.push({ distance, inView, occluded })
+  }
+
+  const activeFlags = selectActiveSpotlightFlagsInView(sortKeys, maxActive)
+  const debug: SpotlightCullDebugEntry[] = []
+
+  for (let i = 0; i < rigs.length; i++) {
+    const rig = rigs[i]!
+    const active = eligible[i]! && activeFlags[i]!
+    const { distance, inView, occluded } = meta[i]!
+    refreshRigCullPoint(rig, _cullPoint)
+
+    if (active) {
+      ensureRigFixtureOn(rig)
+      ensureRigLightOn(rig)
+      setRigEmitterBeamLook(rig, true)
+    } else {
+      ensureRigFixtureOff(rig)
+      ensureRigLightOff(rig)
+    }
+
     debug.push({
       x: _cullPoint.x,
       z: _cullPoint.z,
       distance,
       inView,
-      active: inView,
+      occluded,
+      active,
     })
   }
   lastCullDebug = debug
@@ -531,10 +605,14 @@ function mountFixtureOnWall(
 
   const wallPlaneD = wallAnchor.dot(wallNormal)
   const box = new THREE.Box3().setFromObject(fixture)
+  if (box.isEmpty()) return
+
   let minProj = Infinity
   for (const corner of bboxCorners(box, _corners)) {
     minProj = Math.min(minProj, corner.dot(wallNormal))
   }
+  if (!Number.isFinite(minProj)) return
+
   fixture.position.addScaledVector(wallNormal, wallPlaneD + wallMountOffset - minProj)
   orientFixture(fixture, wallNormal, fixturePitchOffset)
 }
@@ -562,10 +640,11 @@ export function applyArtworkSpotlightRigOptions(rig: ArtworkSpotlightRig): void 
   const mounted = rig.fixture ?? rig.fallback
   if (mounted) {
     mountFixtureOnWall(mounted, ...mountArgs)
-    mounted.getWorldPosition(options.lightOrigin)
+    mounted.getWorldPosition(_mountedWorld)
+    rig.spotlight.position.copy(_mountedWorld)
+  } else {
+    rig.spotlight.position.copy(options.lightOrigin)
   }
-
-  rig.spotlight.position.copy(options.lightOrigin)
 
   const { right, up, normal } = wallAlignedBasis(options.wallNormal)
   const emitterMat = rig.emitterDisc.material as THREE.MeshBasicMaterial
@@ -597,6 +676,21 @@ export function applyGlobalTuningToAllRigs(): void {
 const spotlightModelLoader = new GLTFLoader()
 let spotlightTemplate: THREE.Object3D | null = null
 let spotlightTemplatePromise: Promise<THREE.Object3D> | null = null
+
+/** Deep clone fixture hierarchy; share mesh geometry/material buffers (not clone(false) — that drops children). */
+function cloneFixtureWithSharedAssets(source: THREE.Object3D): THREE.Object3D {
+  const clone = source.clone(false)
+  if ((clone as THREE.Mesh).isMesh && (source as THREE.Mesh).isMesh) {
+    const mesh = clone as THREE.Mesh
+    const src = source as THREE.Mesh
+    mesh.geometry = src.geometry
+    mesh.material = src.material
+  }
+  for (const child of source.children) {
+    clone.add(cloneFixtureWithSharedAssets(child))
+  }
+  return clone
+}
 
 function loadSpotlightTemplate(modelUrl: string): Promise<THREE.Object3D> {
   if (spotlightTemplate && modelUrl === SPOTLIGHT_MODEL_URL) {
@@ -665,10 +759,10 @@ export function addArtworkSpotlightRig(
 
   void loadSpotlightTemplate(options.modelUrl)
     .then((template) => {
-      const fixture = template.clone(false)
+      const fixture = cloneFixtureWithSharedAssets(template)
       rig.fixture = fixture
-      applyArtworkSpotlightRigOptions(rig)
       scene.add(fixture)
+      applyArtworkSpotlightRigOptions(rig)
       onTuningRender?.()
     })
     .catch((err) => {
@@ -678,8 +772,8 @@ export function addArtworkSpotlightRig(
         new THREE.MeshBasicMaterial({ color: 0x222222 })
       )
       rig.fallback = fallback
-      applyArtworkSpotlightRigOptions(rig)
       scene.add(fallback)
+      applyArtworkSpotlightRigOptions(rig)
       onTuningRender?.()
     })
 

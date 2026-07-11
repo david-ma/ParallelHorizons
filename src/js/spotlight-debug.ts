@@ -188,8 +188,9 @@ export function updateSpotlightDebug(g: Gal): void {
   if (!isDevToolsEnabled() || !sceneRef) return
 
   for (const { helper, light } of helpers) {
+    const lit = light.visible && light.intensity > 0
+    helper.visible = helpersVisible && lit
     if (helper.visible) helper.update()
-    void light
   }
 
   const now = performance.now()

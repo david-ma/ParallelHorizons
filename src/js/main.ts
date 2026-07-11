@@ -409,7 +409,7 @@ if (Detector && !Detector.webgl) {
           }
         }
         g.prevTime = currentTime
-        updateSpotlightCulling(g.camera)
+        updateSpotlightCulling(g.camera, g.wallGroup.children)
         updateDevMinimap(g)
         updateSpotlightDebug(g)
         g.renderer.render(g.scene, g.camera)
@@ -419,7 +419,7 @@ if (Detector && !Detector.webgl) {
           initWallBoundingBoxes(g)
           g.initialRender = false
         }
-        updateSpotlightCulling(g.camera)
+        updateSpotlightCulling(g.camera, g.wallGroup.children)
         updateDevMinimap(g)
         updateSpotlightDebug(g)
         g.renderer.render(g.scene, g.camera)
