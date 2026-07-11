@@ -14,13 +14,32 @@ Quickstart (Thalia):
    `ln -snf /path/to/gallery /path/to/Thalia/websites/gallery`
 2. In the **gallery** repo: `bun install` (installs `three` so `src/js/main.ts` can import it).
 3. From the Thalia repo: `bun run bin/develop.ts gallery`
-4. Open the URL shown (e.g. `http://localhost:1339`). Homepage: `/`. 3D demo gallery: `/view`. Thalia compiles `src/js/main.ts` → `/dist/js/main.js` on-the-fly when `/js/main.js` is requested in development.
+4. Open the URL shown (e.g. `http://localhost:1339`):
+   - `/` — homepage
+   - `/view` — 3D walkthrough (loads `public/gallery-floorplan.json` when present)
+   - `/create` — floorplan editor (export JSON for `/view`)
 
-Todo (see AGENTS.md for full roadmap):
-* Thalia conversion done: homepage at `/`, 3D viewer at `/view`
-* Phase 2: auth (Thalia security), user dashboard, UploadThing for uploads
-* Phase 3: gallery/layout as JSON, refactor main.js to TypeScript, Three.js r183
-* Add descriptions/labels for images, dynamic floor layout, mobile-friendly controls
+Thalia compiles `src/js/*.ts` → `/dist/js/*.js` on-the-fly in development.
+
+**Scripts** (in this repo): `bun run typecheck`, `bun run dev`, `bun run start`.
+
+Floorplan JSON contract: see [docs/floorplan-schema.md](docs/floorplan-schema.md).
+
+## Status
+
+Done:
+
+- Thalia site: `/`, `/view`, `/create`
+- TypeScript viewer modules, Three.js r183, Rapier physics
+- JSON floorplan layout + async load + sample `gallery-floorplan.json`
+- Floorplan editor at `/create`
+
+Next (see AGENTS.md):
+
+- Auth (Thalia security), user dashboard, UploadThing uploads
+- Placards (title/artist/year) beside artworks
+- Save floorplans to DB instead of file export
+- Mobile-friendly controls
 
 Credits:
 * Spotlight 3D model by [iPoly3D](https://poly.pizza/u/ipoly3d) from [Poly Pizza](https://poly.pizza/m/YohOCmn0hO) - License: CC0 (public domain)

@@ -38,6 +38,7 @@ export interface Gal {
   moveBackward: boolean
   moveLeft: boolean
   moveRight: boolean
+  run: boolean
   analogForward: number
   analogBackward: number
   analogLeft: number
@@ -60,7 +61,7 @@ export interface Gal {
   moveCallback: (event: MouseEvent) => void
   toggleFullscreen: () => void
   movement: () => void
-  create: () => void
+  create: () => Promise<void>
   render: () => void
   animatedObjects: Array<{ render: (obj: unknown) => void }>
   pastX: number

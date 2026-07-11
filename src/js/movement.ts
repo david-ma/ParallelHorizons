@@ -4,9 +4,23 @@
  */
 import * as THREE from 'three'
 import type { Gal } from './types.js'
+import { GRAVITY, JUMP_VELOCITY } from './physics.js'
 
-const speed = 38.0
+const WALK_SPEED = 52
+const RUN_SPEED = 88
 const PI_2 = Math.PI / 2
+
+export { JUMP_VELOCITY } from './physics.js'
+
+function moveSpeed(g: Gal): number {
+  return g.run ? RUN_SPEED : WALK_SPEED
+}
+
+export function applyJump(g: Gal): void {
+  if (!g.jump) return
+  g.moveVelocity.y = JUMP_VELOCITY
+  g.jump = false
+}
 
 const _dir = new THREE.Vector3()
 const _right = new THREE.Vector3()
@@ -32,20 +46,15 @@ export function attachMovementKeys(g: Gal): void {
     else if (e.keyCode === 65 || e.keyCode === 37) g.moveLeft = true
     else if (e.keyCode === 83 || e.keyCode === 40) g.moveBackward = true
     else if (e.keyCode === 68 || e.keyCode === 39) g.moveRight = true
-    else if (e.keyCode === 32 && g.jump) {
-      if ((g as { physicsWorld?: unknown }).physicsWorld) {
-        g.moveVelocity.y = 5.5
-      } else {
-        g.moveVelocity.y += 0.2
-      }
-      g.jump = false
-    }
+    else if (e.keyCode === 16 || e.key === 'Shift') g.run = true
+    else if (e.keyCode === 32) applyJump(g)
   })
   document.addEventListener('keyup', (e) => {
     if (e.keyCode === 87 || e.keyCode === 38) g.moveForward = false
     else if (e.keyCode === 65 || e.keyCode === 37) g.moveLeft = false
     else if (e.keyCode === 83 || e.keyCode === 40) g.moveBackward = false
     else if (e.keyCode === 68 || e.keyCode === 39) g.moveRight = false
+    else if (e.keyCode === 16 || e.key === 'Shift') g.run = false
   })
 }
 
@@ -64,6 +73,7 @@ export function updateVelocityOnly(g: Gal, delta: number): void {
     g.camera.quaternion.setFromEuler(g.euler)
   }
   const { dir, right } = getCameraForwardRight(g)
+  const speed = moveSpeed(g)
   g.moveVelocity.x -= g.moveVelocity.x * 10.0 * delta
   g.moveVelocity.z -= g.moveVelocity.z * 10.0 * delta
   if (g.moveForward) g.moveVelocity.addScaledVector(dir, speed * delta)
@@ -93,6 +103,7 @@ export function updateMovement(g: Gal, delta: number): void {
   }
 
   const { dir, right } = getCameraForwardRight(g)
+  const speed = moveSpeed(g)
   g.moveVelocity.x -= g.moveVelocity.x * 10.0 * delta
   g.moveVelocity.z -= g.moveVelocity.z * 10.0 * delta
   if (g.moveForward) g.moveVelocity.addScaledVector(dir, speed * delta)
@@ -112,8 +123,8 @@ export function updateMovement(g: Gal, delta: number): void {
   if (g.targetPosition) {
     const deltaX = g.camera.position.x - g.targetPosition.x
     const deltaZ = g.camera.position.z - g.targetPosition.z
-    g.camera.position.x -= (speed * Math.cbrt(deltaX) * delta) / 12
-    g.camera.position.z -= (speed * Math.cbrt(deltaZ) * delta) / 12
+    g.camera.position.x -= (WALK_SPEED * Math.cbrt(deltaX) * delta) / 12
+    g.camera.position.z -= (WALK_SPEED * Math.cbrt(deltaZ) * delta) / 12
     if (deltaX * deltaX < 0.001 && deltaZ * deltaZ < 0.001) {
       delete (g as any).targetPosition
       if (g.queue.length !== 0) g.queue.shift()!()
@@ -130,7 +141,7 @@ export function updateMovement(g: Gal, delta: number): void {
 
   g.camera.position.z = Math.max(g.minZ, Math.min(g.maxZ, g.camera.position.z))
   g.camera.position.x = Math.max(g.minX, Math.min(g.maxX, g.camera.position.x))
-  g.moveVelocity.y -= 0.6 * delta
+  g.moveVelocity.y -= GRAVITY * delta
   g.camera.position.y += g.moveVelocity.y
   if (g.camera.position.y < 1.75) {
     g.jump = true

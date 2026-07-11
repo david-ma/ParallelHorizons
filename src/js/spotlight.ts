@@ -4,6 +4,46 @@
 import * as THREE from 'three'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 
+export const SPOTLIGHT_MODEL_URL = '/models/spotlight/Spotlight.glb'
+
+const _forward = new THREE.Vector3()
+const _wall = new THREE.Vector3()
+
+/** Default tuning derived from the hardcoded demo gallery featured artwork. */
+export function spotlightOptionsForArtwork(
+  position: THREE.Vector3,
+  rotationY: number,
+  modelUrl: string = SPOTLIGHT_MODEL_URL
+): SpotlightRigOptions {
+  _forward.set(0, 0, 1).applyAxisAngle(new THREE.Vector3(0, 1, 0), rotationY)
+  _wall.copy(_forward).negate()
+  const target = new THREE.Vector3(position.x, position.y, position.z)
+  const lightOrigin = target
+    .clone()
+    .add(new THREE.Vector3(0, 3.35, 0))
+    .add(_forward.clone().multiplyScalar(0.05))
+  const wallPoint = target.clone().add(_wall.clone().multiplyScalar(0.06))
+
+  return {
+    lightOrigin,
+    lightTarget: target,
+    modelUrl,
+    intensity: 1.9,
+    distance: 8,
+    angle: Math.PI / 7,
+    penumbra: 0.45,
+    decay: 1.2,
+    emitterRadius: 0.1,
+    emitterOffsetX: 0,
+    emitterOffsetY: 0,
+    emitterOffsetZ: 0.17,
+    emitterOpacity: 0.95,
+    fixtureScale: 0.35,
+    wallZ: wallPoint.z,
+    wallMountOffset: 0.02,
+  }
+}
+
 export interface SpotlightRigOptions {
   lightOrigin: THREE.Vector3
   lightTarget: THREE.Vector3

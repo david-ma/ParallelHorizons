@@ -10,6 +10,16 @@ import type { Gal } from './types.js'
 let RAPIER_MODULE: typeof RAPIER | null = null
 
 /**
+ * Vertical motion — arcade/gallery feel, not real-world.
+ * Legacy non-physics path used ~0.6 m/s²; Earth is 9.81; old Rapier jump was 5.5 m/s (~1.5 m apex).
+ * Using 25 m/s² for a more arcade-like feel.
+ */
+export const GRAVITY = 25
+/** Target jump apex (m) — familiar FPS hop, a bit floaty on the way down. */
+export const JUMP_HEIGHT = 0.9
+export const JUMP_VELOCITY = Math.sqrt(2 * GRAVITY * JUMP_HEIGHT)
+
+/**
  * Initialize the Rapier WASM module. Call once before creating the world.
  */
 export async function initRapier(): Promise<void> {
@@ -28,7 +38,7 @@ export function createGalleryPhysics(g: Gal): {
   playerBody: RAPIER.RigidBody
 } {
   const R = RAPIER_MODULE!
-  const world = new R.World(new R.Vector3(0, -9.81, 0))
+  const world = new R.World(new R.Vector3(0, -GRAVITY, 0))
 
   // Floor: cuboid so its top is at y=1.25 (player center 1.75, collider halfHeight 0.5)
   const floorHalfX = Math.max(25, (g.maxX - g.minX) / 2 + 2)

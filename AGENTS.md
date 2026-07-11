@@ -17,7 +17,7 @@ This file is a practical handoff for maintainers and coding agents.
 | 2025-03-11 | Spotlight sliders: Export JSON button; Light X; emitter X/Y/Z relative to spotlight; Wall Offset range widened; Spotlight Z label. |
 | 2025-03-11 | Dev modal on bottom-right; Esc shows menu; classList for hide/show; z-index for menu/canvas. |
 | 2025-03-11 | Spotlight: one fixture + light; GLB from Poly Pizza (iPoly3D, CC0); wall-mounted; emitter disc “on” look; credits in README + index. |
-| 2025-03-11 | Thalia conversion: Express removed; `/view` from `gallery.hbs`; TS in `src/js/`; Three.js r183; pointer-lock + resize + focus handling. |
+| 2026-07-11 | Async floorplan load (`loadFloorplanAsync`), loading overlay, `buildMinimalGallery` fallback, sample `gallery-floorplan.json`, schema doc, per-artwork spotlights in JSON mode. |
 
 ---
 
@@ -34,7 +34,7 @@ The gallery is now running as a Thalia website and no longer depends on the old 
   - `src/js/main.ts` — entry: boot, pointer lock, create/render delegates
   - `src/js/types.ts` — `Gal` interface, `FloorplanBlob` / `FloorplanWallPlacements`
   - `src/js/artwork.ts` — `drawFrame`, `addFrameToArtwork` (frames and moulding)
-  - `src/js/layout.ts` — `loadFloorplan`, `buildSceneFromFloorplan` (JSON layout → scene)
+  - `src/js/layout.ts` — `loadFloorplanAsync`, `buildSceneFromFloorplan`, `buildMinimalGallery` (JSON layout → scene)
   - `src/js/spotlight.ts` — spotlight rig (add/apply), dev slider bindings + export
   - `src/js/gallery.ts` — `buildDefaultGallery` (hardcoded floor/walls/paintings + one spotlight)
   - `src/js/movement.ts` — `attachMovementKeys`, `updateVelocityOnly`, `updateMovement` (WASD camera-relative + velocity)
@@ -79,8 +79,8 @@ The gallery is now running as a Thalia website and no longer depends on the old 
 
 ## Current plan (near-term)
 
-1. Stabilize JSON schema and document it as the contract between `/create` and `/view`.
-2. Replace synchronous JSON load in `layout.ts` with an async load + loading state.
+1. ~~Stabilize JSON schema and document it as the contract between `/create` and `/view`.~~ → `docs/floorplan-schema.md`
+2. ~~Replace synchronous JSON load in `layout.ts` with an async load + loading state.~~
 3. (Done) JSON gallery-build logic lives in `layout.ts`; legacy fallback in `gallery.ts`.
 4. Apply tuned spotlight settings from one fixture to all generated fixtures when requested.
 5. Add basic placards (title/artist/year) support in JSON and render beside artworks.

@@ -8,10 +8,9 @@ import {
   addArtworkSpotlightRig,
   applyArtworkSpotlightRigOptions,
   bindSpotlightSliderControls,
+  SPOTLIGHT_MODEL_URL,
   type SpotlightRigOptions,
 } from './spotlight.js'
-
-const SPOTLIGHT_MODEL_URL = '/models/spotlight/Spotlight.glb'
 
 export function buildDefaultGallery(g: Gal): void {
   g.scene.add(new THREE.AmbientLight(0xffffff, 0.8))

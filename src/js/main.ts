@@ -5,8 +5,7 @@
 import * as THREE from 'three'
 import { PointerLockControls } from 'three/examples/jsm/controls/PointerLockControls.js'
 import type { Gal } from './types.js'
-import { loadFloorplan, buildSceneFromFloorplan } from './layout.js'
-import { buildDefaultGallery } from './gallery.js'
+import { loadFloorplanAsync, buildSceneFromFloorplan, buildMinimalGallery } from './layout.js'
 import { attachMovementKeys, updateMovement, updateVelocityOnly } from './movement.js'
 import { initRapier, createGalleryPhysics, stepPhysics } from './physics.js'
 
@@ -34,6 +33,14 @@ let gal: Gal | null = null
 
 console.log('Starting gallery main.ts')
 console.log('THREE version:', THREE.REVISION)
+
+function setLayoutLoading(visible: boolean, message?: string): void {
+  const el = document.getElementById('gallery-loading')
+  if (!el) return
+  el.classList.toggle('hide', !visible)
+  const text = el.querySelector('.gallery-loading-text')
+  if (text && message) text.textContent = message
+}
 
 async function runGallery(): Promise<void> {
   await initRapier()
@@ -117,6 +124,7 @@ if (Detector && !Detector.webgl) {
       gal!.moveBackward = false
       gal!.moveLeft = false
       gal!.moveRight = false
+      gal!.run = false
       gal!.analogForward = 0
       gal!.analogBackward = 0
       gal!.analogLeft = 0
@@ -138,6 +146,7 @@ if (Detector && !Detector.webgl) {
           g.moveBackward = false
           g.moveLeft = false
           g.moveRight = false
+          g.run = false
           g.analogForward = 0
           g.analogBackward = 0
           g.analogLeft = 0
@@ -273,12 +282,17 @@ if (Detector && !Detector.webgl) {
       attachMovementKeys(gal!)
     },
 
-    create() {
-      const data = loadFloorplan()
-      if (data) {
-        buildSceneFromFloorplan(gal!, data)
-      } else {
-        buildDefaultGallery(gal!)
+    async create() {
+      setLayoutLoading(true, 'Loading gallery layout…')
+      try {
+        const data = await loadFloorplanAsync()
+        if (data) {
+          buildSceneFromFloorplan(gal!, data)
+        } else {
+          buildMinimalGallery(gal!)
+        }
+      } finally {
+        setLayoutLoading(false)
       }
     },
 
@@ -368,8 +382,7 @@ if (Detector && !Detector.webgl) {
   gal!.boot()
   gal!.pointerControls()
   gal!.movement()
-  gal!.create()
-  runGallery()
+  void gal!.create().then(() => runGallery())
 }
 
 export { gal }

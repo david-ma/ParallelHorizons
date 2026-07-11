@@ -4,6 +4,8 @@
  */
 /* global gal */
 
+import { JUMP_VELOCITY } from './movement.js'
+
 declare const gal: {
   moveForward: boolean
   moveBackward: boolean
@@ -90,7 +92,7 @@ function framerate(): void {
 const buttonActions: Record<number, (action: 'on' | 'off') => void> = {
   1: (action) => {
     if (action === 'on' && gal?.jump) {
-      gal.moveVelocity.y += 0.2
+      gal.moveVelocity.y = JUMP_VELOCITY
       gal.jump = false
     }
   },
