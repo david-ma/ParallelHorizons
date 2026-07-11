@@ -10,6 +10,7 @@ import { attachMovementKeys, clearMovementState, updateMovement, updateVelocityO
 import { initRapier, createGalleryPhysics, stepPhysics } from './physics.js'
 import { initSpotlightDevPanel, updateSpotlightCulling, resolveMaxPixelRatio } from './spotlight.js'
 import { initDevMinimap, updateDevMinimap } from './minimap.js'
+import { initSpotlightDebug, updateSpotlightDebug } from './spotlight-debug.js'
 
 /** When the pause menu is up, refresh the frozen scene at 1 FPS instead of display rate. */
 const PAUSED_FRAME_MS = 1000
@@ -336,6 +337,7 @@ if (Detector && !Detector.webgl) {
         setLayoutLoading(false)
         applyViewportSize(gal!)
         initDevMinimap()
+        initSpotlightDebug(gal!)
         initSpotlightDevPanel(() => {
           gal!.renderer.render(gal!.scene, gal!.camera)
         })
@@ -409,6 +411,7 @@ if (Detector && !Detector.webgl) {
         g.prevTime = currentTime
         updateSpotlightCulling(g.camera)
         updateDevMinimap(g)
+        updateSpotlightDebug(g)
         g.renderer.render(g.scene, g.camera)
       } else {
         g.prevTime = performance.now()
@@ -418,6 +421,7 @@ if (Detector && !Detector.webgl) {
         }
         updateSpotlightCulling(g.camera)
         updateDevMinimap(g)
+        updateSpotlightDebug(g)
         g.renderer.render(g.scene, g.camera)
       }
 

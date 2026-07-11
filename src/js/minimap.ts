@@ -154,13 +154,10 @@ export function updateDevMinimap(g: Gal): void {
 
   const cull = getSpotlightCullDebug()
   let activeCount = 0
-  let inViewCount = 0
   for (const entry of cull) {
     const { px, py } = worldToMap(entry.x, entry.z, minX, minZ, span)
-    if (entry.inView) inViewCount++
     let fill = '#48484a'
     if (entry.active && entry.inView) fill = '#ffd60a'
-    else if (entry.active) fill = '#ff9f0a'
     else if (entry.inView) fill = '#8e8e93'
     draw.beginPath()
     draw.arc(px, py, entry.active ? 4 : 3, 0, Math.PI * 2)
@@ -187,6 +184,6 @@ export function updateDevMinimap(g: Gal): void {
   draw.fill()
 
   if (legendEl) {
-    legendEl.textContent = `Player · ${activeCount}/${cull.length} beams · ${inViewCount} in view`
+    legendEl.textContent = `Player · ${activeCount}/${cull.length} beams in view · all lights on`
   }
 }

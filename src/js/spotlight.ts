@@ -229,6 +229,59 @@ export function getSpotlightCullDebug(): readonly SpotlightCullDebugEntry[] {
   return lastCullDebug
 }
 
+export function getRegisteredSpotlightRigs(): readonly ArtworkSpotlightRig[] {
+  return registeredRigs
+}
+
+export type SpotlightRigSnapshot = {
+  index: number
+  intensity: number
+  visible: boolean
+  lightInScene: boolean
+  fixtureLoaded: boolean
+  emitterOpacity: number
+  distanceToCamera: number
+  inView: boolean
+  position: { x: number; y: number; z: number }
+  target: { x: number; y: number; z: number }
+}
+
+const _snapCam = new THREE.Vector3()
+const _snapFwd = new THREE.Vector3()
+
+/** Dev snapshot of every registered rig — use galleryDebugSpotlights() in console. */
+export function snapshotSpotlightRigs(scene: THREE.Scene, camera: THREE.Camera): SpotlightRigSnapshot[] {
+  camera.getWorldPosition(_snapCam)
+  camera.getWorldDirection(_snapFwd)
+  const debugByIndex = new Map(lastCullDebug.map((d, i) => [i, d]))
+  return registeredRigs.map((rig, index) => {
+    refreshRigCullPoint(rig, _cullPoint)
+    const { inView, distance } = spotlightCullPriority(_cullPoint, _snapCam, _snapFwd)
+    const dbg = debugByIndex.get(index)
+    rig.spotlight.getWorldPosition(_cullPoint)
+    const pos = { x: _cullPoint.x, y: _cullPoint.y, z: _cullPoint.z }
+    rig.spotlightTarget.getWorldPosition(_cullPoint)
+    const target = { x: _cullPoint.x, y: _cullPoint.y, z: _cullPoint.z }
+    const emitterMat = rig.emitterDisc.material as THREE.MeshBasicMaterial
+    let lightInScene = false
+    scene.traverse((obj) => {
+      if (obj === rig.spotlight) lightInScene = true
+    })
+    return {
+      index,
+      intensity: rig.spotlight.intensity,
+      visible: rig.spotlight.visible,
+      lightInScene,
+      fixtureLoaded: !!(rig.fixture ?? rig.fallback),
+      emitterOpacity: emitterMat.opacity,
+      distanceToCamera: dbg?.distance ?? distance,
+      inView: dbg?.inView ?? inView,
+      position: pos,
+      target,
+    }
+  })
+}
+
 function refreshRigCullPoint(rig: ArtworkSpotlightRig, out: THREE.Vector3): THREE.Vector3 {
   if (rig.artwork) {
     rig.artwork.updateMatrixWorld(true)
@@ -241,44 +294,57 @@ function refreshRigCullPoint(rig: ArtworkSpotlightRig, out: THREE.Vector3): THRE
 }
 
 /** Beam on/off only — fixtures stay visible; emitter dims when off. */
-function setRigLightBeam(rig: ArtworkSpotlightRig, beamOn: boolean): void {
-  const intensity = rig.options.intensity
-  rig.spotlight.visible = beamOn
-  rig.spotlight.intensity = beamOn ? intensity : 0
-  const emitterMat = rig.emitterDisc.material as THREE.MeshBasicMaterial
-  emitterMat.opacity = beamOn ? rig.options.emitterOpacity : rig.options.emitterOpacity * 0.12
+function ensureRigFixtureOn(rig: ArtworkSpotlightRig): void {
+  rig.emitterDisc.visible = true
   if (rig.fixture) rig.fixture.visible = true
   if (rig.fallback) rig.fallback.visible = true
 }
 
-/** Enable in-view spotlight beams (nearest / centred in view first). */
+/** Keep SpotLight fully active (all rigs lit). */
+function ensureRigLightOn(rig: ArtworkSpotlightRig): void {
+  const { intensity, distance, angle, penumbra, decay } = rig.options
+  rig.spotlight.visible = true
+  rig.spotlight.intensity = intensity
+  rig.spotlight.distance = distance
+  rig.spotlight.angle = angle
+  rig.spotlight.penumbra = penumbra
+  rig.spotlight.decay = decay
+  rig.spotlight.target = rig.spotlightTarget
+}
+
+/** Emitter disc brightness — visual “beam on” hint; lighting stays on via ensureRigLightOn. */
+function setRigEmitterBeamLook(rig: ArtworkSpotlightRig, showBeam: boolean): void {
+  const emitterMat = rig.emitterDisc.material as THREE.MeshBasicMaterial
+  emitterMat.opacity = showBeam ? rig.options.emitterOpacity : rig.options.emitterOpacity * 0.15
+}
+
+/**
+ * Fixtures + SpotLights always on. Emitter disc glows when artwork is in camera view.
+ * (Light culling removed — prior visible/intensity toggling prevented beams from rendering.)
+ */
 export function updateSpotlightCulling(camera: THREE.Camera): void {
   const rigs = registeredRigs
   if (rigs.length === 0) {
     lastCullDebug = []
     return
   }
-  const maxActive = maxActiveSpotlights(rigs.length)
   camera.getWorldPosition(_cullCamPos)
   camera.getWorldDirection(_cullForward)
-  const sortKeys: number[] = []
   const debug: SpotlightCullDebugEntry[] = []
   for (let i = 0; i < rigs.length; i++) {
-    refreshRigCullPoint(rigs[i]!, _cullPoint)
-    const { sortKey, inView, distance } = spotlightCullPriority(_cullPoint, _cullCamPos, _cullForward)
-    sortKeys.push(sortKey)
+    const rig = rigs[i]!
+    refreshRigCullPoint(rig, _cullPoint)
+    const { inView, distance } = spotlightCullPriority(_cullPoint, _cullCamPos, _cullForward)
+    ensureRigFixtureOn(rig)
+    ensureRigLightOn(rig)
+    setRigEmitterBeamLook(rig, inView)
     debug.push({
       x: _cullPoint.x,
       z: _cullPoint.z,
       distance,
       inView,
-      active: false,
+      active: inView,
     })
-  }
-  const flags = selectActiveSpotlightFlagsInView(sortKeys, maxActive)
-  for (let i = 0; i < rigs.length; i++) {
-    setRigLightBeam(rigs[i]!, flags[i]!)
-    debug[i]!.active = flags[i]!
   }
   lastCullDebug = debug
 }
@@ -359,6 +425,7 @@ function loadPersistedTuning(): void {
     if (!raw) return
     const parsed = JSON.parse(raw) as Partial<SpotlightGlobalTuning>
     globalTuning = { ...SPOTLIGHT_TUNING, ...parsed }
+    if (globalTuning.intensity <= 0) globalTuning.intensity = SPOTLIGHT_TUNING.intensity
   } catch (_err) {
     // ignore invalid cache
   }

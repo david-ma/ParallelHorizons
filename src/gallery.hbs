@@ -141,6 +141,16 @@
         aria-expanded="false"
         aria-controls="spotlight_slider_panel"
       >Spotlight tuning</button>
+      <div id="spotlight_debug_panel" class="spotlight-debug-panel">
+        <p class="spotlight-debug-title">Light debug</p>
+        <pre id="spotlight_debug_summary" class="spotlight-debug-summary">Loading…</pre>
+        <div class="spotlight-debug-actions">
+          <button type="button" id="spotlight_debug_helpers" class="dev-only-btn">Show light cones</button>
+          <button type="button" id="spotlight_debug_solo" class="dev-only-btn">Solo spotlights (dim fill)</button>
+          <button type="button" id="spotlight_debug_copy" class="dev-only-btn">Copy JSON snapshot</button>
+        </div>
+        <p class="spotlight-debug-hint">Console: <code>galleryDebugSpotlights()</code> · URL: <code>?debugLights=1</code></p>
+      </div>
       {{> spotlight_sidebar}}
       {{/unless}}
       <div id="gamepadtest"></div>

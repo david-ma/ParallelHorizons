@@ -22,19 +22,15 @@ Browser variance (Chrome/Safari vs Firefox/Cursor) is partly GPU throttling (Ene
 
 ### Phase 1 — implement now
 
-1. **Proximity spotlight culling** (`src/js/spotlight.ts`)
-   - Each frame, enable only the **N closest** spotlights (and their fixtures/emitter discs).
-   - `N = paintingCount` when ≤ 8; else **8** (6 if count ≥ 24).
-   - Disabled lights: `visible = false` so Three.js drops them from the lighting pass.
+1. **Fixtures always on** — GLB fixture + emitter disc stay visible.
+2. **SpotLights always on** — all rigs at full `intensity` every frame (light culling removed; toggling `visible`/`intensity` was preventing beams from rendering).
+3. **Emitter “beam look”** — disc at full opacity when artwork is in camera view, dim (~15%) when behind.
+4. **Dev minimap** — yellow = in view (beam look); all paintings still receive light.
 
-2. **Shared fixture geometry** (`src/js/spotlight.ts`)
-   - Change `template.clone(true)` → `template.clone(false)` so all fixtures share one GLB’s buffers.
+### Phase 1b — deferred (re-enable when lighting toggle is reliable)
 
-3. **Adaptive renderer quality** (`src/js/main.ts`)
-   - Cap `devicePixelRatio` at **1.25** when `num_of_paintings ≥ 20`, else **2**.
-   - URL override: `?quality=low` → cap at **1**; `?quality=high` → cap at **2**.
-
-4. **Unit tests** for culling selection + pixel-ratio helper (`tests/unit/spotlight.test.ts`).
+- Cap active **SpotLights** by in-view count (e.g. 8) for Met gallery perf.
+- Toggle `SpotLight.visible` off when out of view instead of all-on.
 
 ### Phase 2 — later (not in this pass)
 
@@ -63,3 +59,5 @@ Browser variance (Chrome/Safari vs Firefox/Cursor) is partly GPU throttling (Ene
 | 2026-07-11 | **Cull fix:** refresh artwork world position each frame; view-direction scoring + 8 m near boost; restore `intensity` when re-enabling; cap heavy galleries at 8 active lights; use `registeredRigs.length` not `num_of_paintings`. |
 | 2026-07-11 | **Cull v2 + minimap:** pure nearest-distance selection; dev-only top-right minimap (floorplan, player, paintings, active spotlights) on localhost. |
 | 2026-07-11 | **Cull v3:** in-view beam selection; fixtures always visible; beam-only toggle; fix pointer lock on WebGL canvas (not minimap canvas); minimap view wedge + in-view colours. |
+| 2026-07-11 | **All lights on:** SpotLights always full intensity; emitter disc alone dims when out of view (light `visible`/`intensity` culling removed). |
+| 2026-07-11 | **Light debug panel:** cone helpers, solo fill mode, `galleryDebugSpotlights()`, `?debugLights=1`. |

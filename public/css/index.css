@@ -134,6 +134,67 @@ body.dev-mode .dev-only-btn {
   display: inline-block;
 }
 
+.spotlight-debug-panel {
+  display: none;
+  margin: 0.75rem 0 1rem;
+  padding: 0.65rem 0.75rem;
+  background: rgba(28, 28, 30, 0.92);
+  border: 1px solid #48484f;
+  border-radius: 8px;
+  text-align: left;
+  max-width: 28rem;
+}
+
+body.dev-mode .spotlight-debug-panel {
+  display: block;
+}
+
+.spotlight-debug-title {
+  margin: 0 0 0.35rem;
+  font-family: Oswald, sans-serif;
+  font-size: 0.85rem;
+  letter-spacing: 0.06em;
+  color: #f2f2f7;
+}
+
+.spotlight-debug-summary {
+  margin: 0 0 0.5rem;
+  padding: 0.45rem;
+  background: #1c1c1e;
+  border-radius: 4px;
+  font-family: ui-monospace, Menlo, monospace;
+  font-size: 10px;
+  line-height: 1.45;
+  color: #d1d1d6;
+  white-space: pre-wrap;
+  max-height: 8rem;
+  overflow: auto;
+}
+
+.spotlight-debug-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 0.35rem;
+}
+
+.spotlight-debug-actions .dev-only-btn {
+  margin: 0;
+  font-size: 0.75rem;
+  padding: 0.35em 0.65em;
+}
+
+.spotlight-debug-hint {
+  margin: 0;
+  font-size: 0.7rem;
+  color: #8e8e93;
+}
+
+.spotlight-debug-hint code {
+  font-size: 0.68rem;
+  color: #aeaeb2;
+}
+
 	#menu #img_container {
 		height: 14.5em;
 
