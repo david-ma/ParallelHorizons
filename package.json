@@ -25,7 +25,8 @@
     "drizzle-orm": "^0.45.2",
     "mysql2": "^3.14.1",
     "thalia": "github:david-ma/Thalia",
-    "three": "0.183.2"
+    "three": "0.183.2",
+    "uploadthing": "^7.7.4"
   },
   "devDependencies": {
     "@types/three": "^0.183.1",

@@ -20,6 +20,8 @@ export const galleryRoutes: RoleRouteRule[] = [
   { path: '/uploadPhoto', permissions: { user: ['read', 'create'], admin: ['read', 'create'] } },
   { path: '/photo-delete', permissions: { user: ['read', 'delete'], admin: ['read', 'delete'] } },
   { path: '/api/photos', permissions: { user: ['read'], admin: ['read'] } },
+  { path: '/api/uploadthing', permissions: { guest: ['read', 'create'], user: ['read', 'create'], admin: ['read', 'create'] } },
+  { path: '/api/uploadthing-cleanup', permissions: { admin: ['read', 'create'], user: [] } },
   // Thalia maps permission from URL action segment (empty → read), not HTTP method — see thalia/server/security/README.md
   { path: '/gallery-create', permissions: { user: ['read', 'create'], admin: ['read', 'create'] } },
   { path: '/gallery-publish', permissions: { user: ['read', 'update'], admin: ['read', 'update', 'delete'] } },

@@ -12,6 +12,7 @@ import { isValidFloorplan } from '../src/js/floorplan.js'
 import { galleries as galleriesTable, photos as photosTable } from '../models/gallery-schema.js'
 import { handleUploadPhoto } from './photo-upload.js'
 import { listPhotosForOwner, softDeletePhoto } from './photo-store.js'
+import { uploadThingRouteController, uploadThingCleanupController } from './uploadthing-handler.js'
 import { galleryRoutes } from './gallery-routes.js'
 import {
   defaultGallerySlug,
@@ -389,6 +390,14 @@ const galleryControllers: RawWebsiteConfig['controllers'] = {
   },
 
   api: {
+    uploadthing: (res, req, _website, _requestInfo) => {
+      uploadThingRouteController(res, req)
+    },
+
+    'uploadthing-cleanup': (res, _req, _website, _requestInfo) => {
+      uploadThingCleanupController(res)
+    },
+
     photos: (res, req, website, requestInfo) => {
       void (async () => {
         const userId = requireUserId(requestInfo)

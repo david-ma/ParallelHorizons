@@ -9,8 +9,10 @@
 
 | Step | Where | What happens |
 |------|--------|----------------|
-| 1 | **`/library`** and **`/create/:id`** sidebar | Upload via file input / drag-drop on both pages |
-| 2 | **`POST /uploadPhoto`** | Server stores file under `public/uploads/` (local-disk); inserts **`photos`** row |
+| 1 | **`/library`** and **`/create/:id`** sidebar | User selects files |
+| 2 | **UploadThing** (browser → `/api/uploadthing`) | Temp staging on UT CDN |
+| 3 | **`POST /uploadPhoto`** (JSON) | Server fetches UT URL → **SmugMug** → inserts **`photos`** row |
+| 4 | Fallback | Multipart `fileToUpload` → SmugMug direct, or **local disk** if no creds / `THALIA_IMAGE_ADAPTER=local-disk` |
 | 3 | **`/library` grid** | Thumbnails from **`GET /api/photos`** — only **their** rows |
 | 4 | **`/create/:id`** sidebar | Same API; drag photo onto wall band |
 | 5 | **Save** | Floorplan JSON stores `photoCatalog[].id` = **`photos.id`** (string); `src` = `/uploads/…` |

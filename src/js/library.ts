@@ -1,11 +1,4 @@
-type PhotoDto = {
-  id: string
-  title: string
-  src: string
-  thumbnailUrl: string
-  artist?: string
-  year?: string
-}
+import { uploadPhotoFiles, type PhotoDto } from './photo-upload-client.js'
 
 function escapeHtml(text: string): string {
   return text
@@ -67,22 +60,15 @@ async function uploadFiles(files: FileList | File[]): Promise<void> {
     return
   }
   showToast(`Uploading ${list.length} file${list.length === 1 ? '' : 's'}…`)
-  let ok = 0
-  for (const file of list) {
-    const form = new FormData()
-    form.append('fileToUpload', file)
-    form.append('title', file.name.replace(/\.[^.]+$/, ''))
-    try {
-      const res = await fetch('/uploadPhoto', { method: 'POST', body: form, credentials: 'same-origin' })
-      const payload = (await res.json()) as { ok?: boolean; error?: string }
-      if (res.ok && payload.ok) ok += 1
-      else showToast(payload.error || 'Upload failed', true)
-    } catch {
-      showToast('Upload failed', true)
+  try {
+    const uploaded = await uploadPhotoFiles(list)
+    await reload()
+    if (uploaded.length > 0) {
+      showToast(`Uploaded ${uploaded.length} photo${uploaded.length === 1 ? '' : 's'}`)
     }
+  } catch (err) {
+    showToast(err instanceof Error ? err.message : 'Upload failed', true)
   }
-  await reload()
-  if (ok > 0) showToast(`Uploaded ${ok} photo${ok === 1 ? '' : 's'}`)
 }
 
 async function deletePhoto(id: string): Promise<void> {

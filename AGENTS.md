@@ -6,7 +6,8 @@ This file is a practical handoff for maintainers and coding agents.
 
 | Date       | Change |
 |------------|--------|
-| 2026-07-11 | **D2 photos:** `photos` table, `/library`, `POST /uploadPhoto`, `GET /api/photos`, soft delete + strip from owner floorplans; editor sidebar wired to owner API. |
+| 2026-07-11 | **D3 SmugMug:** UploadThing hop, SmugMug upload via Thalia client, env-first secrets, `photos.smugmug_*` columns. |
+| 2026-07-11 | **D2 photos:** `photos` table, `/library`, local + SmugMug upload paths, soft delete + floorplan strip. |
 | 2026-07-11 | **D1 auth:** ThaliaSecurity + MariaDB + `galleries` table; `/dashboard`, `/create/:id`, DB save/publish; homepage auth CTAs; MailCatcher `mailAuth.js`. |
 | 2025-03-12 | Rapier physics: wall/floor collision via `@dimforge/rapier3d-compat`; `physics.ts` (init, createGalleryPhysics, stepPhysics); WASD/camera-relative movement (forward/right in view direction). |
 | 2025-03-12 | Split `main.ts` into modules: `types.ts`, `artwork.ts`, `layout.ts`, `spotlight.ts`, `gallery.ts`, `movement.ts`; main.ts is entry + boot/pointer lock/render loop. |

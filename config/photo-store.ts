@@ -118,25 +118,41 @@ export async function getPhotoForOwner(
   return row ? rowToDto(row) : null
 }
 
-export async function insertPhoto(
+export type PhotoInsertPayload = {
+  title?: string
+  artist?: string
+  year?: string
+  filename: string
+  url: string
+  thumbnailUrl: string
+  adapterName?: string
+  smugmugAlbumKey?: string
+  smugmugImageKey?: string
+  archivedMd5?: string
+}
+
+export async function insertPhotoRecord(
   website: Website,
   ownerUserId: number,
-  stored: StoredUpload,
-  meta: { title?: string; artist?: string; year?: string }
+  payload: PhotoInsertPayload
 ): Promise<PhotoDto | null> {
   const db = drizzleOrNull(website)
   if (!db) return null
-  const title = meta.title?.trim() || stored.filename
+  const title = payload.title?.trim() || payload.filename
   const result = await db.insert(photos).values({
     ownerUserId,
     folderId: null,
     title,
-    artist: meta.artist?.trim() || null,
-    year: meta.year?.trim() || null,
+    artist: payload.artist?.trim() || null,
+    year: payload.year?.trim() || null,
     caption: null,
-    filename: stored.filename,
-    url: stored.url,
-    thumbnailUrl: stored.url,
+    filename: payload.filename,
+    url: payload.url,
+    thumbnailUrl: payload.thumbnailUrl,
+    adapterName: payload.adapterName ?? 'local-disk',
+    smugmugAlbumKey: payload.smugmugAlbumKey ?? null,
+    smugmugImageKey: payload.smugmugImageKey ?? null,
+    archivedMd5: payload.archivedMd5 ?? null,
   })
   const header = Array.isArray(result) ? result[0] : result
   const insertId =
@@ -145,6 +161,23 @@ export async function insertPhoto(
       : undefined
   if (insertId == null) return null
   return getPhotoForOwner(website, insertId, ownerUserId)
+}
+
+export async function insertPhoto(
+  website: Website,
+  ownerUserId: number,
+  stored: StoredUpload,
+  meta: { title?: string; artist?: string; year?: string }
+): Promise<PhotoDto | null> {
+  return insertPhotoRecord(website, ownerUserId, {
+    title: meta.title,
+    artist: meta.artist,
+    year: meta.year,
+    filename: stored.filename,
+    url: stored.url,
+    thumbnailUrl: stored.url,
+    adapterName: 'local-disk',
+  })
 }
 
 type FloorplanLike = {

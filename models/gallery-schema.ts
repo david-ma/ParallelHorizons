@@ -30,4 +30,8 @@ export const photos: MySqlTableWithColumns<any> = mysqlTable('photos', {
   filename: util.vc('filename'),
   url: util.vc('url').notNull(),
   thumbnailUrl: util.vc('thumbnail_url'),
+  smugmugAlbumKey: util.vc('smugmug_album_key'),
+  smugmugImageKey: util.vc('smugmug_image_key'),
+  adapterName: util.vc('adapter_name'),
+  archivedMd5: util.vc('archived_md5'),
 })

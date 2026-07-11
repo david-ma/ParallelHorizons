@@ -24,10 +24,11 @@ Quickstart (Thalia):
 ### Auth + database (D1)
 
 1. Copy `.env.example` → `.env` (or export `DATABASE_URL`).
-2. Start MariaDB: `docker compose up -d`
-3. Apply migrations: `bun run db:migrate`
-4. First visit: open `/setup` to create the admin account, then `/newUser` for creator accounts.
-5. Password reset dev mail: run `mailcatcher` (SMTP `:1025`, web UI `:1080`).
+2. Add SmugMug + UploadThing vars to `.env` (see `.env.example`) — preferred over `config/secrets.js`.
+3. Start MariaDB: `docker compose up -d`
+4. Apply migrations: `bun run db:migrate`
+5. First visit: open `/setup` to create the admin account, then `/newUser` for creator accounts.
+6. Password reset dev mail: run `mailcatcher` (SMTP `:1025`, web UI `:1080`).
 
 Optional test users: `bun run db:seed` (password `test-password`).
 
@@ -45,7 +46,8 @@ Done:
 
 - Thalia site: `/`, `/view/:slug`, `/dashboard`, `/library`, `/create/:id`
 - **D1 auth:** ThaliaSecurity, MariaDB `galleries` table, save/publish floorplans
-- **D2 photos:** owner-scoped `photos` table, `/library`, local upload to `public/uploads/`
+- **D2 photos:** owner-scoped `photos` table, `/library`, upload to local disk or SmugMug
+- **D3 hosting:** UploadThing → SmugMug (BINGO album); secrets in `.env` or `config/secrets.js`
 - TypeScript viewer modules, Three.js r183, Rapier physics
 - JSON floorplan layout + demo galleries (`parallel-horizons`, `met-monet`)
 - Placards (title/artist/year) on JSON artworks
@@ -53,7 +55,6 @@ Done:
 
 Next (see [docs/2026-07-11_phase_1_smugmug_and_auth.md](docs/2026-07-11_phase_1_smugmug_and_auth.md)):
 
-- **D3:** SmugMug + UploadThing
 - **D4:** folder library UX
 - Mobile-friendly controls
 

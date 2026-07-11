@@ -477,11 +477,17 @@ export const config = recursiveObjectMerge(
 
 ### D3 — SmugMug + UploadThing
 
-- [ ] Gitignored `config/secrets.js` + `loadSmugMugCreds()`
-- [ ] Switch adapter to SmugMug (staging/prod); optional UploadThing hop
-- [ ] Migration: existing local URLs → SmugMug URLs on re-upload or batch job
+- [x] `load-secrets.ts` — **`.env` first**, `config/secrets.js` fallback
+- [x] UploadThing router + `/api/uploadthing` (guest read/create for UT callbacks)
+- [x] `POST /uploadPhoto` JSON (UT URL → SmugMug) + multipart fallback
+- [x] `photos.smugmug_*` + `adapter_name` columns
+- [x] Browser: `uploadthing-init.js` + shared `photo-upload-client.ts`
+- [x] UploadThing temp cleanup (`data/uploadthing-temp.json`)
+- [ ] Existing local `/uploads/` rows unchanged until re-upload (by design)
 
-**Exit:** production image hosting matches smugmug site pattern.
+**Exit:** new uploads land on SmugMug (BINGO album); local-disk when `THALIA_IMAGE_ADAPTER=local-disk` or no creds.
+
+**You run:** `bun run db:generate -- --name=photos_smugmug` then `bun run db:migrate` (if not already applied).
 
 ### D4 — Library UX (folders + bulk)
 

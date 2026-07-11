@@ -2,6 +2,7 @@ declare const d3: any
 
 import { WALL_TEXTURE_OPTIONS, type WallTextureStyle } from './types.js'
 import { parseWallStyle } from './floorplan.js'
+import { uploadPhotoFiles } from './photo-upload-client.js'
 
 type CellKey = string
 type Wall = 'north' | 'east' | 'south' | 'west'
@@ -865,23 +866,16 @@ async function uploadEditorPhotos(files: FileList | File[]): Promise<void> {
     return
   }
   showToast(`Uploading ${list.length} file${list.length === 1 ? '' : 's'}…`)
-  let ok = 0
-  for (const file of list) {
-    const form = new FormData()
-    form.append('fileToUpload', file)
-    form.append('title', file.name.replace(/\.[^.]+$/, ''))
-    try {
-      const res = await fetch('/uploadPhoto', { method: 'POST', body: form, credentials: 'same-origin' })
-      const payload = (await res.json()) as { ok?: boolean; error?: string }
-      if (res.ok && payload.ok) ok += 1
-      else showToast(payload.error || 'Upload failed', true)
-    } catch {
-      showToast('Upload failed', true)
+  try {
+    const uploaded = await uploadPhotoFiles(list)
+    await loadOwnerPhotos()
+    updatePreview()
+    if (uploaded.length > 0) {
+      showToast(`Uploaded ${uploaded.length} photo${uploaded.length === 1 ? '' : 's'}`)
     }
+  } catch (err) {
+    showToast(err instanceof Error ? err.message : 'Upload failed', true)
   }
-  await loadOwnerPhotos()
-  updatePreview()
-  if (ok > 0) showToast(`Uploaded ${ok} photo${ok === 1 ? '' : 's'}`)
 }
 
 function setupEditorUpload(): void {
