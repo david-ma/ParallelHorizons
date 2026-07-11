@@ -4,6 +4,15 @@
 import type * as THREE from 'three'
 import type { PointerLockControls } from 'three/examples/jsm/controls/PointerLockControls.js'
 
+export type WallTextureStyle = 'plaster' | 'linen' | 'concrete' | 'silk'
+
+export const WALL_TEXTURE_OPTIONS: { value: WallTextureStyle; label: string; hint: string }[] = [
+  { value: 'plaster', label: 'Plaster', hint: 'Warm off-white with roller marks' },
+  { value: 'linen', label: 'Linen', hint: 'Fine canvas weave' },
+  { value: 'concrete', label: 'Concrete', hint: 'Cool micro-cement' },
+  { value: 'silk', label: 'Silk', hint: 'Soft lime-wash bands' },
+]
+
 /** Editor exports one id per wall (string); viewer accepts string or string[] for backward compat. */
 export interface FloorplanWallPlacements {
   north?: string | string[]
@@ -19,6 +28,8 @@ export interface FloorplanBlob {
   photoCatalog?: Array<{ id: string; src: string; title?: string; artist?: string; year?: string | number }>
   /** Player spawn: cell key `"row,col"` and optional eye height (default 1.75). */
   spawn?: { cell?: string; x?: number; y?: number; z?: number }
+  /** Procedural wall finish for the whole gallery (default plaster). */
+  wallStyle?: WallTextureStyle
 }
 
 export interface Gal {

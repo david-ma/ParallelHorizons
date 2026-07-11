@@ -88,6 +88,23 @@ Use `spawn.cell` as `"row,col"` (0-based). The viewer places the camera at that 
 
 The editor shows a green ▶ marker on the chosen cell; use **Set start position** on the Layout tab, then click a cell.
 
+## Wall style (gallery-wide)
+
+| Field | Type | Required | Default |
+|-------|------|----------|---------|
+| `wallStyle` | `"plaster"` \| `"linen"` \| `"concrete"` \| `"silk"` | No | `"plaster"` |
+
+Procedural wall finish applied to **every** wall segment in `/view`. Set on the Layout tab in `/create`. Per-wall overrides are not supported in v2.
+
+| Value | Description |
+|-------|-------------|
+| `plaster` | Warm off-white with subtle roller marks |
+| `linen` | Fine basket-weave canvas |
+| `concrete` | Cool micro-cement (tighter world-scale tiling) |
+| `silk` | Soft vertical lime-wash bands |
+
+Preview without saving: `/view?wallStyle=concrete` (query param overrides floorplan when present).
+
 ## Validation (viewer)
 
 Minimum valid document:
@@ -105,10 +122,11 @@ See `public/gallery-floorplan.json` in the repo.
 
 1. Open `/create`, activate cells, drag photos onto wall bands.
 2. Set the **start position** on the Layout tab (green ▶ marker on the grid).
-3. Edit labels on the **Labels** tab (or double-click a placement on the grid).
-4. Drag placed thumbnails to move them between walls. **Ctrl+Z** / **Ctrl+Y** undo and redo.
-5. Click **Save & preview** to write `public/gallery-floorplan.json` and open `/view` in a new tab — or export/download JSON manually.
-6. To host elsewhere, set `GALLERY_FLOORPLAN_URL` in `gallery.hbs`.
+3. Choose a **wall texture** on the Layout tab (gallery-wide).
+4. Edit labels on the **Labels** tab (or double-click a placement on the grid).
+5. Drag placed thumbnails to move them between walls. **Ctrl+Z** / **Ctrl+Y** undo and redo.
+6. Click **Save & preview** to write `public/gallery-floorplan.json` and open `/view` in a new tab — or export/download JSON manually.
+7. To host elsewhere, set `GALLERY_FLOORPLAN_URL` in `gallery.hbs`.
 
 ## Future (not in v2)
 

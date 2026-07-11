@@ -15,6 +15,7 @@ let fps = 0
 let counter = 0
 
 function framerate(): void {
+  if (!(globalThis as { GALLERY_DEV_TOOLS?: boolean }).GALLERY_DEV_TOOLS) return
   if (!lastCalledTime) {
     lastCalledTime = performance.now()
     fps = 0

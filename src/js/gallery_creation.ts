@@ -1,5 +1,7 @@
 declare const d3: any
 
+import { WALL_TEXTURE_OPTIONS, type WallTextureStyle } from './types.js'
+
 type CellKey = string
 type Wall = 'north' | 'east' | 'south' | 'west'
 
@@ -21,6 +23,7 @@ type FloorplanData = {
   placements: CellPlacements
   photoCatalog: PhotoItem[]
   spawn?: { cell: string; y?: number }
+  wallStyle?: WallTextureStyle
 }
 
 type EditorSnapshot = {
@@ -29,6 +32,7 @@ type EditorSnapshot = {
   photoCatalog: PhotoItem[]
   selectedPhotoId: string | null
   spawnCell: CellKey
+  wallStyle: WallTextureStyle
 }
 
 type WallSlot = { cell: { key: CellKey; x: number; y: number }; wall: Wall }
@@ -44,6 +48,7 @@ const MAX_HISTORY = 100
 const DRAG_FROM_MIME = 'application/x-gallery-from'
 const DRAG_THRESHOLD_PX = 5
 const DEFAULT_SPAWN: CellKey = '2,2'
+const VALID_WALL_STYLES = new Set(WALL_TEXTURE_OPTIONS.map((o) => o.value))
 
 type ArtPointerDrag = {
   photoId: string
@@ -68,6 +73,7 @@ const redoStack: EditorSnapshot[] = []
 
 let selectedPhotoId: string | null = null
 let spawnCell: CellKey = DEFAULT_SPAWN
+let wallStyle: WallTextureStyle = 'plaster'
 let spawnPlacementMode = false
 let showUnplacedOnly = false
 let placardHistoryCommitted = false
@@ -117,6 +123,7 @@ function cloneState(): EditorSnapshot {
     photoCatalog: JSON.parse(JSON.stringify(photoCatalog)) as PhotoItem[],
     selectedPhotoId,
     spawnCell,
+    wallStyle,
   }
 }
 
@@ -129,8 +136,10 @@ function restoreState(snap: EditorSnapshot): void {
   photoCatalog.push(...JSON.parse(JSON.stringify(snap.photoCatalog)))
   selectedPhotoId = snap.selectedPhotoId
   spawnCell = snap.spawnCell
+  wallStyle = snap.wallStyle
   spawnPlacementMode = false
   updateSpawnUI()
+  updateWallStyleUI()
   renderAll()
 }
 
@@ -166,6 +175,7 @@ function renderAll(): void {
   drawGrid()
   updatePreview()
   updateSpawnUI()
+  updateWallStyleUI()
 }
 
 function movePhoto(fromKey: CellKey, fromWall: Wall, toKey: CellKey, toWall: Wall): void {
@@ -202,6 +212,7 @@ function toData(): FloorplanData {
       ...(p.year != null && String(p.year).trim() ? { year: p.year } : {}),
     })),
     spawn: { cell: spawnCell, y: 1.75 },
+    wallStyle,
   }
 }
 
@@ -347,6 +358,16 @@ function mergePhotoCatalog(incoming: PhotoItem[]): void {
   })
 }
 
+function parseWallStyle(value: unknown): WallTextureStyle {
+  if (typeof value === 'string' && VALID_WALL_STYLES.has(value as WallTextureStyle)) return value as WallTextureStyle
+  return 'plaster'
+}
+
+function updateWallStyleUI(): void {
+  const sel = document.getElementById('wall-style') as HTMLSelectElement | null
+  if (sel && sel.value !== wallStyle) sel.value = wallStyle
+}
+
 function loadStateFromData(data: FloorplanData): void {
   activeCells.clear()
   Object.keys(placements).forEach((k) => delete placements[k])
@@ -373,6 +394,7 @@ function loadStateFromData(data: FloorplanData): void {
   })
 
   spawnCell = typeof data.spawn?.cell === 'string' && data.spawn.cell ? (data.spawn.cell as CellKey) : DEFAULT_SPAWN
+  wallStyle = parseWallStyle(data.wallStyle)
   spawnPlacementMode = false
 }
 
@@ -783,6 +805,27 @@ function setupUndoRedo(): void {
   })
 }
 
+function setupWallStyleSelect(): void {
+  const sel = document.getElementById('wall-style') as HTMLSelectElement | null
+  if (!sel) return
+  if (sel.options.length === 0) {
+    WALL_TEXTURE_OPTIONS.forEach(({ value, label, hint }) => {
+      const opt = document.createElement('option')
+      opt.value = value
+      opt.textContent = `${label} — ${hint}`
+      sel.appendChild(opt)
+    })
+  }
+  sel.addEventListener('change', () => {
+    const next = parseWallStyle(sel.value)
+    if (next === wallStyle) return
+    mutate(() => {
+      wallStyle = next
+    })
+  })
+  updateWallStyleUI()
+}
+
 function setupButtons(): void {
   document.getElementById('save-preview')?.addEventListener('click', () => void saveAndPreview())
 
@@ -819,6 +862,7 @@ function setupButtons(): void {
       activeCells.clear()
       Object.keys(placements).forEach((k) => delete placements[k])
       spawnCell = DEFAULT_SPAWN
+      wallStyle = 'plaster'
       selectedPhotoId = null
     })
   })
@@ -859,6 +903,7 @@ async function boot(): Promise<void> {
   setupPlacardEditor()
   setupPhotoListDragPassthrough()
   setupUndoRedo()
+  setupWallStyleSelect()
   setupButtons()
   renderAll()
 

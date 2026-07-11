@@ -14,7 +14,7 @@ let RAPIER_MODULE: typeof RAPIER | null = null
  * Legacy non-physics path used ~0.6 m/s²; Earth is 9.81; old Rapier jump was 5.5 m/s (~1.5 m apex).
  * Using 25 m/s² for a more arcade-like feel.
  */
-export const GRAVITY = 25
+export const GRAVITY = 10
 /** Target jump apex (m) — familiar FPS hop, a bit floaty on the way down. */
 export const JUMP_HEIGHT = 0.9
 export const JUMP_VELOCITY = Math.sqrt(2 * GRAVITY * JUMP_HEIGHT)

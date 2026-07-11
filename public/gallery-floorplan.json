@@ -201,5 +201,6 @@
   "spawn": {
     "cell": "4,0",
     "y": 1.75
-  }
+  },
+  "wallStyle": "concrete"
 }

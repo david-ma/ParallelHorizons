@@ -84,6 +84,18 @@
     .spawn-row { display: grid; gap: 8px; margin-bottom: 8px; }
     .spawn-row button { font: inherit; padding: 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface-2); color: var(--text); cursor: pointer; }
     .spawn-row button.active { border-color: var(--success); background: rgba(48, 209, 88, 0.12); color: var(--success); }
+    .wall-style-row { display: grid; gap: 4px; margin-bottom: 8px; }
+    .wall-style-row label { font-size: 12px; color: var(--muted); }
+    .wall-style-row select {
+      font: inherit;
+      padding: 8px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--surface-2);
+      color: var(--text);
+      cursor: pointer;
+    }
+    .wall-style-hint { margin: 0 0 8px; font-size: 11px; color: var(--muted); }
     #spawn-status { font-size: 12px; color: var(--muted); margin: 0; }
     details.advanced { margin-top: 8px; font-size: 12px; color: var(--muted); }
     details.advanced summary { cursor: pointer; color: var(--text); margin-bottom: 6px; }
@@ -183,6 +195,11 @@
           <button id="set-spawn" type="button">Set start position</button>
           <p id="spawn-status">Start: centre of cell 2,2</p>
         </div>
+        <div class="wall-style-row">
+          <label for="wall-style">Wall texture</label>
+          <select id="wall-style" aria-label="Wall texture for the whole gallery"></select>
+        </div>
+        <p class="wall-style-hint">One finish for the whole gallery. Per-wall textures may come later.</p>
         <div class="controls">
           <button id="load-current" type="button">Load current</button>
           <label for="import-json">Import JSON<input id="import-json" type="file" accept="application/json"></label>

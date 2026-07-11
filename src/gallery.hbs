@@ -99,9 +99,11 @@
     <p class="gallery-loading-text">Loading gallery layout…</p>
   </div>
 
+  {{#unless production}}
   <div id="devonly">
     FPS: <span id="fps"></span>
   </div>
+  {{/unless}}
 
   <div id="background_menu"></div>
 
@@ -127,7 +129,16 @@
       <div id="play_button">
         <p>PLAY</p>
       </div>
+      {{#unless production}}
+      <button
+        type="button"
+        id="spotlight_tune_toggle"
+        class="dev-only-btn"
+        aria-expanded="false"
+        aria-controls="spotlight_slider_panel"
+      >Spotlight tuning</button>
       {{> spotlight_sidebar}}
+      {{/unless}}
       <div id="gamepadtest"></div>
     </div>
   </div>
@@ -145,6 +156,7 @@
   <script>
     // /view will use this floorplan when available; fallback remains in main.ts.
     globalThis.GALLERY_FLOORPLAN_URL = "/gallery-floorplan.json";
+    globalThis.GALLERY_DEV_TOOLS = {{#if production}}false{{else}}true{{/if}};
   </script>
   <script type="text/javascript" src="/js/Detector.js"></script>
   <script type="module" src="/js/main.js"></script>
@@ -157,11 +169,10 @@
     }
 
     function toggleDevSpotlightPanel() {
+      if (!globalThis.GALLERY_DEV_TOOLS) return;
       var host = window.location.hostname;
       var isDev = host === "localhost" || host === "127.0.0.1";
       if (isDev) document.body.classList.add("dev-mode");
-      var panel = document.getElementById("spotlight_slider_panel");
-      if (panel) panel.hidden = !isDev;
     }
 
     globalThis.toggleDevSpotlightPanel = toggleDevSpotlightPanel;

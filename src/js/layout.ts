@@ -5,7 +5,7 @@ import * as THREE from 'three'
 import type { Gal } from './types.js'
 import type { FloorplanBlob, FloorplanWallPlacements } from './types.js'
 import { addFrameToArtwork, addPlacardToArtwork } from './artwork.js'
-import { addGalleryCeiling, createFloorMaterial, createWallMaterial } from './materials.js'
+import { addGalleryCeiling, createFloorMaterial, createWallMaterial, resolveWallTextureStyle } from './materials.js'
 import { addArtworkSpotlightRig, spotlightOptionsForArtwork } from './spotlight.js'
 
 const DEFAULT_FLOORPLAN_URL = '/gallery-floorplan.json'
@@ -143,7 +143,7 @@ export function buildSceneFromFloorplan(g: Gal, data: FloorplanBlob): void {
   const { floorWidth, floorDepth } = addFloor(g, rows, cols)
   initGalleryBounds(g, floorWidth, floorDepth)
 
-  const wallMaterial = createWallMaterial(CELL_WORLD)
+  const wallMaterial = createWallMaterial(CELL_WORLD, 6, resolveWallTextureStyle(data))
   const addWall = (x: number, z: number, rotateY: number) => {
     const wall = new THREE.Mesh(new THREE.BoxGeometry(CELL_WORLD, 6, 0.001), wallMaterial) as THREE.Mesh & {
       BBox?: THREE.Box3

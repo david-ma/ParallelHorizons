@@ -4,7 +4,7 @@
 import * as THREE from 'three'
 import type { Gal } from './types.js'
 import { drawFrame } from './artwork.js'
-import { addGalleryCeiling, createFloorMaterial, createWallMaterial } from './materials.js'
+import { addGalleryCeiling, createFloorMaterial, createWallMaterial, resolveWallTextureStyle } from './materials.js'
 import { addArtworkSpotlightRig, spotlightOptionsForArtwork } from './spotlight.js'
 
 export function buildDefaultGallery(g: Gal): void {
@@ -19,16 +19,17 @@ export function buildDefaultGallery(g: Gal): void {
 
   g.wallGroup = new THREE.Group()
   g.scene.add(g.wallGroup)
-  const wall1 = new THREE.Mesh(new THREE.BoxGeometry(40, 6, 0.001), createWallMaterial(40)) as THREE.Mesh & {
+  const wallStyle = resolveWallTextureStyle()
+  const wall1 = new THREE.Mesh(new THREE.BoxGeometry(40, 6, 0.001), createWallMaterial(40, 6, wallStyle)) as THREE.Mesh & {
     BBox?: THREE.Box3
   }
-  const wall2 = new THREE.Mesh(new THREE.BoxGeometry(6, 6, 0.001), createWallMaterial(6)) as THREE.Mesh & {
+  const wall2 = new THREE.Mesh(new THREE.BoxGeometry(6, 6, 0.001), createWallMaterial(6, 6, wallStyle)) as THREE.Mesh & {
     BBox?: THREE.Box3
   }
-  const wall3 = new THREE.Mesh(new THREE.BoxGeometry(6, 6, 0.001), createWallMaterial(6)) as THREE.Mesh & {
+  const wall3 = new THREE.Mesh(new THREE.BoxGeometry(6, 6, 0.001), createWallMaterial(6, 6, wallStyle)) as THREE.Mesh & {
     BBox?: THREE.Box3
   }
-  const wall4 = new THREE.Mesh(new THREE.BoxGeometry(40, 6, 0.001), createWallMaterial(40)) as THREE.Mesh & {
+  const wall4 = new THREE.Mesh(new THREE.BoxGeometry(40, 6, 0.001), createWallMaterial(40, 6, wallStyle)) as THREE.Mesh & {
     BBox?: THREE.Box3
   }
   g.wallGroup.add(wall1, wall2, wall3, wall4)

@@ -581,6 +581,7 @@ function setExportStatus(message: string): void {
 
 /** Wire dev panel on localhost — call once after scene (and spotlights) are built. */
 export function initSpotlightDevPanel(onRender?: () => void): void {
+  if (!(globalThis as { GALLERY_DEV_TOOLS?: boolean }).GALLERY_DEV_TOOLS) return
   const isDevHost =
     typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
   if (!isDevHost) return
@@ -589,11 +590,18 @@ export function initSpotlightDevPanel(onRender?: () => void): void {
   onTuningRender = onRender ?? null
 
   const panel = document.getElementById('spotlight_slider_panel')
-  if (panel) panel.hidden = false
+  const toggleBtn = document.getElementById('spotlight_tune_toggle') as HTMLButtonElement | null
 
   if (!devPanelReady) {
     devPanelReady = true
     buildDevPanelSliders()
+
+    toggleBtn?.addEventListener('click', () => {
+      if (!panel) return
+      panel.hidden = !panel.hidden
+      toggleBtn.setAttribute('aria-expanded', panel.hidden ? 'false' : 'true')
+      if (!panel.hidden) syncDevPanelValues()
+    })
 
     document.getElementById('spotlight_reset')?.addEventListener('click', () => {
       resetSpotlightGlobalTuning()

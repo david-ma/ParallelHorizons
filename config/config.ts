@@ -100,7 +100,7 @@ export const config: RawWebsiteConfig = {
         res.end('Not found')
         return
       }
-      page('gallery')(res, req, website, requestInfo)
+      page('gallery', { production: process.env.NODE_ENV === 'production' })(res, req, website, requestInfo)
     },
   },
 }
