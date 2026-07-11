@@ -12,7 +12,8 @@ import { isValidFloorplan } from './floorplan.js'
 export { isValidFloorplan } from './floorplan.js'
 
 const DEFAULT_FLOORPLAN_URL = '/gallery-floorplan.json'
-const CELL_WORLD = 6
+export const FLOORPLAN_CELL_WORLD = 6
+const CELL_WORLD = FLOORPLAN_CELL_WORLD
 const DEFAULT_GRID_ROWS = 5
 const DEFAULT_GRID_COLS = 5
 const DEFAULT_EYE_Y = 1.75
@@ -122,6 +123,9 @@ export function buildMinimalGallery(g: Gal, rows = DEFAULT_GRID_ROWS, cols = DEF
   addBaseLighting(g)
   const { floorWidth, floorDepth } = addFloor(g, rows, cols)
   initGalleryBounds(g, floorWidth, floorDepth)
+  g.floorplan = null
+  g.floorplanRows = rows
+  g.floorplanCols = cols
 }
 
 /**
@@ -136,6 +140,9 @@ export function buildSceneFromFloorplan(g: Gal, data: FloorplanBlob): void {
   addBaseLighting(g)
   const { floorWidth, floorDepth } = addFloor(g, rows, cols)
   initGalleryBounds(g, floorWidth, floorDepth)
+  g.floorplan = data
+  g.floorplanRows = rows
+  g.floorplanCols = cols
 
   const wallMaterial = createWallMaterial(CELL_WORLD, 6, resolveWallTextureStyle(data))
   const addWall = (x: number, z: number, rotateY: number) => {

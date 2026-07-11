@@ -8,7 +8,8 @@ import type { Gal } from './types.js'
 import { loadFloorplanAsync, buildSceneFromFloorplan, buildMinimalGallery, applySpawnPosition } from './layout.js'
 import { attachMovementKeys, clearMovementState, updateMovement, updateVelocityOnly } from './movement.js'
 import { initRapier, createGalleryPhysics, stepPhysics } from './physics.js'
-import { initSpotlightDevPanel } from './spotlight.js'
+import { initSpotlightDevPanel, updateSpotlightCulling, resolveMaxPixelRatio } from './spotlight.js'
+import { initDevMinimap, updateDevMinimap } from './minimap.js'
 
 /** When the pause menu is up, refresh the frozen scene at 1 FPS instead of display rate. */
 const PAUSED_FRAME_MS = 1000
@@ -43,9 +44,32 @@ function scheduleNextRender(g: Gal): void {
   }
 }
 
+function applyViewportSize(g: Gal): void {
+  const width = Math.max(1, window.innerWidth || document.documentElement.clientWidth || 1)
+  const height = Math.max(1, window.innerHeight || document.documentElement.clientHeight || 1)
+  g.renderer.setPixelRatio(resolveMaxPixelRatio(g.num_of_paintings, window.location.search))
+  g.renderer.setSize(width, height)
+  g.camera.aspect = width / height
+  g.camera.updateProjectionMatrix()
+}
+
 function freezeWorld(g: Gal): void {
   clearMovementState(g)
   if (g.playerBody) g.playerBody.setLinvel({ x: 0, y: 0, z: 0 }, true)
+}
+
+function pointerEl(g: Gal): HTMLCanvasElement {
+  return g.renderer.domElement
+}
+
+function isPointerLocked(g: Gal): boolean {
+  const doc = pointerEl(g).ownerDocument
+  const el = pointerEl(g)
+  return (
+    doc.pointerLockElement === el ||
+    (doc as Document & { mozPointerLockElement?: Element }).mozPointerLockElement === el ||
+    (doc as Document & { webkitPointerLockElement?: Element }).webkitPointerLockElement === el
+  )
 }
 
 function initWallBoundingBoxes(g: Gal): void {
@@ -125,16 +149,9 @@ if (Detector && !Detector.webgl) {
       gal!.initialRender = true
       ;(gal!.scene as any).fog = new THREE.FogExp2(0x666666, 0.05)
 
-      const resizeViewport = () => {
-        const width = Math.max(1, window.innerWidth || document.documentElement.clientWidth || 1)
-        const height = Math.max(1, window.innerHeight || document.documentElement.clientHeight || 1)
-        gal!.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2))
-        gal!.renderer.setSize(width, height)
-        gal!.camera.aspect = width / height
-        gal!.camera.updateProjectionMatrix()
-      }
+      const resizeViewport = () => applyViewportSize(gal!)
 
-      resizeViewport()
+      applyViewportSize(gal!)
       gal!.renderer.setClearColor(0xffffff, 1)
       gal!.renderer.toneMapping = THREE.NoToneMapping
       gal!.renderer.toneMappingExposure = 1
@@ -155,7 +172,7 @@ if (Detector && !Detector.webgl) {
       gal!.scene.add(gal!.camera)
       gal!.pastX = gal!.camera.position.x
       gal!.pastZ = gal!.camera.position.z
-      gal!.canvas = document.querySelector('canvas')
+      gal!.canvas = gal!.renderer.domElement
       if (gal!.canvas) gal!.canvas.className = 'gallery'
       gal!.bgMenu = document.querySelector('#background_menu')
       gal!.play = document.querySelector('#play_button')
@@ -182,19 +199,12 @@ if (Detector && !Detector.webgl) {
 
     pointerControls() {
       const g = gal!
-      const doc = g.canvas?.ownerDocument ?? document
+      const doc = pointerEl(g).ownerDocument
       if ('pointerLockElement' in doc || 'mozPointerLockElement' in doc || 'webkitPointerLockElement' in doc) {
         function releaseToMenu() {
           clearMovementState(g)
-          const d = g.canvas?.ownerDocument ?? document
-          const hasLock =
-            d.pointerLockElement === g.canvas ||
-            (d as any).mozPointerLockElement === g.canvas ||
-            (d as any).webkitPointerLockElement === g.canvas
-          if (hasLock) {
-            d.exitPointerLock?.()
-            ;(d as any).mozExitPointerLock?.()
-            ;(d as any).webkitExitPointerLock?.()
+          if (isPointerLocked(g)) {
+            g.controls.unlock()
           } else {
             g.controls.enabled = false
             g.menu?.classList.remove('hide')
@@ -207,29 +217,20 @@ if (Detector && !Detector.webgl) {
           console.debug('Pointer lock released; showing menu for re-entry.')
         }
 
-        ;(g.canvas as any).requestPointerLock =
-          (g.canvas as any).requestPointerLock ||
-          (g.canvas as any).mozRequestPointerLock ||
-          (g.canvas as any).webkitRequestPointerLock
-        ;(g.canvas as any).exitPointerLock =
-          (g.canvas as any).exitPointerLock ||
-          (g.canvas as any).mozExitPointerLock ||
-          (g.canvas as any).webkitExitPointerLock
-
         document.addEventListener('keydown', (e) => {
           if (e.keyCode === 102 || e.keyCode === 70) {
             g.toggleFullscreen()
-            ;(g.canvas as any).requestPointerLock?.()
+            g.controls.lock()
           } else if (e.key === 'Escape' || e.keyCode === 27) {
             releaseToMenu()
           }
         })
 
         g.bgMenu?.addEventListener('click', () => {
-          ;(g.canvas as any).requestPointerLock?.()
+          g.controls.lock()
         })
         g.play?.addEventListener('click', () => {
-          ;(g.canvas as any).requestPointerLock?.()
+          g.controls.lock()
         })
         document.addEventListener('pointerlockchange', g.changeCallback, false)
         document.addEventListener('mozpointerlockchange', g.changeCallback, false)
@@ -277,16 +278,10 @@ if (Detector && !Detector.webgl) {
 
     changeCallback() {
       const g = gal!
-      const doc = g.canvas?.ownerDocument ?? document
-      const locked =
-        doc.pointerLockElement === g.canvas ||
-        (doc as any).mozPointerLockElement === g.canvas ||
-        (doc as any).webkitPointerLockElement === g.canvas
-      if (locked) {
+      if (isPointerLocked(g)) {
         g.controls.enabled = true
         g.menu?.classList.add('hide')
         g.bgMenu?.classList.add('hide')
-        document.addEventListener('mousemove', g.moveCallback as any, false)
         g.prevTime = performance.now()
         clearFrameSchedule()
         g.render()
@@ -294,7 +289,6 @@ if (Detector && !Detector.webgl) {
         g.controls.enabled = false
         g.menu?.classList.remove('hide')
         g.bgMenu?.classList.remove('hide')
-        document.removeEventListener('mousemove', g.moveCallback as any, false)
         freezeWorld(g)
         g.prevTime = performance.now()
         clearFrameSchedule()
@@ -306,7 +300,9 @@ if (Detector && !Detector.webgl) {
       console.error('Pointer Lock Failed')
     },
 
-    moveCallback(_event: MouseEvent) {},
+    moveCallback(_event: MouseEvent) {
+      // PointerLockControls handles mouse-look on the WebGL canvas (see r183 connect()).
+    },
 
     toggleFullscreen() {
       const doc = document as any
@@ -338,6 +334,8 @@ if (Detector && !Detector.webgl) {
         }
       } finally {
         setLayoutLoading(false)
+        applyViewportSize(gal!)
+        initDevMinimap()
         initSpotlightDevPanel(() => {
           gal!.renderer.render(gal!.scene, gal!.camera)
         })
@@ -409,6 +407,8 @@ if (Detector && !Detector.webgl) {
           }
         }
         g.prevTime = currentTime
+        updateSpotlightCulling(g.camera)
+        updateDevMinimap(g)
         g.renderer.render(g.scene, g.camera)
       } else {
         g.prevTime = performance.now()
@@ -416,6 +416,8 @@ if (Detector && !Detector.webgl) {
           initWallBoundingBoxes(g)
           g.initialRender = false
         }
+        updateSpotlightCulling(g.camera)
+        updateDevMinimap(g)
         g.renderer.render(g.scene, g.camera)
       }
 

@@ -8,7 +8,6 @@
     <div class="home-header-inner">
       <a class="home-logo" href="/">Parallel Horizons</a>
       <nav class="home-nav" aria-label="Primary">
-        <a href="/view">Demo gallery</a>
         <a href="/create">Editor</a>
       </nav>
     </div>
@@ -16,44 +15,36 @@
 
   <main class="home-main">
     <section class="home-hero">
-      <p class="home-eyebrow">3D virtual exhibition</p>
-      <h1>Build a gallery people can walk through</h1>
+      <p class="home-eyebrow">3D virtual exhibitions</p>
+      <h1>Walk through the galleries</h1>
       <p class="home-lead">
-        Upload your work, organise it on your server, arrange rooms on a floor plan, and share a link.
-        Visitors explore in the browser with pointer-lock — no app install.
+        Choose an exhibition below, then explore in the browser with WASD and mouse-look.
+        Each gallery is built from a floorplan JSON file — layout, art placements, and wall finishes.
       </p>
-      <div class="home-cta">
-        <a class="home-btn home-btn-primary" href="/view">Walk the demo</a>
-        <a class="home-btn home-btn-secondary" href="/create">Open editor</a>
-      </div>
-      <p class="home-note">Signed-in uploads, photo library, and SmugMug integration are Phase 1 — documented in the repository under <code>docs/2026-08-11_phase1_smugmug_and_auth.md</code>.</p>
     </section>
 
-    <section class="home-steps" aria-labelledby="how-heading">
-      <h2 id="how-heading">How it works</h2>
-      <ol class="home-step-list">
-        <li>
-          <h3>Curate</h3>
-          <p>Upload photos, folder them, and label title, artist, and year. Our database holds structure; SmugMug stores the files.</p>
+    <section class="home-galleries" aria-labelledby="galleries-heading">
+      <h2 id="galleries-heading">Galleries</h2>
+      <ul class="home-gallery-grid">
+        {{#each galleries}}
+        <li class="home-gallery-card">
+          <h3>{{this.title}}</h3>
+          <p>{{this.description}}</p>
+          {{#if this.credit}}<p class="home-gallery-credit">{{this.credit}}</p>{{/if}}
+          <a class="home-btn home-btn-primary" href="/view/{{this.slug}}">Enter gallery</a>
         </li>
-        <li>
-          <h3>Layout</h3>
-          <p>Activate rooms on a grid, drag art onto walls, set spawn point and wall finish, tune labels.</p>
-        </li>
-        <li>
-          <h3>Publish</h3>
-          <p>Share a read-only link. Visitors walk with WASD, mouse-look, and spotlit artwork.</p>
-        </li>
-      </ol>
+        {{/each}}
+      </ul>
     </section>
 
     <section class="home-features" aria-labelledby="features-heading">
-      <h2 id="features-heading">What’s in the demo today</h2>
+      <h2 id="features-heading">For creators</h2>
+      <p class="home-lead">Use the <a href="/create">floorplan editor</a> to arrange rooms and photos. Saves update the Parallel Horizons gallery.</p>
       <ul class="home-feature-grid">
         <li>JSON floorplan layout with placards</li>
         <li>Rapier physics and camera-relative movement</li>
         <li>Per-artwork spotlights and procedural wall materials</li>
-        <li>Floorplan editor with undo/redo and save-to-preview</li>
+        <li>Multiple published galleries from one viewer</li>
       </ul>
     </section>
 
@@ -61,8 +52,8 @@
       <h2>Credits</h2>
       <p>
         Originally from <a href="https://twitter.com/owlsketch">@owlsketch</a>’s WebGL gallery concept.
-        David Ma’s Tap Gallery exhibition. Spotlight model by iPoly3D on
-        <a href="https://poly.pizza/m/YohOCmn0hO">Poly Pizza</a> (CC0).
+        David Ma’s Tap Gallery exhibition. Met Monet set via legacy Open Access scraper.
+        Spotlight model by iPoly3D on <a href="https://poly.pizza/m/YohOCmn0hO">Poly Pizza</a> (CC0).
       </p>
     </section>
   </main>

@@ -141,6 +141,157 @@ export interface ArtworkSpotlightRig {
   artwork?: THREE.Object3D
 }
 
+/** Spotlight LOD — keep nearest rigs lit; see docs/2026-07-11_optimisations.md */
+export const SPOTLIGHT_CULL_DEFAULTS = {
+  maxWhenFew: 8,
+  maxWhenMany: 8,
+  maxWhenHeavy: 8,
+  heavyThreshold: 24,
+  /** Rigs within this radius (m) are always candidates; view direction breaks ties. */
+  nearRadius: 8,
+} as const
+
+export function maxActiveSpotlights(rigCount: number): number {
+  if (rigCount <= 0) return 0
+  if (rigCount <= SPOTLIGHT_CULL_DEFAULTS.maxWhenFew) return rigCount
+  if (rigCount >= SPOTLIGHT_CULL_DEFAULTS.heavyThreshold) return SPOTLIGHT_CULL_DEFAULTS.maxWhenHeavy
+  return SPOTLIGHT_CULL_DEFAULTS.maxWhenMany
+}
+
+/** Lower sortKey = lit first. In-view rigs sort by distance/centring; behind use 1e12 + dist². */
+export function spotlightCullPriority(
+  artworkCenter: THREE.Vector3,
+  cameraPos: THREE.Vector3,
+  cameraForward: THREE.Vector3
+): { sortKey: number; inView: boolean; distance: number } {
+  const toArtX = artworkCenter.x - cameraPos.x
+  const toArtY = artworkCenter.y - cameraPos.y
+  const toArtZ = artworkCenter.z - cameraPos.z
+  const distSq = toArtX * toArtX + toArtY * toArtY + toArtZ * toArtZ
+  const distance = Math.sqrt(distSq)
+  if (distSq < 1e-8) return { sortKey: 0, inView: true, distance: 0 }
+  const dot =
+    (cameraForward.x * toArtX + cameraForward.y * toArtY + cameraForward.z * toArtZ) / distance
+  const inView = dot > 0.08
+  if (!inView) return { sortKey: 1e12 + distSq, inView: false, distance }
+  return { sortKey: distSq / Math.max(dot, 0.2), inView: true, distance }
+}
+
+/** Pick active rigs by sortKey (in-view always before behind). */
+export function selectActiveSpotlightFlagsInView(sortKeys: number[], maxActive: number): boolean[] {
+  const n = sortKeys.length
+  if (n === 0) return []
+  if (maxActive >= n) return sortKeys.map(() => true)
+  if (maxActive <= 0) return sortKeys.map(() => false)
+  const order = sortKeys.map((k, i) => ({ k, i }))
+  order.sort((a, b) => a.k - b.k)
+  const active = new Set(order.slice(0, maxActive).map((x) => x.i))
+  return sortKeys.map((_, i) => active.has(i))
+}
+
+/** Pick active rigs by squared distance (lowest = nearest player). */
+export function selectActiveSpotlightFlagsByDistance(distancesSq: number[], maxActive: number): boolean[] {
+  const n = distancesSq.length
+  if (n === 0) return []
+  if (maxActive >= n) return distancesSq.map(() => true)
+  if (maxActive <= 0) return distancesSq.map(() => false)
+  const order = distancesSq.map((d, i) => ({ d, i }))
+  order.sort((a, b) => a.d - b.d)
+  const active = new Set(order.slice(0, maxActive).map((x) => x.i))
+  return distancesSq.map((_, i) => active.has(i))
+}
+
+/** Pick active rigs by priority score (lowest scores win). */
+export function selectActiveSpotlightFlagsByScore(scores: number[], maxActive: number): boolean[] {
+  return selectActiveSpotlightFlagsByDistance(scores, maxActive)
+}
+
+/** @deprecated Use selectActiveSpotlightFlagsByDistance */
+export function selectActiveSpotlightFlags(distancesSq: number[], maxActive: number): boolean[] {
+  return selectActiveSpotlightFlagsByDistance(distancesSq, maxActive)
+}
+
+const _cullCamPos = new THREE.Vector3()
+const _cullForward = new THREE.Vector3()
+const _cullPoint = new THREE.Vector3()
+
+let lastCullDebug: SpotlightCullDebugEntry[] = []
+
+export type SpotlightCullDebugEntry = {
+  x: number
+  z: number
+  distance: number
+  inView: boolean
+  active: boolean
+}
+
+export function getSpotlightCullDebug(): readonly SpotlightCullDebugEntry[] {
+  return lastCullDebug
+}
+
+function refreshRigCullPoint(rig: ArtworkSpotlightRig, out: THREE.Vector3): THREE.Vector3 {
+  if (rig.artwork) {
+    rig.artwork.updateMatrixWorld(true)
+    rig.artwork.getWorldPosition(out)
+    rig.anchor.artworkCenter.copy(out)
+  } else {
+    out.copy(rig.anchor.artworkCenter)
+  }
+  return out
+}
+
+/** Beam on/off only — fixtures stay visible; emitter dims when off. */
+function setRigLightBeam(rig: ArtworkSpotlightRig, beamOn: boolean): void {
+  const intensity = rig.options.intensity
+  rig.spotlight.visible = beamOn
+  rig.spotlight.intensity = beamOn ? intensity : 0
+  const emitterMat = rig.emitterDisc.material as THREE.MeshBasicMaterial
+  emitterMat.opacity = beamOn ? rig.options.emitterOpacity : rig.options.emitterOpacity * 0.12
+  if (rig.fixture) rig.fixture.visible = true
+  if (rig.fallback) rig.fallback.visible = true
+}
+
+/** Enable in-view spotlight beams (nearest / centred in view first). */
+export function updateSpotlightCulling(camera: THREE.Camera): void {
+  const rigs = registeredRigs
+  if (rigs.length === 0) {
+    lastCullDebug = []
+    return
+  }
+  const maxActive = maxActiveSpotlights(rigs.length)
+  camera.getWorldPosition(_cullCamPos)
+  camera.getWorldDirection(_cullForward)
+  const sortKeys: number[] = []
+  const debug: SpotlightCullDebugEntry[] = []
+  for (let i = 0; i < rigs.length; i++) {
+    refreshRigCullPoint(rigs[i]!, _cullPoint)
+    const { sortKey, inView, distance } = spotlightCullPriority(_cullPoint, _cullCamPos, _cullForward)
+    sortKeys.push(sortKey)
+    debug.push({
+      x: _cullPoint.x,
+      z: _cullPoint.z,
+      distance,
+      inView,
+      active: false,
+    })
+  }
+  const flags = selectActiveSpotlightFlagsInView(sortKeys, maxActive)
+  for (let i = 0; i < rigs.length; i++) {
+    setRigLightBeam(rigs[i]!, flags[i]!)
+    debug[i]!.active = flags[i]!
+  }
+  lastCullDebug = debug
+}
+
+export function resolveMaxPixelRatio(paintingCount: number, search = '', deviceRatio?: number): number {
+  const q = new URLSearchParams(search).get('quality')
+  if (q === 'low') return 1
+  if (q === 'high') return 2
+  const cap = paintingCount >= 20 ? 1.25 : 2
+  const dpr = deviceRatio ?? (typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1)
+  return Math.min(dpr, cap)
+}
+
 function artworkFacingIntoRoom(artwork: THREE.Object3D): THREE.Vector3 {
   artwork.updateMatrixWorld(true)
   artwork.getWorldQuaternion(_quat)
@@ -447,7 +598,7 @@ export function addArtworkSpotlightRig(
 
   void loadSpotlightTemplate(options.modelUrl)
     .then((template) => {
-      const fixture = template.clone(true)
+      const fixture = template.clone(false)
       rig.fixture = fixture
       applyArtworkSpotlightRigOptions(rig)
       scene.add(fixture)

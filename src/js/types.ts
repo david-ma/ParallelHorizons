@@ -45,6 +45,9 @@ export interface Gal {
   wallGroup: THREE.Group
   paintings: THREE.Object3D[]
   num_of_paintings: number
+  floorplan?: FloorplanBlob | null
+  floorplanRows?: number
+  floorplanCols?: number
   moveVelocity: THREE.Vector3
   jump: boolean
   moveForward: boolean

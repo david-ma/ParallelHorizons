@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta http-equiv="content-type" content="text/html" charset="ISO-8859-1">
-  <title>Parallel Horizons</title>
+  <title>{{#if galleryTitle}}{{galleryTitle}} | {{/if}}3D Gallery</title>
 
   <link href="https://fonts.googleapis.com/css?family=Lato|Oswald" rel="stylesheet" type="text/css">
   <link rel="stylesheet" type="text/css" href="/css/index.css" media="screen">
@@ -103,6 +103,10 @@
   <div id="devonly">
     FPS: <span id="fps"></span>
   </div>
+  <div id="gallery-minimap-wrap" aria-hidden="true">
+    <canvas id="gallery-minimap"></canvas>
+    <p id="gallery-minimap-legend">Minimap</p>
+  </div>
   {{/unless}}
 
   <div id="background_menu"></div>
@@ -112,7 +116,7 @@
       <img src="/img/david.jpg">
     </div>
     <div id="content">
-      <h1>Parallel Horizons</h1>
+      <h1>{{#if galleryTitle}}{{galleryTitle}}{{else}}Parallel Horizons{{/if}}</h1>
       <div>
         <p>A 3D gallery in your browser.</p>
         <p>A shallow copy of David Ma's exhibition from <a href="http://www.tapgallery.org.au/">Tap Gallery</a>.</p>
@@ -154,8 +158,7 @@
     crossorigin="anonymous"></script>
 
   <script>
-    // /view will use this floorplan when available; fallback remains in main.ts.
-    globalThis.GALLERY_FLOORPLAN_URL = "/gallery-floorplan.json";
+    globalThis.GALLERY_FLOORPLAN_URL = "{{floorplanUrl}}";
     globalThis.GALLERY_DEV_TOOLS = {{#if production}}false{{else}}true{{/if}};
   </script>
   <script type="text/javascript" src="/js/Detector.js"></script>

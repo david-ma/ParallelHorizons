@@ -9,6 +9,13 @@ import type { ServerResponse, IncomingMessage } from 'http'
 import type { Website } from 'thalia/website'
 import type { RequestInfo } from 'thalia/server'
 import { isValidFloorplan } from '../src/js/floorplan.js'
+import {
+  defaultGallerySlug,
+  galleryFloorplanExists,
+  loadGalleryManifest,
+  resolveGallery,
+  type GalleryEntry,
+} from './galleries.js'
 
 /** Render a full standalone page from a Handlebars template (no Thalia wrapper). */
 function page(
@@ -41,10 +48,35 @@ function isValidFloorplanPayload(data: unknown): data is Record<string, unknown>
   return isValidFloorplan(data)
 }
 
+function viewPageData(website: Website, entry: GalleryEntry): Record<string, unknown> {
+  return {
+    production: process.env.NODE_ENV === 'production',
+    floorplanUrl: entry.floorplanPath,
+    galleryTitle: entry.title,
+    gallerySlug: entry.slug,
+  }
+}
+
+function renderView(res: ServerResponse, req: IncomingMessage, website: Website, requestInfo: RequestInfo): void {
+  const slug = requestInfo.action?.trim() || defaultGallerySlug(loadGalleryManifest(website.rootPath))
+  const entry = slug ? resolveGallery(website.rootPath, slug) : null
+  if (!entry || !galleryFloorplanExists(website.rootPath, entry)) {
+    res.statusCode = 404
+    res.setHeader('Content-Type', 'text/html; charset=utf-8')
+    res.end('Gallery not found')
+    return
+  }
+  page('gallery', viewPageData(website, entry))(res, req, website, requestInfo)
+}
+
 export const config: RawWebsiteConfig = {
   domains: ['localhost', '127.0.0.1'],
 
   controllers: {
+    '': (res, req, website, requestInfo) => {
+      const galleries = loadGalleryManifest(website.rootPath)
+      page('index', { galleries })(res, req, website, requestInfo)
+    },
     create: page('gallery_creation'),
     'save-floorplan': async (res, req, website, requestInfo) => {
       if (requestInfo.action && requestInfo.action !== '') {
@@ -67,10 +99,15 @@ export const config: RawWebsiteConfig = {
           res.end(JSON.stringify({ ok: false, error: 'Invalid floorplan JSON' }))
           return
         }
-        const outPath = path.join(website.rootPath, 'public', 'gallery-floorplan.json')
+        const outPath = path.join(website.rootPath, 'public', 'galleries', 'parallel-horizons.json')
         fs.writeFileSync(outPath, `${JSON.stringify(parsed, null, 2)}\n`, 'utf8')
+        fs.writeFileSync(
+          path.join(website.rootPath, 'public', 'gallery-floorplan.json'),
+          `${JSON.stringify(parsed, null, 2)}\n`,
+          'utf8'
+        )
         res.setHeader('Content-Type', 'application/json; charset=utf-8')
-        res.end(JSON.stringify({ ok: true }))
+        res.end(JSON.stringify({ ok: true, slug: 'parallel-horizons' }))
       } catch (err) {
         res.statusCode = 500
         res.setHeader('Content-Type', 'application/json; charset=utf-8')
@@ -92,13 +129,6 @@ export const config: RawWebsiteConfig = {
       res.setHeader('Content-Type', 'text/html; charset=utf-8')
       res.end(html)
     },
-    view: (res, req, website, requestInfo) => {
-      if (requestInfo.action && requestInfo.action !== '') {
-        res.statusCode = 404
-        res.end('Not found')
-        return
-      }
-      page('gallery', { production: process.env.NODE_ENV === 'production' })(res, req, website, requestInfo)
-    },
+    view: renderView,
   },
 }

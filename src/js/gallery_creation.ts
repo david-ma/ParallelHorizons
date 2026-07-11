@@ -747,7 +747,7 @@ async function saveAndPreview(): Promise<void> {
       return
     }
     showToast('Saved — opening preview…')
-    window.open('/view', '_blank', 'noopener')
+    window.open('/view/parallel-horizons', '_blank', 'noopener')
   } catch (err) {
     showToast(err instanceof Error ? err.message : 'Save failed', true)
   } finally {
@@ -879,15 +879,15 @@ function setupButtons(): void {
 
   document.getElementById('load-current')?.addEventListener('click', async () => {
     try {
-      const res = await fetch('/gallery-floorplan.json', { credentials: 'same-origin' })
+      const res = await fetch('/galleries/parallel-horizons.json', { credentials: 'same-origin' })
       if (!res.ok) {
-        showToast('No gallery-floorplan.json on server', true)
+        showToast('No parallel-horizons floorplan on server', true)
         return
       }
       applyData((await res.json()) as FloorplanData, true)
       showToast('Loaded current floorplan')
     } catch (err) {
-      console.error('Failed to load gallery-floorplan.json:', err)
+      console.error('Failed to load parallel-horizons floorplan:', err)
       showToast('Load failed', true)
     }
   })
@@ -903,7 +903,7 @@ async function boot(): Promise<void> {
   renderAll()
 
   try {
-    const res = await fetch('/gallery-floorplan.json', { credentials: 'same-origin' })
+    const res = await fetch('/galleries/parallel-horizons.json', { credentials: 'same-origin' })
     if (res.ok) applyData((await res.json()) as FloorplanData, false)
   } catch (_err) {
     // blank editor

@@ -1,0 +1,342 @@
+{
+  "version": 2,
+  "title": "Monet at the Met",
+  "slug": "met-monet",
+  "grid": {
+    "rows": 5,
+    "cols": 5
+  },
+  "activeCells": [
+    "4,1",
+    "3,0",
+    "4,0",
+    "0,3",
+    "4,2",
+    "4,3",
+    "4,4",
+    "2,4",
+    "3,4",
+    "1,4",
+    "0,4",
+    "0,2",
+    "0,1",
+    "0,0",
+    "1,0",
+    "2,0"
+  ],
+  "placements": {
+    "4,1": {
+      "north": "photo-0",
+      "east": "",
+      "south": "photo-1",
+      "west": ""
+    },
+    "3,0": {
+      "north": "",
+      "east": "photo-2",
+      "south": "",
+      "west": "photo-3"
+    },
+    "4,0": {
+      "north": "",
+      "east": "",
+      "south": "photo-4",
+      "west": "photo-5"
+    },
+    "0,3": {
+      "north": "photo-6",
+      "east": "",
+      "south": "photo-7",
+      "west": ""
+    },
+    "4,2": {
+      "north": "photo-8",
+      "east": "",
+      "south": "photo-9",
+      "west": ""
+    },
+    "4,3": {
+      "north": "photo-10",
+      "east": "",
+      "south": "photo-11",
+      "west": ""
+    },
+    "4,4": {
+      "north": "",
+      "east": "photo-12",
+      "south": "photo-13",
+      "west": ""
+    },
+    "2,4": {
+      "north": "",
+      "east": "photo-14",
+      "south": "",
+      "west": "photo-15"
+    },
+    "3,4": {
+      "north": "",
+      "east": "photo-16",
+      "south": "",
+      "west": "photo-17"
+    },
+    "1,4": {
+      "north": "",
+      "east": "photo-18",
+      "south": "",
+      "west": "photo-19"
+    },
+    "0,4": {
+      "north": "photo-20",
+      "east": "photo-21",
+      "south": "",
+      "west": ""
+    },
+    "0,2": {
+      "north": "photo-22",
+      "east": "",
+      "south": "photo-23",
+      "west": ""
+    },
+    "0,1": {
+      "north": "photo-24",
+      "east": "",
+      "south": "photo-25",
+      "west": ""
+    },
+    "0,0": {
+      "north": "photo-26",
+      "east": "",
+      "south": "",
+      "west": "photo-27"
+    },
+    "1,0": {
+      "north": "",
+      "east": "photo-28",
+      "south": "",
+      "west": "photo-29"
+    },
+    "2,0": {
+      "north": "",
+      "east": "",
+      "south": "",
+      "west": ""
+    }
+  },
+  "photoCatalog": [
+    {
+      "id": "photo-0",
+      "title": "Morning on the Seine near Giverny",
+      "src": "/img/OldArtworks/0.jpg",
+      "artist": "Claude Monet",
+      "year": "1897"
+    },
+    {
+      "id": "photo-1",
+      "title": "Rouen Cathedral: The Portal (Sunlight)",
+      "src": "/img/OldArtworks/1.jpg",
+      "artist": "Claude Monet",
+      "year": "1894"
+    },
+    {
+      "id": "photo-2",
+      "title": "Haystacks (Effect of Snow and Sun)",
+      "src": "/img/OldArtworks/2.jpg",
+      "artist": "Claude Monet",
+      "year": "1891"
+    },
+    {
+      "id": "photo-3",
+      "title": "The Four Trees",
+      "src": "/img/OldArtworks/3.jpg",
+      "artist": "Claude Monet",
+      "year": "1891"
+    },
+    {
+      "id": "photo-4",
+      "title": "Bridge over a Pond of Water Lilies",
+      "src": "/img/OldArtworks/4.jpg",
+      "artist": "Claude Monet",
+      "year": "1899"
+    },
+    {
+      "id": "photo-5",
+      "title": "Poppy Fields near Argenteuil",
+      "src": "/img/OldArtworks/5.jpg",
+      "artist": "Claude Monet",
+      "year": "1875"
+    },
+    {
+      "id": "photo-6",
+      "title": "The Manneporte (Étretat)",
+      "src": "/img/OldArtworks/6.jpg",
+      "artist": "Claude Monet",
+      "year": "1883"
+    },
+    {
+      "id": "photo-7",
+      "title": "La Grenouillère",
+      "src": "/img/OldArtworks/7.jpg",
+      "artist": "Claude Monet",
+      "year": "1869"
+    },
+    {
+      "id": "photo-8",
+      "title": "Houses on the Achterzaan",
+      "src": "/img/OldArtworks/8.jpg",
+      "artist": "Claude Monet",
+      "year": "1871"
+    },
+    {
+      "id": "photo-9",
+      "title": "Water Lilies",
+      "src": "/img/OldArtworks/9.jpg",
+      "artist": "Claude Monet",
+      "year": "1919"
+    },
+    {
+      "id": "photo-10",
+      "title": "Garden at Sainte-Adresse",
+      "src": "/img/OldArtworks/10.jpg",
+      "artist": "Claude Monet",
+      "year": "1867"
+    },
+    {
+      "id": "photo-11",
+      "title": "The Bodmer Oak, Fontainebleau Forest",
+      "src": "/img/OldArtworks/11.jpg",
+      "artist": "Claude Monet",
+      "year": "1865"
+    },
+    {
+      "id": "photo-12",
+      "title": "Camille Monet (1847–1879) on a Garden Bench",
+      "src": "/img/OldArtworks/12.jpg",
+      "artist": "Claude Monet",
+      "year": "1873"
+    },
+    {
+      "id": "photo-13",
+      "title": "Spring (Fruit Trees in Bloom)",
+      "src": "/img/OldArtworks/13.jpg",
+      "artist": "Claude Monet",
+      "year": "1873"
+    },
+    {
+      "id": "photo-14",
+      "title": "Bouquet of Sunflowers",
+      "src": "/img/OldArtworks/14.jpg",
+      "artist": "Claude Monet",
+      "year": "1881"
+    },
+    {
+      "id": "photo-15",
+      "title": "Vétheuil in Summer",
+      "src": "/img/OldArtworks/15.jpg",
+      "artist": "Claude Monet",
+      "year": "1880"
+    },
+    {
+      "id": "photo-16",
+      "title": "Chrysanthemums",
+      "src": "/img/OldArtworks/16.jpg",
+      "artist": "Claude Monet",
+      "year": "1882"
+    },
+    {
+      "id": "photo-17",
+      "title": "The Stroller (Suzanne Hoschedé, later Mrs. Theodore Earl Butler, 1868–1899)",
+      "src": "/img/OldArtworks/17.jpg",
+      "artist": "Claude Monet",
+      "year": "1887"
+    },
+    {
+      "id": "photo-18",
+      "title": "The Parc Monceau",
+      "src": "/img/OldArtworks/18.jpg",
+      "artist": "Claude Monet",
+      "year": "1878"
+    },
+    {
+      "id": "photo-19",
+      "title": "Île aux Fleurs near Vétheuil",
+      "src": "/img/OldArtworks/19.jpg",
+      "artist": "Claude Monet",
+      "year": "1880"
+    },
+    {
+      "id": "photo-20",
+      "title": "Landscape: The Parc Monceau",
+      "src": "/img/OldArtworks/20.jpg",
+      "artist": "Claude Monet",
+      "year": "1876"
+    },
+    {
+      "id": "photo-21",
+      "title": "Camille Monet (1847–1879) in the Garden at Argenteuil",
+      "src": "/img/OldArtworks/21.jpg",
+      "artist": "Claude Monet",
+      "year": "1876"
+    },
+    {
+      "id": "photo-22",
+      "title": "Water Lilies",
+      "src": "/img/OldArtworks/22.jpg",
+      "artist": "Claude Monet",
+      "year": "1916"
+    },
+    {
+      "id": "photo-23",
+      "title": "Regatta at Sainte-Adresse",
+      "src": "/img/OldArtworks/23.jpg",
+      "artist": "Claude Monet",
+      "year": "1867"
+    },
+    {
+      "id": "photo-24",
+      "title": "View of Vétheuil",
+      "src": "/img/OldArtworks/24.jpg",
+      "artist": "Claude Monet",
+      "year": "1880"
+    },
+    {
+      "id": "photo-25",
+      "title": "The Path through the Irises",
+      "src": "/img/OldArtworks/25.jpg",
+      "artist": "Claude Monet",
+      "year": "1914"
+    },
+    {
+      "id": "photo-26",
+      "title": "The Manneporte near Étretat",
+      "src": "/img/OldArtworks/26.jpg",
+      "artist": "Claude Monet",
+      "year": "1886"
+    },
+    {
+      "id": "photo-27",
+      "title": "The Green Wave",
+      "src": "/img/OldArtworks/27.jpg",
+      "artist": "Claude Monet",
+      "year": "1866"
+    },
+    {
+      "id": "photo-28",
+      "title": "Cabin of the Customs Watch",
+      "src": "/img/OldArtworks/28.jpg",
+      "artist": "Claude Monet",
+      "year": "1882"
+    },
+    {
+      "id": "photo-29",
+      "title": "Dr. Leclenché",
+      "src": "/img/OldArtworks/29.jpg",
+      "artist": "Claude Monet",
+      "year": "1864"
+    }
+  ],
+  "spawn": {
+    "cell": "4,0",
+    "y": 1.75
+  },
+  "wallStyle": "linen"
+}

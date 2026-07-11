@@ -77,6 +77,39 @@ body.dev-mode #devonly {
   display: block;
 }
 
+#gallery-minimap-wrap {
+  display: none;
+  position: fixed;
+  top: 0.75rem;
+  right: 0.75rem;
+  z-index: 30;
+  background: rgba(28, 28, 30, 0.88);
+  border: 1px solid #3a3a3c;
+  border-radius: 8px;
+  padding: 0.35rem;
+  pointer-events: none;
+  user-select: none;
+}
+
+#gallery-minimap {
+  display: block;
+  width: 220px;
+  height: 220px;
+  border-radius: 4px;
+}
+
+#gallery-minimap-legend {
+  margin: 0.35rem 0 0;
+  font-family: Lato, sans-serif;
+  font-size: 10px;
+  color: #aeaeb2;
+  text-align: center;
+}
+
+body.dev-mode #gallery-minimap-wrap {
+  display: block;
+}
+
 .dev-only-btn {
   display: none;
   margin: 0 0 1em;
@@ -400,4 +433,63 @@ body.page-home {
 	text-align: center;
 	font-size: 0.8rem;
 	color: #636366;
+}
+
+.home-galleries {
+	margin-bottom: 2.5rem;
+}
+
+.home-galleries h2 {
+	font-family: Oswald, sans-serif;
+	font-weight: 400;
+	letter-spacing: 0.04em;
+	margin: 0 0 1rem;
+	font-size: 1.35rem;
+}
+
+.home-gallery-grid {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+	display: grid;
+	gap: 1rem;
+}
+
+@media (min-width: 640px) {
+	.home-gallery-grid {
+		grid-template-columns: 1fr 1fr;
+	}
+}
+
+.home-gallery-card {
+	background: #2c2c2e;
+	border: 1px solid #3a3a3d;
+	border-radius: 8px;
+	padding: 1.25rem;
+	display: flex;
+	flex-direction: column;
+	gap: 0.65rem;
+}
+
+.home-gallery-card h3 {
+	margin: 0;
+	font-family: Oswald, sans-serif;
+	font-size: 1.15rem;
+	letter-spacing: 0.03em;
+}
+
+.home-gallery-card p {
+	margin: 0;
+	font-size: 0.9rem;
+	color: #b8b8c2;
+}
+
+.home-gallery-credit {
+	font-size: 0.8rem !important;
+	color: #8e8e93 !important;
+}
+
+.home-gallery-card .home-btn {
+	align-self: flex-start;
+	margin-top: 0.25rem;
 }

@@ -1,0 +1,18 @@
+{
+  "galleries": [
+    {
+      "slug": "parallel-horizons",
+      "title": "Parallel Horizons",
+      "description": "David Ma's Tap Gallery exhibition — contemporary photography.",
+      "floorplanPath": "/galleries/parallel-horizons.json",
+      "default": true
+    },
+    {
+      "slug": "met-monet",
+      "title": "Monet at the Met",
+      "description": "Thirty Claude Monet paintings from The Met collection (Open Access scraper demo).",
+      "floorplanPath": "/galleries/met-monet.json",
+      "credit": "Images courtesy of The Metropolitan Museum of Art Open Access."
+    }
+  ]
+}
