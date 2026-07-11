@@ -13,7 +13,10 @@
     "start": "thalia start",
     "dev": "thalia dev",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "test": "bun test tests/unit",
+    "test": "bun test tests/unit tests/integration",
+    "test:unit": "bun test tests/unit",
+    "test:integration": "bun test tests/integration",
+    "db:generate": "bun drizzle-kit generate",
     "db:migrate": "bun drizzle-kit migrate",
     "db:seed": "bun scripts/seed-test-users.ts"
   },

@@ -16,10 +16,11 @@ export const galleryRoutes: RoleRouteRule[] = [
   { path: '/api/floorplan', permissions: { guest: ['read'], user: ['read'], admin: ['read'] } },
 
   { path: '/dashboard', permissions: { user: ['read', 'create'], admin: ['read', 'create', 'update', 'delete'] } },
-  { path: '/gallery-create', permissions: { user: ['create'], admin: ['create'] } },
+  // Thalia maps permission from URL action segment (empty → read), not HTTP method — see thalia/server/security/README.md
+  { path: '/gallery-create', permissions: { user: ['read', 'create'], admin: ['read', 'create'] } },
   { path: '/gallery-publish', permissions: { user: ['read', 'update'], admin: ['read', 'update', 'delete'] } },
   { path: '/create', permissions: { user: ['read', 'create', 'update'], admin: ['read', 'create', 'update', 'delete'] } },
-  { path: '/save-floorplan', permissions: { user: ['create', 'update'], admin: ['create', 'update', 'delete'] } },
+  { path: '/save-floorplan', permissions: { user: ['read', 'create', 'update'], admin: ['read', 'create', 'update', 'delete'] } },
   { path: '/profile', permissions: { user: ['read', 'update'], admin: ['read', 'update', 'delete', 'create'] } },
 
   { path: '/dev-spotlight-slider', permissions: { guest: ['read'], user: ['read'], admin: ['read'] } },

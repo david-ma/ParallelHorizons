@@ -563,30 +563,23 @@ gallery/
 
 ## Testing strategy
 
-### CI (`.github/workflows/ci.yml`) — always green
+### CI
 
-```yaml
-env:
-  NODE_ENV: test
-  SKIP_DATABASE_TESTS: "1"
-  SKIP_MAILCATCHER_TESTS: "1"
-  SKIP_GALLERY_INTEGRATION: "1"   # add when integration tests exist
-run: bun test tests/unit
-```
+Runs **`bun run test:unit`** only — no MariaDB or MailCatcher on GitHub runners.
 
-Unit tests only in CI — no MariaDB, MailCatcher, or SmugMug.
+See **[docs/testing.md](./testing.md)** for the full matrix (integration tests fail loudly unless `SKIP_*=1`).
 
-### Local integration (opt-in)
+### Local integration (runs by default)
 
-| Script / command | Requires |
-|------------------|----------|
-| `docker compose up -d && bun drizzle-kit push` | MariaDB |
-| `mailcatcher` | Password-reset test |
-| `bun run test:integration:auth` (to add) | DB + seed users |
-| `SKIP_MAILCATCHER_TESTS=0 bun test tests/integration/auth-mail.test.ts` (to add) | DB + MailCatcher |
-| `SMUGMUG_RUN_INTEGRATION=1 bun test …` (D3) | Staging SmugMug creds |
+| Step | Command |
+|------|---------|
+| MariaDB | `docker compose up -d` |
+| Migrations | `bun run db:migrate` |
+| Seed users | `bun run db:seed` |
+| MailCatcher | `mailcatcher` |
+| Full suite | `bun test` |
 
-Copy Thalia’s **`scripts/seed-test-users.ts`** pattern: fixed test emails + `test-password`.
+Skip: `SKIP_DATABASE_TESTS=1`, `SKIP_MAILCATCHER_TESTS=1`.
 
 ### Layers
 
@@ -600,6 +593,7 @@ Copy Thalia’s **`scripts/seed-test-users.ts`** pattern: fixed test emails + `t
 
 ## Related docs
 
+- [testing.md](./testing.md) — unit vs integration, skip flags, migrate workflow  
 - [floorplan-schema.md](./floorplan-schema.md) — viewer ↔ editor JSON contract  
 - [2026-07-11_optimisations.md](./2026-07-11_optimisations.md) — viewer perf, cross-browser validation  
 - [2026-07-11_diary.md](./2026-07-11_diary.md) — viewer/editor history, performance notes  

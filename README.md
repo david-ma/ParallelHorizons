@@ -24,11 +24,13 @@ Quickstart (Thalia):
 
 1. Copy `.env.example` → `.env` (or export `DATABASE_URL`).
 2. Start MariaDB: `docker compose up -d`
-3. Push schema: `bun run db:push`
+3. Apply migrations: `bun run db:migrate`
 4. First visit: open `/setup` to create the admin account, then `/newUser` for creator accounts.
 5. Password reset dev mail: run `mailcatcher` (SMTP `:1025`, web UI `:1080`).
 
 Optional test users: `bun run db:seed` (password `test-password`).
+
+See [docs/testing.md](docs/testing.md) for the full test matrix (`bun test` fails loudly if DB/MailCatcher are down).
 
 Thalia compiles `src/js/*.ts` → `/dist/js/*.js` on-the-fly in development.
 

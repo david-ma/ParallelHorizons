@@ -1,7 +1,8 @@
 /**
  * Drizzle schema for gallery — Thalia security tables + galleries.
  *
- *   bun drizzle-kit push
+ *   bun drizzle-kit generate --name=<label>
+ *   bun drizzle-kit migrate
  */
 import { models } from 'thalia/models'
 import type { MySqlTableWithColumns } from 'drizzle-orm/mysql-core'
