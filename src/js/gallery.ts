@@ -4,6 +4,7 @@
 import * as THREE from 'three'
 import type { Gal } from './types.js'
 import { drawFrame } from './artwork.js'
+import { addGalleryCeiling, createFloorMaterial, createWallMaterial } from './materials.js'
 import {
   addArtworkSpotlightRig,
   applyArtworkSpotlightRigOptions,
@@ -16,35 +17,26 @@ export function buildDefaultGallery(g: Gal): void {
   g.scene.add(new THREE.AmbientLight(0xffffff, 0.8))
   g.scene.add(new THREE.HemisphereLight(0xffffff, 0xf2f2f2, 0.6))
 
-  const floorText = new THREE.TextureLoader().load('/img/Textures/Floor.jpg')
-  floorText.colorSpace = THREE.SRGBColorSpace
-  floorText.wrapS = THREE.RepeatWrapping
-  floorText.wrapT = THREE.RepeatWrapping
-  floorText.repeat.set(24, 24)
-  const floorMaterial = new THREE.MeshPhongMaterial({ map: floorText })
-  const floor = new THREE.Mesh(new THREE.PlaneGeometry(45, 45), floorMaterial)
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(45, 45), createFloorMaterial(24, 24))
   floor.rotation.x = Math.PI / 2
   floor.rotation.y = Math.PI
   g.scene.add(floor)
+  addGalleryCeiling(g.scene, 45, 45)
 
   g.wallGroup = new THREE.Group()
   g.scene.add(g.wallGroup)
-  const wall1 = new THREE.Mesh(
-    new THREE.BoxGeometry(40, 6, 0.001),
-    new THREE.MeshLambertMaterial({ color: 0xffffff })
-  ) as THREE.Mesh & { BBox?: THREE.Box3 }
-  const wall2 = new THREE.Mesh(
-    new THREE.BoxGeometry(6, 6, 0.001),
-    new THREE.MeshLambertMaterial({ color: 0xffffff })
-  ) as THREE.Mesh & { BBox?: THREE.Box3 }
-  const wall3 = new THREE.Mesh(
-    new THREE.BoxGeometry(6, 6, 0.001),
-    new THREE.MeshLambertMaterial({ color: 0xffffff })
-  ) as THREE.Mesh & { BBox?: THREE.Box3 }
-  const wall4 = new THREE.Mesh(
-    new THREE.BoxGeometry(40, 6, 0.001),
-    new THREE.MeshLambertMaterial({ color: 0xffffff })
-  ) as THREE.Mesh & { BBox?: THREE.Box3 }
+  const wall1 = new THREE.Mesh(new THREE.BoxGeometry(40, 6, 0.001), createWallMaterial(40)) as THREE.Mesh & {
+    BBox?: THREE.Box3
+  }
+  const wall2 = new THREE.Mesh(new THREE.BoxGeometry(6, 6, 0.001), createWallMaterial(6)) as THREE.Mesh & {
+    BBox?: THREE.Box3
+  }
+  const wall3 = new THREE.Mesh(new THREE.BoxGeometry(6, 6, 0.001), createWallMaterial(6)) as THREE.Mesh & {
+    BBox?: THREE.Box3
+  }
+  const wall4 = new THREE.Mesh(new THREE.BoxGeometry(40, 6, 0.001), createWallMaterial(40)) as THREE.Mesh & {
+    BBox?: THREE.Box3
+  }
   g.wallGroup.add(wall1, wall2, wall3, wall4)
   g.wallGroup.position.y = 3
   wall1.position.z = -3
@@ -57,12 +49,6 @@ export function buildDefaultGallery(g: Gal): void {
   ;[wall1, wall2, wall3, wall4].forEach((w) => {
     w.BBox = new THREE.Box3().setFromObject(w)
   })
-
-  const ceilMaterial = new THREE.MeshLambertMaterial({ color: 0xeeeeee })
-  const ceil = new THREE.Mesh(new THREE.PlaneGeometry(40, 6), ceilMaterial)
-  ceil.position.y = 6
-  ceil.rotation.x = Math.PI / 2
-  g.scene.add(ceil)
 
   g.num_of_paintings = 30
   g.paintings = []

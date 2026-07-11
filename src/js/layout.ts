@@ -5,6 +5,7 @@ import * as THREE from 'three'
 import type { Gal } from './types.js'
 import type { FloorplanBlob, FloorplanWallPlacements } from './types.js'
 import { addFrameToArtwork, addPlacardToArtwork } from './artwork.js'
+import { addGalleryCeiling, createFloorMaterial, createWallMaterial } from './materials.js'
 import { addArtworkSpotlightRig, spotlightOptionsForArtwork } from './spotlight.js'
 
 const DEFAULT_FLOORPLAN_URL = '/gallery-floorplan.json'
@@ -91,18 +92,16 @@ function addFloor(
   rows: number,
   cols: number
 ): { floorWidth: number; floorDepth: number } {
-  const floorText = new THREE.TextureLoader().load('/img/Textures/Floor.jpg')
-  floorText.colorSpace = THREE.SRGBColorSpace
-  floorText.wrapS = THREE.RepeatWrapping
-  floorText.wrapT = THREE.RepeatWrapping
-  floorText.repeat.set(cols * 2, rows * 2)
-  const floorMaterial = new THREE.MeshPhongMaterial({ map: floorText })
   const floorWidth = cols * CELL_WORLD + 8
   const floorDepth = rows * CELL_WORLD + 8
-  const floor = new THREE.Mesh(new THREE.PlaneGeometry(floorWidth, floorDepth), floorMaterial)
+  const floor = new THREE.Mesh(
+    new THREE.PlaneGeometry(floorWidth, floorDepth),
+    createFloorMaterial(cols * 2, rows * 2)
+  )
   floor.rotation.x = Math.PI / 2
   floor.rotation.y = Math.PI
   g.scene.add(floor)
+  addGalleryCeiling(g.scene, floorWidth, floorDepth)
   return { floorWidth, floorDepth }
 }
 
@@ -144,7 +143,7 @@ export function buildSceneFromFloorplan(g: Gal, data: FloorplanBlob): void {
   const { floorWidth, floorDepth } = addFloor(g, rows, cols)
   initGalleryBounds(g, floorWidth, floorDepth)
 
-  const wallMaterial = new THREE.MeshLambertMaterial({ color: 0xffffff })
+  const wallMaterial = createWallMaterial(CELL_WORLD)
   const addWall = (x: number, z: number, rotateY: number) => {
     const wall = new THREE.Mesh(new THREE.BoxGeometry(CELL_WORLD, 6, 0.001), wallMaterial) as THREE.Mesh & {
       BBox?: THREE.Box3
