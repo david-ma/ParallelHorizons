@@ -134,8 +134,8 @@ export interface ArtworkSpotlightRig {
   spotlight: THREE.SpotLight
   spotlightTarget: THREE.Object3D
   emitterDisc: THREE.Mesh
-  fixture?: THREE.Object3D
-  fallback?: THREE.Object3D
+  /** Index into shared InstancedMesh fixture pool (-1 until pool ready). */
+  fixtureInstanceIndex: number
   options: SpotlightRigOptions
   anchor: ArtworkSpotlightAnchor
   /** When set, anchor is refreshed from live artwork pose on each apply. */
@@ -303,7 +303,7 @@ export function snapshotSpotlightRigs(scene: THREE.Scene, camera: THREE.Camera):
       intensity: rig.spotlight.intensity,
       visible: rig.spotlight.visible,
       lightInScene,
-      fixtureLoaded: !!(rig.fixture ?? rig.fallback),
+      fixtureLoaded: rig.fixtureInstanceIndex >= 0 && fixturePool !== null,
       emitterOpacity: emitterMat.opacity,
       distanceToCamera: dbg?.distance ?? distance,
       inView: dbg?.inView ?? inView,
@@ -324,17 +324,15 @@ function refreshRigCullPoint(rig: ArtworkSpotlightRig, out: THREE.Vector3): THRE
   return out
 }
 
-/** Beam on/off only — fixtures stay visible; emitter dims when off. */
+/** Beam on/off — toggles instanced fixture visibility via instance matrix. */
 function ensureRigFixtureOn(rig: ArtworkSpotlightRig): void {
   rig.emitterDisc.visible = true
-  if (rig.fixture) rig.fixture.visible = true
-  if (rig.fallback) rig.fallback.visible = true
+  setFixtureInstanceVisible(rig, true)
 }
 
 function ensureRigFixtureOff(rig: ArtworkSpotlightRig): void {
   rig.emitterDisc.visible = false
-  if (rig.fixture) rig.fixture.visible = false
-  if (rig.fallback) rig.fallback.visible = false
+  setFixtureInstanceVisible(rig, false)
 }
 
 /** Restore SpotLight from rig options (after cull re-enable). */
@@ -627,20 +625,9 @@ export function applyArtworkSpotlightRigOptions(rig: ArtworkSpotlightRig): void 
   rig.spotlightTarget.position.copy(options.lightTarget)
   rig.spotlight.target = rig.spotlightTarget
 
-  const mountArgs = [
-    options.lightOrigin,
-    options.lightTarget,
-    options.wallNormal,
-    options.wallAnchor,
-    options.fixtureScale,
-    options.wallMountOffset,
-    options.fixturePitchOffset,
-  ] as const
-
-  const mounted = rig.fixture ?? rig.fallback
-  if (mounted) {
-    mountFixtureOnWall(mounted, ...mountArgs)
-    mounted.getWorldPosition(_mountedWorld)
+  if (fixturePool && rig.fixtureInstanceIndex >= 0) {
+    syncFixtureInstanceMatrix(rig)
+    fixturePool.mountProxy.getWorldPosition(_mountedWorld)
     rig.spotlight.position.copy(_mountedWorld)
   } else {
     rig.spotlight.position.copy(options.lightOrigin)
@@ -677,7 +664,31 @@ const spotlightModelLoader = new GLTFLoader()
 let spotlightTemplate: THREE.Object3D | null = null
 let spotlightTemplatePromise: Promise<THREE.Object3D> | null = null
 
-/** Deep clone fixture hierarchy; share mesh geometry/material buffers (not clone(false) — that drops children). */
+const FIXTURE_INSTANCE_CAPACITY = 64
+const _fixtureInstanceMatrix = new THREE.Matrix4()
+const _zeroInstanceMatrix = new THREE.Matrix4().makeScale(0, 0, 0)
+
+type FixtureInstancePool = {
+  layers: THREE.InstancedMesh[]
+  /** Mirror meshes in mountProxy — world matrices include GLB hierarchy (e.g. 100× scale). */
+  proxyMeshes: THREE.Mesh[]
+  mountProxy: THREE.Object3D
+  scene: THREE.Scene
+  count: number
+}
+
+let fixturePool: FixtureInstancePool | null = null
+let fixturePoolInitPromise: Promise<void> | null = null
+
+function collectTemplateMeshes(root: THREE.Object3D): THREE.Mesh[] {
+  const meshes: THREE.Mesh[] = []
+  root.traverse((obj) => {
+    if ((obj as THREE.Mesh).isMesh) meshes.push(obj as THREE.Mesh)
+  })
+  return meshes
+}
+
+/** Deep clone hierarchy; share mesh geometry/material buffers. */
 function cloneFixtureWithSharedAssets(source: THREE.Object3D): THREE.Object3D {
   const clone = source.clone(false)
   if ((clone as THREE.Mesh).isMesh && (source as THREE.Mesh).isMesh) {
@@ -690,6 +701,125 @@ function cloneFixtureWithSharedAssets(source: THREE.Object3D): THREE.Object3D {
     clone.add(cloneFixtureWithSharedAssets(child))
   }
   return clone
+}
+
+/** Bake mesh verts into mount-root local space so one instance matrix per rig suffices. */
+function bakeMeshGeometryToRoot(mesh: THREE.Mesh, root: THREE.Object3D): THREE.BufferGeometry {
+  root.updateMatrixWorld(true)
+  mesh.updateMatrixWorld(true)
+  const rel = root.matrixWorld.clone().invert().multiply(mesh.matrixWorld)
+  const geometry = mesh.geometry.clone()
+  geometry.applyMatrix4(rel)
+  return geometry
+}
+
+function initFixturePoolFromProxy(scene: THREE.Scene, mountProxy: THREE.Object3D): void {
+  const sourceMeshes = collectTemplateMeshes(mountProxy)
+  const layers: THREE.InstancedMesh[] = []
+  for (const source of sourceMeshes) {
+    const geometry = bakeMeshGeometryToRoot(source, mountProxy)
+    const material = source.material as THREE.Material
+    const instanced = new THREE.InstancedMesh(geometry, material, FIXTURE_INSTANCE_CAPACITY)
+    instanced.count = 0
+    instanced.frustumCulled = false
+    instanced.instanceMatrix.setUsage(THREE.DynamicDrawUsage)
+    layers.push(instanced)
+    scene.add(instanced)
+  }
+  fixturePool = { layers, proxyMeshes: sourceMeshes, mountProxy, scene, count: 0 }
+}
+
+function initFixturePoolFromTemplate(scene: THREE.Scene, template: THREE.Object3D): void {
+  initFixturePoolFromProxy(scene, cloneFixtureWithSharedAssets(template))
+}
+
+function initFallbackFixturePool(scene: THREE.Scene): void {
+  const mountProxy = new THREE.Group()
+  const mesh = new THREE.Mesh(
+    new THREE.ConeGeometry(0.08, 0.25, 12),
+    new THREE.MeshBasicMaterial({ color: 0x222222 })
+  )
+  mountProxy.add(mesh)
+  initFixturePoolFromProxy(scene, mountProxy)
+}
+
+function syncFixturePoolCount(): void {
+  if (!fixturePool) return
+  for (const layer of fixturePool.layers) {
+    layer.count = fixturePool.count
+  }
+}
+
+function allocateFixtureInstance(rig: ArtworkSpotlightRig): void {
+  if (!fixturePool) return
+  if (rig.fixtureInstanceIndex >= 0) return
+  if (fixturePool.count >= FIXTURE_INSTANCE_CAPACITY) {
+    console.warn('Spotlight fixture instance pool full; increase FIXTURE_INSTANCE_CAPACITY')
+    return
+  }
+  rig.fixtureInstanceIndex = fixturePool.count++
+  syncFixturePoolCount()
+}
+
+function mountProxyMatrixForRig(rig: ArtworkSpotlightRig): void {
+  if (!fixturePool) return
+  const o = rig.options
+  mountFixtureOnWall(
+    fixturePool.mountProxy,
+    o.lightOrigin,
+    o.lightTarget,
+    o.wallNormal,
+    o.wallAnchor,
+    o.fixtureScale,
+    o.wallMountOffset,
+    o.fixturePitchOffset
+  )
+  fixturePool.mountProxy.updateMatrixWorld(true)
+}
+
+function syncFixtureInstanceMatrix(rig: ArtworkSpotlightRig): void {
+  if (!fixturePool || rig.fixtureInstanceIndex < 0) return
+  mountProxyMatrixForRig(rig)
+  fixturePool.mountProxy.updateMatrixWorld(true)
+  _fixtureInstanceMatrix.copy(fixturePool.mountProxy.matrixWorld)
+  for (const layer of fixturePool.layers) {
+    layer.setMatrixAt(rig.fixtureInstanceIndex, _fixtureInstanceMatrix)
+    layer.instanceMatrix.needsUpdate = true
+  }
+}
+
+function setFixtureInstanceVisible(rig: ArtworkSpotlightRig, visible: boolean): void {
+  if (!fixturePool || rig.fixtureInstanceIndex < 0) return
+  if (visible) {
+    syncFixtureInstanceMatrix(rig)
+  } else {
+    for (const layer of fixturePool.layers) {
+      layer.setMatrixAt(rig.fixtureInstanceIndex, _zeroInstanceMatrix)
+      layer.instanceMatrix.needsUpdate = true
+    }
+  }
+}
+
+function registerRigWithFixturePool(rig: ArtworkSpotlightRig): void {
+  allocateFixtureInstance(rig)
+  applyArtworkSpotlightRigOptions(rig)
+}
+
+function ensureFixturePool(scene: THREE.Scene, modelUrl: string): Promise<void> {
+  if (fixturePool) return Promise.resolve()
+  if (!fixturePoolInitPromise) {
+    fixturePoolInitPromise = loadSpotlightTemplate(modelUrl)
+      .then((template) => {
+        initFixturePoolFromTemplate(scene, template)
+        for (const rig of registeredRigs) registerRigWithFixturePool(rig)
+      })
+      .catch((err) => {
+        console.error('Failed to load spotlight model; using instanced fallback cone:', err)
+        initFallbackFixturePool(scene)
+        for (const rig of registeredRigs) registerRigWithFixturePool(rig)
+      })
+  }
+  return fixturePoolInitPromise
 }
 
 function loadSpotlightTemplate(modelUrl: string): Promise<THREE.Object3D> {
@@ -749,6 +879,7 @@ export function addArtworkSpotlightRig(
     spotlight,
     spotlightTarget,
     emitterDisc,
+    fixtureInstanceIndex: -1,
     options,
     anchor,
     artwork,
@@ -757,25 +888,10 @@ export function addArtworkSpotlightRig(
   registeredRigs.push(rig)
   updateRigCountLabel()
 
-  void loadSpotlightTemplate(options.modelUrl)
-    .then((template) => {
-      const fixture = cloneFixtureWithSharedAssets(template)
-      rig.fixture = fixture
-      scene.add(fixture)
-      applyArtworkSpotlightRigOptions(rig)
-      onTuningRender?.()
-    })
-    .catch((err) => {
-      console.error('Failed to load spotlight model:', err)
-      const fallback = new THREE.Mesh(
-        new THREE.ConeGeometry(0.08, 0.25, 12),
-        new THREE.MeshBasicMaterial({ color: 0x222222 })
-      )
-      rig.fallback = fallback
-      scene.add(fallback)
-      applyArtworkSpotlightRigOptions(rig)
-      onTuningRender?.()
-    })
+  void ensureFixturePool(scene, options.modelUrl).then(() => {
+    registerRigWithFixturePool(rig)
+    onTuningRender?.()
+  })
 
   return rig
 }

@@ -2,6 +2,25 @@
  * Artwork helpers: frames and moulding for paintings.
  */
 import * as THREE from 'three'
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
+
+const _mergeMatrix = new THREE.Matrix4()
+
+/** Merge axis-aligned box parts (each with center position) into one BufferGeometry. */
+function mergeBoxParts(
+  parts: ReadonlyArray<{ width: number; height: number; depth: number; x: number; y: number; z: number }>
+): THREE.BufferGeometry {
+  const geometries = parts.map((part) => {
+    const geometry = new THREE.BoxGeometry(part.width, part.height, part.depth)
+    _mergeMatrix.makeTranslation(part.x, part.y, part.z)
+    geometry.applyMatrix4(_mergeMatrix)
+    return geometry
+  })
+  const merged = mergeGeometries(geometries, false)
+  for (const geometry of geometries) geometry.dispose()
+  if (!merged) throw new Error('mergeBoxParts: mergeGeometries returned null')
+  return merged
+}
 
 /**
  * Builds a 3D frame group between two corners with given thickness (legacy style).
@@ -47,6 +66,7 @@ export function drawFrame(
 
 /**
  * Adds black outer frame and white inner moulding to an artwork group (plane assumed at z = 0.005).
+ * Two merged meshes (moulding + frame) instead of eight separate boxes.
  */
 export function addFrameToArtwork(parent: THREE.Group, artWidth: number, artHeight: number): void {
   const frameThickness = 0.06
@@ -55,45 +75,89 @@ export function addFrameToArtwork(parent: THREE.Group, artWidth: number, artHeig
   const matThickness = 0.045
   const matDepth = 0.012
   const matColor = 0xffffff
-  const mat = new THREE.MeshBasicMaterial({ color: frameColor })
+  const frameMat = new THREE.MeshBasicMaterial({ color: frameColor })
   const mouldingMat = new THREE.MeshBasicMaterial({ color: matColor })
 
-  // White inner moulding/mat between image and outer frame.
-  const matTop = new THREE.Mesh(new THREE.BoxGeometry(artWidth + matThickness * 2, matThickness, matDepth), mouldingMat)
-  matTop.position.set(0, artHeight / 2 + matThickness / 2, -matDepth / 2)
-  parent.add(matTop)
+  const moulding = new THREE.Mesh(
+    mergeBoxParts([
+      {
+        width: artWidth + matThickness * 2,
+        height: matThickness,
+        depth: matDepth,
+        x: 0,
+        y: artHeight / 2 + matThickness / 2,
+        z: -matDepth / 2,
+      },
+      {
+        width: artWidth + matThickness * 2,
+        height: matThickness,
+        depth: matDepth,
+        x: 0,
+        y: -artHeight / 2 - matThickness / 2,
+        z: -matDepth / 2,
+      },
+      {
+        width: matThickness,
+        height: artHeight,
+        depth: matDepth,
+        x: -artWidth / 2 - matThickness / 2,
+        y: 0,
+        z: -matDepth / 2,
+      },
+      {
+        width: matThickness,
+        height: artHeight,
+        depth: matDepth,
+        x: artWidth / 2 + matThickness / 2,
+        y: 0,
+        z: -matDepth / 2,
+      },
+    ]),
+    mouldingMat
+  )
+  parent.add(moulding)
 
-  const matBottom = new THREE.Mesh(new THREE.BoxGeometry(artWidth + matThickness * 2, matThickness, matDepth), mouldingMat)
-  matBottom.position.set(0, -artHeight / 2 - matThickness / 2, -matDepth / 2)
-  parent.add(matBottom)
-
-  const matLeft = new THREE.Mesh(new THREE.BoxGeometry(matThickness, artHeight, matDepth), mouldingMat)
-  matLeft.position.set(-artWidth / 2 - matThickness / 2, 0, -matDepth / 2)
-  parent.add(matLeft)
-
-  const matRight = new THREE.Mesh(new THREE.BoxGeometry(matThickness, artHeight, matDepth), mouldingMat)
-  matRight.position.set(artWidth / 2 + matThickness / 2, 0, -matDepth / 2)
-  parent.add(matRight)
-
-  // Outer black frame sits outside the white moulding (no overlap).
   const outerWidth = artWidth + (matThickness + frameThickness) * 2
   const outerHeight = artHeight + (matThickness + frameThickness) * 2
 
-  const top = new THREE.Mesh(new THREE.BoxGeometry(outerWidth, frameThickness, frameDepth), mat)
-  top.position.set(0, artHeight / 2 + matThickness + frameThickness / 2, -frameDepth / 2)
-  parent.add(top)
-
-  const bottom = new THREE.Mesh(new THREE.BoxGeometry(outerWidth, frameThickness, frameDepth), mat)
-  bottom.position.set(0, -artHeight / 2 - matThickness - frameThickness / 2, -frameDepth / 2)
-  parent.add(bottom)
-
-  const left = new THREE.Mesh(new THREE.BoxGeometry(frameThickness, outerHeight, frameDepth), mat)
-  left.position.set(-artWidth / 2 - matThickness - frameThickness / 2, 0, -frameDepth / 2)
-  parent.add(left)
-
-  const right = new THREE.Mesh(new THREE.BoxGeometry(frameThickness, outerHeight, frameDepth), mat)
-  right.position.set(artWidth / 2 + matThickness + frameThickness / 2, 0, -frameDepth / 2)
-  parent.add(right)
+  const frame = new THREE.Mesh(
+    mergeBoxParts([
+      {
+        width: outerWidth,
+        height: frameThickness,
+        depth: frameDepth,
+        x: 0,
+        y: artHeight / 2 + matThickness + frameThickness / 2,
+        z: -frameDepth / 2,
+      },
+      {
+        width: outerWidth,
+        height: frameThickness,
+        depth: frameDepth,
+        x: 0,
+        y: -artHeight / 2 - matThickness - frameThickness / 2,
+        z: -frameDepth / 2,
+      },
+      {
+        width: frameThickness,
+        height: outerHeight,
+        depth: frameDepth,
+        x: -artWidth / 2 - matThickness - frameThickness / 2,
+        y: 0,
+        z: -frameDepth / 2,
+      },
+      {
+        width: frameThickness,
+        height: outerHeight,
+        depth: frameDepth,
+        x: artWidth / 2 + matThickness + frameThickness / 2,
+        y: 0,
+        z: -frameDepth / 2,
+      },
+    ]),
+    frameMat
+  )
+  parent.add(frame)
 }
 
 export interface PlacardInfo {
@@ -180,4 +244,13 @@ export function addPlacardToArtwork(parent: THREE.Group, artWidth: number, artHe
   )
   placard.position.set(0, -(frameBottom + gapBelowFrame + placardHeight / 2), 0.004)
   parent.add(placard)
+}
+
+/** Count mesh drawables under a group (for tests). */
+export function countArtworkFrameMeshes(parent: THREE.Object3D): number {
+  let count = 0
+  parent.traverse((obj) => {
+    if ((obj as THREE.Mesh).isMesh) count++
+  })
+  return count
 }
