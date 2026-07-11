@@ -13,25 +13,24 @@ const DEFAULT_FIXTURE_PITCH = Math.atan2(5.35 - 2, 0.04)
 const FIXTURE_YAW_OFFSET = Math.PI
 
 /** Global spotlight defaults — edit here or paste from dev panel “Copy as TypeScript”. */
-/** Global spotlight defaults — paste over SPOTLIGHT_TUNING in src/js/spotlight.ts */
 export const SPOTLIGHT_TUNING = {
-  mountY: 4.87,
-  lightRoomOffset: 0.555,
+  mountY: 4.22,
+  lightRoomOffset: 0.28,
   artworkWallStandoff: 0.06,
-  targetYOffset: -0.41,
+  targetYOffset: 0.98,
   intensity: 9.9,
-  distance: 23.6,
+  distance: 20.6,
   angle: 0.49,
   penumbra: 0.81,
-  decay: 0.5,
-  emitterRadius: 0.21,
+  decay: 0.6,
+  emitterRadius: 0.155,
   emitterOffsetX: 0,
-  emitterOffsetY: -0.265,
-  emitterOffsetZ: 0.47,
+  emitterOffsetY: -0.315,
+  emitterOffsetZ: 0.295,
   emitterOpacity: 1,
-  fixtureScale: 0.8,
-  wallMountOffset: 0.13,
-  fixturePitchOffset: -1.6,
+  fixtureScale: 0.65,
+  wallMountOffset: -0.055,
+  fixturePitchOffset: -1.27,
 } as const
 
 export type SpotlightGlobalTuning = {
@@ -84,7 +83,7 @@ export const SPOTLIGHT_SLIDER_DEFS: SliderDef[] = [
     key: 'fixturePitchOffset',
     label: 'Pitch (from wall)',
     group: 'fixture',
-    min: -0.4,
+    min: -2,
     max: 2.2,
     step: 0.01,
     format: (v) => `${((v * 180) / Math.PI).toFixed(1)}°`,
