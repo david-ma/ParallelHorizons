@@ -6,47 +6,116 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 
 export const SPOTLIGHT_MODEL_URL = '/models/spotlight/Spotlight.glb'
 
-const _forward = new THREE.Vector3()
-const _wall = new THREE.Vector3()
+/** Track-light mount height — tuned default from demo gallery. */
+const MOUNT_Y = 5.35
+/** Artwork group standoff from wall plane (matches layout.ts placeOnWall). */
+const ARTWORK_WALL_STANDOFF = 0.06
+/** Light/fixture offset toward room from wall plane at mount height. */
+const LIGHT_ROOM_OFFSET = 0.04
 
-/** Default tuning derived from the hardcoded demo gallery featured artwork. */
+const DEFAULT_RIG = {
+  intensity: 1.9,
+  distance: 8,
+  angle: Math.PI / 7,
+  penumbra: 0.45,
+  decay: 1.2,
+  emitterRadius: 0.1,
+  emitterOffsetX: 0,
+  emitterOffsetY: 0,
+  emitterOffsetZ: 0.17,
+  emitterOpacity: 0.95,
+  fixtureScale: 0.35,
+  wallMountOffset: 0.02,
+} as const
+
+const _forward = new THREE.Vector3()
+const _wallAnchor = new THREE.Vector3()
+const _quat = new THREE.Quaternion()
+const _boxCorner = new THREE.Vector3()
+
+function artworkFacingIntoRoom(artwork: THREE.Object3D): THREE.Vector3 {
+  artwork.updateMatrixWorld(true)
+  artwork.getWorldQuaternion(_quat)
+  return _forward.set(0, 0, 1).applyQuaternion(_quat).normalize()
+}
+
+function bboxCorners(box: THREE.Box3, target: THREE.Vector3[]): THREE.Vector3[] {
+  const { min, max } = box
+  const xs = [min.x, max.x]
+  const ys = [min.y, max.y]
+  const zs = [min.z, max.z]
+  target.length = 0
+  for (const x of xs) {
+    for (const y of ys) {
+      for (const z of zs) {
+        target.push(_boxCorner.set(x, y, z).clone())
+      }
+    }
+  }
+  return target
+}
+
+const _corners: THREE.Vector3[] = []
+
+/** Snap fixture so its back face sits on the wall plane defined by wallAnchor + wallNormal. */
+function mountFixtureOnWall(
+  fixture: THREE.Object3D,
+  lightOrigin: THREE.Vector3,
+  lightTarget: THREE.Vector3,
+  wallNormal: THREE.Vector3,
+  wallAnchor: THREE.Vector3,
+  fixtureScale: number,
+  wallMountOffset: number
+): void {
+  fixture.position.copy(lightOrigin)
+  fixture.scale.setScalar(fixtureScale)
+  fixture.lookAt(lightTarget)
+  fixture.updateMatrixWorld(true)
+
+  const wallPlaneD = wallAnchor.dot(wallNormal)
+  const box = new THREE.Box3().setFromObject(fixture)
+  let minProj = Infinity
+  for (const corner of bboxCorners(box, _corners)) {
+    minProj = Math.min(minProj, corner.dot(wallNormal))
+  }
+  fixture.position.addScaledVector(wallNormal, wallPlaneD + wallMountOffset - minProj)
+}
+
+/** Default tuning derived from artwork pose — works on all four wall orientations. */
 export function spotlightOptionsForArtwork(
-  position: THREE.Vector3,
-  rotationY: number,
+  artwork: THREE.Object3D,
   modelUrl: string = SPOTLIGHT_MODEL_URL
 ): SpotlightRigOptions {
-  _forward.set(0, 0, 1).applyAxisAngle(new THREE.Vector3(0, 1, 0), rotationY)
-  _wall.copy(_forward).negate()
-  const target = new THREE.Vector3(position.x, position.y, position.z)
-  const lightOrigin = target
-    .clone()
-    .add(new THREE.Vector3(0, 3.35, 0))
-    .add(_forward.clone().multiplyScalar(0.05))
-  const wallPoint = target.clone().add(_wall.clone().multiplyScalar(0.06))
+  artwork.updateMatrixWorld(true)
+  const center = new THREE.Vector3()
+  artwork.getWorldPosition(center)
+  const wallNormal = artworkFacingIntoRoom(artwork)
+
+  _wallAnchor.copy(center).addScaledVector(wallNormal, -ARTWORK_WALL_STANDOFF)
+  _wallAnchor.y = MOUNT_Y
+
+  const lightOrigin = new THREE.Vector3(center.x, MOUNT_Y, center.z).addScaledVector(
+    wallNormal,
+    LIGHT_ROOM_OFFSET
+  )
 
   return {
     lightOrigin,
-    lightTarget: target,
+    lightTarget: center.clone(),
+    wallNormal: wallNormal.clone(),
+    wallAnchor: _wallAnchor.clone(),
     modelUrl,
-    intensity: 1.9,
-    distance: 8,
-    angle: Math.PI / 7,
-    penumbra: 0.45,
-    decay: 1.2,
-    emitterRadius: 0.1,
-    emitterOffsetX: 0,
-    emitterOffsetY: 0,
-    emitterOffsetZ: 0.17,
-    emitterOpacity: 0.95,
-    fixtureScale: 0.35,
-    wallZ: wallPoint.z,
-    wallMountOffset: 0.02,
+    ...DEFAULT_RIG,
   }
 }
 
 export interface SpotlightRigOptions {
   lightOrigin: THREE.Vector3
   lightTarget: THREE.Vector3
+  /** Unit vector from wall into room (same direction artwork faces). */
+  wallNormal: THREE.Vector3
+  /** A point on the wall surface at mount height, used to flush-mount the fixture. */
+  wallAnchor: THREE.Vector3
   modelUrl: string
   intensity: number
   distance: number
@@ -59,7 +128,6 @@ export interface SpotlightRigOptions {
   emitterOffsetZ: number
   emitterOpacity: number
   fixtureScale: number
-  wallZ: number
   wallMountOffset: number
 }
 
@@ -98,21 +166,52 @@ export function applyArtworkSpotlightRigOptions(rig: ArtworkSpotlightRig): void 
   rig.emitterDisc.scale.setScalar(options.emitterRadius)
 
   if (rig.fixture) {
-    rig.fixture.position.copy(rig.spotlight.position)
-    rig.fixture.scale.setScalar(options.fixtureScale)
-    rig.fixture.lookAt(rig.spotlightTarget.position)
-    const bbox = new THREE.Box3().setFromObject(rig.fixture)
-    const size = new THREE.Vector3()
-    bbox.getSize(size)
-    rig.fixture.position.z = options.wallZ + size.z * 0.5 + options.wallMountOffset
+    mountFixtureOnWall(
+      rig.fixture,
+      options.lightOrigin,
+      options.lightTarget,
+      options.wallNormal,
+      options.wallAnchor,
+      options.fixtureScale,
+      options.wallMountOffset
+    )
   }
   if (rig.fallback) {
-    rig.fallback.position.copy(rig.spotlight.position)
-    rig.fallback.lookAt(rig.spotlightTarget.position)
+    mountFixtureOnWall(
+      rig.fallback,
+      options.lightOrigin,
+      options.lightTarget,
+      options.wallNormal,
+      options.wallAnchor,
+      options.fixtureScale,
+      options.wallMountOffset
+    )
   }
 }
 
 const spotlightModelLoader = new GLTFLoader()
+let spotlightTemplate: THREE.Object3D | null = null
+let spotlightTemplatePromise: Promise<THREE.Object3D> | null = null
+
+function loadSpotlightTemplate(modelUrl: string): Promise<THREE.Object3D> {
+  if (spotlightTemplate && modelUrl === SPOTLIGHT_MODEL_URL) {
+    return Promise.resolve(spotlightTemplate)
+  }
+  if (!spotlightTemplatePromise || modelUrl !== SPOTLIGHT_MODEL_URL) {
+    spotlightTemplatePromise = new Promise((resolve, reject) => {
+      spotlightModelLoader.load(
+        modelUrl,
+        (gltf) => {
+          spotlightTemplate = gltf.scene
+          resolve(gltf.scene)
+        },
+        undefined,
+        reject
+      )
+    })
+  }
+  return spotlightTemplatePromise
+}
 
 export function addArtworkSpotlightRig(scene: THREE.Scene, options: SpotlightRigOptions): ArtworkSpotlightRig {
   const spotlight = new THREE.SpotLight(
@@ -149,16 +248,14 @@ export function addArtworkSpotlightRig(scene: THREE.Scene, options: SpotlightRig
   }
   applyArtworkSpotlightRigOptions(rig)
 
-  spotlightModelLoader.load(
-    options.modelUrl,
-    (gltf) => {
-      const fixture = gltf.scene.clone(true)
+  void loadSpotlightTemplate(options.modelUrl)
+    .then((template) => {
+      const fixture = template.clone(true)
       rig.fixture = fixture
       applyArtworkSpotlightRigOptions(rig)
       scene.add(fixture)
-    },
-    undefined,
-    (err) => {
+    })
+    .catch((err) => {
       console.error('Failed to load spotlight model:', err)
       const fallback = new THREE.Mesh(
         new THREE.ConeGeometry(0.08, 0.25, 12),
@@ -167,8 +264,7 @@ export function addArtworkSpotlightRig(scene: THREE.Scene, options: SpotlightRig
       rig.fallback = fallback
       applyArtworkSpotlightRigOptions(rig)
       scene.add(fallback)
-    }
-  )
+    })
 
   return rig
 }

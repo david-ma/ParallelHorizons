@@ -92,6 +92,10 @@ export function buildDefaultGallery(g: Gal): void {
       }
 
       if (index === featuredSpotlightIndex) {
+        art.updateMatrixWorld(true)
+        const wallNormal = new THREE.Vector3(0, 0, 1)
+        const wallAnchor = new THREE.Vector3(plane.position.x, 5.35, plane.position.z - 0.06)
+
         const spotlightTuning: Record<string, number> = {
           SPOTLIGHT_INTENSITY: 1.9,
           SPOTLIGHT_DISTANCE: 8,
@@ -109,7 +113,6 @@ export function buildDefaultGallery(g: Gal): void {
           EMITTER_DISC_Z: 0.17,
           EMITTER_DISC_OPACITY: 0.95,
           FIXTURE_SCALE: 0.35,
-          WALL_Z: -2.96,
           WALL_MOUNT_OFFSET: 0.02,
         }
 
@@ -120,6 +123,8 @@ export function buildDefaultGallery(g: Gal): void {
             spotlightTuning.SPOTLIGHT_Z
           ),
           lightTarget: new THREE.Vector3(plane.position.x, spotlightTuning.TARGET_Y, spotlightTuning.TARGET_Z),
+          wallNormal,
+          wallAnchor,
           modelUrl: SPOTLIGHT_MODEL_URL,
           intensity: spotlightTuning.SPOTLIGHT_INTENSITY,
           distance: spotlightTuning.SPOTLIGHT_DISTANCE,
@@ -132,7 +137,6 @@ export function buildDefaultGallery(g: Gal): void {
           emitterOffsetZ: spotlightTuning.EMITTER_DISC_Z,
           emitterOpacity: spotlightTuning.EMITTER_DISC_OPACITY,
           fixtureScale: spotlightTuning.FIXTURE_SCALE,
-          wallZ: spotlightTuning.WALL_Z,
           wallMountOffset: spotlightTuning.WALL_MOUNT_OFFSET,
         }
 
@@ -156,8 +160,8 @@ export function buildDefaultGallery(g: Gal): void {
           spotlightRig.options.emitterOffsetZ = spotlightTuning.EMITTER_DISC_Z
           spotlightRig.options.emitterOpacity = spotlightTuning.EMITTER_DISC_OPACITY
           spotlightRig.options.fixtureScale = spotlightTuning.FIXTURE_SCALE
-          spotlightRig.options.wallZ = spotlightTuning.WALL_Z
           spotlightRig.options.wallMountOffset = spotlightTuning.WALL_MOUNT_OFFSET
+          spotlightRig.options.wallAnchor.set(plane.position.x, spotlightTuning.SPOTLIGHT_Y, spotlightTuning.TARGET_Z - 0.06)
           applyArtworkSpotlightRigOptions(spotlightRig)
           g.renderer.render(g.scene, g.camera)
         })
