@@ -15,6 +15,13 @@
       "when": 1783768029329,
       "tag": "0001_photos",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1783768788329,
+      "tag": "0002_photos_smugmug",
+      "breakpoints": true
     }
   ]
 }
