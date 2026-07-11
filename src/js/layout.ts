@@ -11,6 +11,53 @@ const DEFAULT_FLOORPLAN_URL = '/gallery-floorplan.json'
 const CELL_WORLD = 6
 const DEFAULT_GRID_ROWS = 5
 const DEFAULT_GRID_COLS = 5
+const DEFAULT_EYE_Y = 1.75
+
+/** World XZ for a grid cell centre (matches buildSceneFromFloorplan). */
+export function cellWorldCenter(
+  row: number,
+  col: number,
+  rows = DEFAULT_GRID_ROWS,
+  cols = DEFAULT_GRID_COLS
+): { x: number; z: number } {
+  return {
+    x: (col - (cols - 1) / 2) * CELL_WORLD,
+    z: (row - (rows - 1) / 2) * CELL_WORLD,
+  }
+}
+
+/** Resolve spawn position from floorplan JSON. */
+export function getSpawnPosition(
+  data: FloorplanBlob | null | undefined,
+  rows = DEFAULT_GRID_ROWS,
+  cols = DEFAULT_GRID_COLS
+): { x: number; y: number; z: number } {
+  const y = typeof data?.spawn?.y === 'number' ? data.spawn.y : DEFAULT_EYE_Y
+  if (typeof data?.spawn?.x === 'number' && typeof data?.spawn?.z === 'number') {
+    return { x: data.spawn.x, y, z: data.spawn.z }
+  }
+  const cell = data?.spawn?.cell
+  if (cell) {
+    const [rRaw, cRaw] = cell.split(',')
+    const r = Number(rRaw)
+    const c = Number(cRaw)
+    if (!Number.isNaN(r) && !Number.isNaN(c)) {
+      const center = cellWorldCenter(r, c, rows, cols)
+      return { x: center.x, y, z: center.z }
+    }
+  }
+  return { x: 0, y: DEFAULT_EYE_Y, z: 0 }
+}
+
+/** Move camera (and past XZ) to floorplan spawn before physics init. */
+export function applySpawnPosition(g: Gal, data: FloorplanBlob | null | undefined): void {
+  const rows = Math.max(1, Number(data?.grid?.rows) || DEFAULT_GRID_ROWS)
+  const cols = Math.max(1, Number(data?.grid?.cols) || DEFAULT_GRID_COLS)
+  const pos = getSpawnPosition(data, rows, cols)
+  g.camera.position.set(pos.x, pos.y, pos.z)
+  g.pastX = pos.x
+  g.pastZ = pos.z
+}
 
 function floorplanUrl(url?: string): string {
   const globalUrl = typeof globalThis !== 'undefined' ? (globalThis as { GALLERY_FLOORPLAN_URL?: string }).GALLERY_FLOORPLAN_URL : undefined
@@ -108,10 +155,7 @@ export function buildSceneFromFloorplan(g: Gal, data: FloorplanBlob): void {
     g.wallGroup.add(wall)
   }
   const hasCell = (r: number, c: number) => active.has(`${r},${c}`)
-  const cellCenter = (r: number, c: number) => ({
-    x: (c - (cols - 1) / 2) * CELL_WORLD,
-    z: (r - (rows - 1) / 2) * CELL_WORLD,
-  })
+  const cellCenter = (r: number, c: number) => cellWorldCenter(r, c, rows, cols)
   const placeOnWall = (wall: 'north' | 'south' | 'west' | 'east', cx: number, cz: number, offset: number) => {
     if (wall === 'north') return { x: cx + offset, y: 2, z: cz - CELL_WORLD / 2 + 0.06, ry: 0 }
     if (wall === 'south') return { x: cx - offset, y: 2, z: cz + CELL_WORLD / 2 - 0.06, ry: Math.PI }

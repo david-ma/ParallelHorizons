@@ -5,65 +5,41 @@
     "cols": 5
   },
   "activeCells": [
-    "3,1",
     "4,1",
-    "3,2",
     "3,0",
     "4,0",
-    "2,1",
-    "2,2",
-    "1,2",
     "0,3",
-    "1,3"
+    "4,2",
+    "4,3",
+    "4,4",
+    "2,4",
+    "3,4",
+    "1,4",
+    "0,4",
+    "0,2",
+    "0,1",
+    "0,0",
+    "1,0",
+    "2,0"
   ],
   "placements": {
-    "3,1": {
-      "north": "photo-10",
-      "east": "photo-7",
-      "south": "photo-11",
-      "west": "photo-3"
-    },
     "4,1": {
-      "north": "photo-5",
-      "east": "photo-9",
-      "south": "photo-6",
-      "west": "photo-4"
-    },
-    "3,2": {
-      "north": "",
+      "north": "photo-9",
       "east": "",
-      "south": "",
+      "south": "photo-6",
       "west": ""
     },
     "3,0": {
       "north": "",
-      "east": "",
+      "east": "photo-10",
       "south": "",
-      "west": ""
+      "west": "photo-3"
     },
     "4,0": {
       "north": "",
       "east": "",
-      "south": "",
-      "west": ""
-    },
-    "2,1": {
-      "north": "",
-      "east": "",
-      "south": "",
-      "west": ""
-    },
-    "2,2": {
-      "north": "",
-      "east": "",
-      "south": "",
-      "west": ""
-    },
-    "1,2": {
-      "north": "",
-      "east": "",
-      "south": "",
-      "west": ""
+      "south": "photo-8",
+      "west": "photo-4"
     },
     "0,3": {
       "north": "",
@@ -71,24 +47,159 @@
       "south": "",
       "west": ""
     },
-    "1,3": {
+    "4,2": {
+      "north": "photo-7",
+      "east": "",
+      "south": "photo-5",
+      "west": ""
+    },
+    "4,3": {
       "north": "",
       "east": "",
       "south": "",
       "west": ""
+    },
+    "4,4": {
+      "north": "",
+      "east": "",
+      "south": "",
+      "west": ""
+    },
+    "2,4": {
+      "north": "",
+      "east": "",
+      "south": "",
+      "west": ""
+    },
+    "3,4": {
+      "north": "",
+      "east": "",
+      "south": "",
+      "west": ""
+    },
+    "1,4": {
+      "north": "",
+      "east": "",
+      "south": "",
+      "west": ""
+    },
+    "0,4": {
+      "north": "",
+      "east": "",
+      "south": "",
+      "west": ""
+    },
+    "0,2": {
+      "north": "",
+      "east": "",
+      "south": "",
+      "west": ""
+    },
+    "0,1": {
+      "north": "",
+      "east": "",
+      "south": "",
+      "west": ""
+    },
+    "0,0": {
+      "north": "",
+      "east": "",
+      "south": "",
+      "west": ""
+    },
+    "1,0": {
+      "north": "",
+      "east": "",
+      "south": "",
+      "west": ""
+    },
+    "2,0": {
+      "north": "",
+      "east": "",
+      "south": "",
+      "west": "photo-11"
     }
   },
   "photoCatalog": [
-    { "id": "photo-0", "title": "Photo 1", "src": "/img/Artworks/0.jpg" },
-    { "id": "photo-1", "title": "Photo 2", "src": "/img/Artworks/1.jpg" },
-    { "id": "photo-2", "title": "Photo 3", "src": "/img/Artworks/2.jpg" },
-    { "id": "photo-3", "title": "Parallel Horizons", "artist": "David Ma", "year": "2023", "src": "/img/Artworks/3.jpg" },
-    { "id": "photo-4", "title": "Evening Light", "artist": "David Ma", "year": "2023", "src": "/img/Artworks/4.jpg" },
-    { "id": "photo-5", "title": "Coastal Study", "artist": "David Ma", "year": "2022", "src": "/img/Artworks/5.jpg" },
-    { "id": "photo-6", "title": "Urban Frame", "artist": "David Ma", "year": "2022", "src": "/img/Artworks/6.jpg" },
-    { "id": "photo-7", "title": "Quiet Room", "artist": "David Ma", "year": "2023", "src": "/img/Artworks/7.jpg" },
-    { "id": "photo-9", "title": "Open Sky", "artist": "David Ma", "year": "2021", "src": "/img/Artworks/9.jpg" },
-    { "id": "photo-10", "title": "Gallery Walk", "artist": "David Ma", "year": "2023", "src": "/img/Artworks/10.jpg" },
-    { "id": "photo-11", "title": "Last Light", "artist": "David Ma", "year": "2022", "src": "/img/Artworks/11.jpg" }
-  ]
+    {
+      "id": "photo-0",
+      "title": "Photo 1",
+      "src": "/img/Artworks/0.jpg"
+    },
+    {
+      "id": "photo-1",
+      "title": "Photo 2",
+      "src": "/img/Artworks/1.jpg"
+    },
+    {
+      "id": "photo-2",
+      "title": "Photo 3",
+      "src": "/img/Artworks/2.jpg"
+    },
+    {
+      "id": "photo-3",
+      "title": "Parallel Horizons",
+      "src": "/img/Artworks/3.jpg",
+      "artist": "David Ma",
+      "year": "2023"
+    },
+    {
+      "id": "photo-4",
+      "title": "Evening Light",
+      "src": "/img/Artworks/4.jpg",
+      "artist": "David Ma",
+      "year": "2023"
+    },
+    {
+      "id": "photo-5",
+      "title": "Coastal Study",
+      "src": "/img/Artworks/5.jpg",
+      "artist": "David Ma",
+      "year": "2022"
+    },
+    {
+      "id": "photo-6",
+      "title": "Urban Frame",
+      "src": "/img/Artworks/6.jpg",
+      "artist": "David Ma",
+      "year": "2022"
+    },
+    {
+      "id": "photo-7",
+      "title": "Quiet Room",
+      "src": "/img/Artworks/7.jpg",
+      "artist": "David Ma",
+      "year": "2023"
+    },
+    {
+      "id": "photo-8",
+      "title": "Photo 9",
+      "src": "/img/Artworks/8.jpg"
+    },
+    {
+      "id": "photo-9",
+      "title": "Open Sky",
+      "src": "/img/Artworks/9.jpg",
+      "artist": "David Ma",
+      "year": "2021"
+    },
+    {
+      "id": "photo-10",
+      "title": "Gallery Walk",
+      "src": "/img/Artworks/10.jpg",
+      "artist": "David Ma",
+      "year": "2023"
+    },
+    {
+      "id": "photo-11",
+      "title": "Last Light",
+      "src": "/img/Artworks/11.jpg",
+      "artist": "David Ma",
+      "year": "2022"
+    }
+  ],
+  "spawn": {
+    "cell": "4,0",
+    "y": 1.75
+  }
 }

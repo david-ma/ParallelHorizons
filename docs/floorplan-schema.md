@@ -75,6 +75,19 @@ Legacy whole-cell string (photo on north wall only):
 
 If a placement references an unknown id, the viewer falls back to `/img/Artworks/{index % 30}.jpg`.
 
+## Spawn (player start)
+
+| Field | Type | Required | Default |
+|-------|------|----------|---------|
+| `spawn.cell` | string | No | centre of grid (`"2,2"` on a 5×5) |
+| `spawn.y` | number | No | `1.75` (eye height) |
+| `spawn.x` | number | No | — |
+| `spawn.z` | number | No | — |
+
+Use `spawn.cell` as `"row,col"` (0-based). The viewer places the camera at that cell’s world centre on the XZ plane. If both `spawn.x` and `spawn.z` are set, they override the cell centre (useful for fine-tuning).
+
+The editor shows a green ▶ marker on the chosen cell; use **Set start position** on the Layout tab, then click a cell.
+
 ## Validation (viewer)
 
 Minimum valid document:
@@ -91,10 +104,11 @@ See `public/gallery-floorplan.json` in the repo.
 ## Workflow
 
 1. Open `/create`, activate cells, drag photos onto wall bands.
-2. Click a photo (or double-click a placement on the grid) to edit **title**, **artist**, and **year** in the Placard panel.
-3. Export or download JSON.
-3. Save as `public/gallery-floorplan.json` (or host elsewhere and set `GALLERY_FLOORPLAN_URL`).
-4. Open `/view` — layout loads asynchronously with a loading overlay.
+2. Set the **start position** on the Layout tab (green ▶ marker on the grid).
+3. Edit labels on the **Labels** tab (or double-click a placement on the grid).
+4. Drag placed thumbnails to move them between walls. **Ctrl+Z** / **Ctrl+Y** undo and redo.
+5. Click **Save & preview** to write `public/gallery-floorplan.json` and open `/view` in a new tab — or export/download JSON manually.
+6. To host elsewhere, set `GALLERY_FLOORPLAN_URL` in `gallery.hbs`.
 
 ## Future (not in v2)
 

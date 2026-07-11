@@ -17,6 +17,8 @@ export interface FloorplanBlob {
   activeCells?: string[]
   placements?: Record<string, string | FloorplanWallPlacements>
   photoCatalog?: Array<{ id: string; src: string; title?: string; artist?: string; year?: string | number }>
+  /** Player spawn: cell key `"row,col"` and optional eye height (default 1.75). */
+  spawn?: { cell?: string; x?: number; y?: number; z?: number }
 }
 
 export interface Gal {

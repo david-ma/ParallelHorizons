@@ -5,7 +5,7 @@
 import * as THREE from 'three'
 import { PointerLockControls } from 'three/examples/jsm/controls/PointerLockControls.js'
 import type { Gal } from './types.js'
-import { loadFloorplanAsync, buildSceneFromFloorplan, buildMinimalGallery } from './layout.js'
+import { loadFloorplanAsync, buildSceneFromFloorplan, buildMinimalGallery, applySpawnPosition } from './layout.js'
 import { attachMovementKeys, updateMovement, updateVelocityOnly } from './movement.js'
 import { initRapier, createGalleryPhysics, stepPhysics } from './physics.js'
 
@@ -288,6 +288,7 @@ if (Detector && !Detector.webgl) {
         const data = await loadFloorplanAsync()
         if (data) {
           buildSceneFromFloorplan(gal!, data)
+          applySpawnPosition(gal!, data)
         } else {
           buildMinimalGallery(gal!)
         }

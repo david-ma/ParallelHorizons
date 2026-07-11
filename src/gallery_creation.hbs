@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en-AU">
 <head>
-  {{> head title="Gallery Creation"}}
+  {{> head title="Edit Gallery"}}
   <style>
     :root {
       --bg: #1c1c1e;
@@ -13,10 +13,11 @@
       --muted: #b8b8c2;
       --border: #3a3a3d;
       --surface-2: #242426;
+      --success: #30d158;
     }
 
     body { margin: 0; font-family: Lato, sans-serif; background: var(--bg); color: var(--text); }
-    .planner { display: grid; grid-template-columns: 340px 1fr; gap: 16px; padding: 16px; min-height: 100vh; box-sizing: border-box; }
+    .planner { display: grid; grid-template-columns: 360px 1fr; gap: 16px; padding: 16px; min-height: 100vh; box-sizing: border-box; }
     .panel {
       background: var(--surface);
       border: 1px solid var(--border);
@@ -28,6 +29,45 @@
       max-height: calc(100vh - 32px);
     }
     .panel h2 { margin: 0 0 8px; font-family: Oswald, sans-serif; letter-spacing: .04em; font-size: 1.1rem; color: var(--text); }
+    .panel-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
+    .panel-head h2 { margin: 0; }
+    .panel-head a { font-size: 12px; color: var(--primary); text-decoration: none; }
+    .btn-primary {
+      width: 100%;
+      padding: 11px 12px;
+      background: var(--primary);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font: inherit;
+      font-weight: 600;
+      cursor: pointer;
+      margin-bottom: 10px;
+    }
+    .btn-primary:hover { filter: brightness(1.08); }
+    .btn-primary:disabled { opacity: 0.55; cursor: wait; }
+    #editor-toast {
+      min-height: 1.2em;
+      font-size: 12px;
+      color: var(--success);
+      margin: -4px 0 8px;
+    }
+    #editor-toast.error { color: #ff6b6b; }
+    .tabs { display: flex; gap: 4px; margin-bottom: 8px; }
+    .tab-btn {
+      flex: 1;
+      padding: 8px 6px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--surface-2);
+      color: var(--muted);
+      font: inherit;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    .tab-btn.active { color: var(--text); border-color: var(--primary); background: #1f3651; }
+    .tab-panel { display: none; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; }
+    .tab-panel.active { display: flex; }
     .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
     .controls button, .controls label {
       font: inherit;
@@ -39,35 +79,42 @@
       cursor: pointer;
       text-align: center;
     }
-    .controls button:hover, .controls label:hover {
-      border-color: var(--primary);
-    }
+    .controls button:hover, .controls label:hover { border-color: var(--primary); }
     .controls input { display: none; }
+    .spawn-row { display: grid; gap: 8px; margin-bottom: 8px; }
+    .spawn-row button { font: inherit; padding: 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface-2); color: var(--text); cursor: pointer; }
+    .spawn-row button.active { border-color: var(--success); background: rgba(48, 209, 88, 0.12); color: var(--success); }
+    #spawn-status { font-size: 12px; color: var(--muted); margin: 0; }
+    details.advanced { margin-top: 8px; font-size: 12px; color: var(--muted); }
+    details.advanced summary { cursor: pointer; color: var(--text); margin-bottom: 6px; }
     #json-preview {
       width: 100%;
-      height: 180px;
+      height: 140px;
       font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-      font-size: 12px;
+      font-size: 11px;
       background: #1f1f21;
       color: var(--text);
       border: 1px solid var(--border);
       border-radius: 6px;
+      box-sizing: border-box;
     }
+    .filter-row { display: flex; align-items: center; gap: 8px; margin: 4px 0 8px; font-size: 12px; color: var(--muted); }
     #photo-list {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 8px;
-      margin-top: 8px;
       overflow-y: auto;
-      max-height: 42vh;
+      flex: 1;
+      min-height: 0;
       padding-right: 4px;
     }
     .photo-tile { border: 1px solid var(--border); border-radius: 6px; padding: 4px; background: #262629; cursor: grab; user-select: none; }
-    .photo-tile.selected { border-color: var(--primary); box-shadow: 0 0 0 1px var(--primary); }
+    .photo-tile.placed { opacity: 0.72; }
+    .photo-tile.selected { border-color: var(--primary); box-shadow: 0 0 0 1px var(--primary); opacity: 1; }
     .photo-tile img { display: block; width: 100%; aspect-ratio: 1 / 1; object-fit: cover; border-radius: 4px; }
     .photo-title { margin: 4px 0 0; font-size: 12px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .photo-meta { margin: 2px 0 0; font-size: 10px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .placard-editor { margin-top: 12px; padding: 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface-2); }
+    .placard-editor { padding: 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface-2); flex: 1; min-height: 0; overflow-y: auto; }
     .placard-editor.placard-empty .placard-fields { display: none; }
     .placard-editor:not(.placard-empty) .placard-empty-hint { display: none; }
     .placard-fields { display: grid; gap: 8px; }
@@ -94,35 +141,79 @@
     .cell.active { fill: #1f3651; stroke: var(--primary); }
     .cell.inactive { fill: #2a2a2e; }
     .cell-label { font-size: 11px; fill: var(--muted); pointer-events: none; }
-    .placed { font-size: 11px; fill: var(--text); pointer-events: none; }
-    .hint { margin: 8px 0 0; font-size: 12px; color: var(--muted); }
+    .wall-zone.drag-over { fill: rgba(10, 132, 255, 0.12); stroke: var(--primary); }
+    .spawn-marker { pointer-events: none; }
+    .spawn-marker-ring { fill: rgba(48, 209, 88, 0.2); stroke: var(--success); stroke-width: 2; }
+    .spawn-marker-label { font-size: 10px; fill: var(--success); font-weight: 700; pointer-events: none; }
+    .placed-art { cursor: grab; }
+    .placed-art:active { cursor: grabbing; }
+    #floorplan-svg.drag-active .placed-art { pointer-events: none; opacity: 0.4; }
+    .art-drag-ghost {
+      position: fixed;
+      pointer-events: none;
+      z-index: 10000;
+      opacity: 0.92;
+      border-radius: 3px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
+      cursor: grabbing;
+    }
+    .hint { margin: 0 0 8px; font-size: 12px; color: var(--muted); line-height: 1.45; }
   </style>
 </head>
 <body>
   <main class="planner">
     <section class="panel">
-      <h2>Gallery Builder (Dev)</h2>
-      <div class="controls">
-        <button id="export-json" type="button">Export JSON</button>
-        <label for="import-json">Import JSON<input id="import-json" type="file" accept="application/json"></label>
-        <button id="load-current" type="button">Load Current</button>
-        <button id="reset-layout" type="button">Reset Layout</button>
-        <button id="download-layout" type="button">Download File</button>
+      <div class="panel-head">
+        <h2>Gallery Editor</h2>
+        <a href="/view" target="_blank" rel="noopener">Open viewer</a>
       </div>
-      <textarea id="json-preview" readonly></textarea>
-      <p class="hint">Click cells to activate floor tiles. Drag photos onto wall segments (dashed edges). Click a photo below to edit its placard (title, artist, year).</p>
-      <h2 style="margin-top: 12px;">Placard</h2>
-      <div id="placard-editor" class="placard-editor placard-empty">
-        <p class="hint placard-empty-hint">Select a photo to edit its label.</p>
-        <div class="placard-fields">
-          <div id="placard-preview" class="placard-preview" aria-hidden="true"></div>
-          <label>Title<input id="placard-title" type="text" autocomplete="off"></label>
-          <label>Artist<input id="placard-artist" type="text" autocomplete="off"></label>
-          <label>Year<input id="placard-year" type="text" inputmode="numeric" autocomplete="off"></label>
+
+      <button id="save-preview" type="button" class="btn-primary">Save &amp; preview</button>
+      <p id="editor-toast" aria-live="polite"></p>
+
+      <div class="tabs" role="tablist">
+        <button type="button" class="tab-btn active" data-tab="layout" role="tab" aria-selected="true">Layout</button>
+        <button type="button" class="tab-btn" data-tab="photos" role="tab" aria-selected="false">Photos</button>
+        <button type="button" class="tab-btn" data-tab="labels" role="tab" aria-selected="false">Labels</button>
+      </div>
+
+      <div class="tab-panel active" data-panel="layout" role="tabpanel">
+        <p class="hint">Click cells to add/remove rooms. Drag photos to dashed wall edges, or drag placed thumbnails to move them. <strong>Ctrl+Z</strong> undo · <strong>Ctrl+Y</strong> redo.</p>
+        <div class="spawn-row">
+          <button id="set-spawn" type="button">Set start position</button>
+          <p id="spawn-status">Start: centre of cell 2,2</p>
+        </div>
+        <div class="controls">
+          <button id="load-current" type="button">Load current</button>
+          <label for="import-json">Import JSON<input id="import-json" type="file" accept="application/json"></label>
+          <button id="export-json" type="button">Copy JSON</button>
+          <button id="download-layout" type="button">Download</button>
+          <button id="reset-layout" type="button">Reset layout</button>
+        </div>
+        <details class="advanced">
+          <summary>Advanced — JSON preview</summary>
+          <textarea id="json-preview" readonly></textarea>
+        </details>
+      </div>
+
+      <div class="tab-panel" data-panel="photos" role="tabpanel">
+        <p class="hint">Drag a photo onto a wall band on the grid. Click to select for label editing.</p>
+        <label class="filter-row"><input id="filter-unplaced" type="checkbox"> Show unplaced only</label>
+        <div id="photo-list"></div>
+      </div>
+
+      <div class="tab-panel" data-panel="labels" role="tabpanel">
+        <p class="hint">Select a photo (or double-click a placement on the grid) to edit its placard.</p>
+        <div id="placard-editor" class="placard-editor placard-empty">
+          <p class="hint placard-empty-hint">Select a photo to edit its label.</p>
+          <div class="placard-fields">
+            <div id="placard-preview" class="placard-preview" aria-hidden="true"></div>
+            <label>Title<input id="placard-title" type="text" autocomplete="off"></label>
+            <label>Artist<input id="placard-artist" type="text" autocomplete="off"></label>
+            <label>Year<input id="placard-year" type="text" inputmode="numeric" autocomplete="off"></label>
+          </div>
         </div>
       </div>
-      <h2 style="margin-top: 12px;">Photos</h2>
-      <div id="photo-list"></div>
     </section>
 
     <section class="canvas-wrap">
