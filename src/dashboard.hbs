@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en-AU">
+<head>
+  {{> head title="My galleries"}}
+  <link rel="stylesheet" href="/css/index.css">
+</head>
+<body class="page-home page-dashboard">
+  <header class="home-header">
+    <div class="home-header-inner">
+      <a class="home-logo" href="/">Parallel Horizons</a>
+      <nav class="home-nav" aria-label="Primary">
+        <a href="/">Home</a>
+        <a href="/dashboard" aria-current="page">Dashboard</a>
+        {{#if loggedIn}}
+        <a href="/profile">{{userName}}</a>
+        <a href="/logout">Log out</a>
+        {{else}}
+        <a href="/logon">Log in</a>
+        {{/if}}
+      </nav>
+    </div>
+  </header>
+
+  <main class="home-main">
+    <section class="home-hero">
+      <p class="home-eyebrow">Creator dashboard</p>
+      <h1>Your galleries</h1>
+      <p class="home-lead">
+        Create a floorplan, save your layout, then publish to share a walkthrough link with visitors.
+      </p>
+      <form method="post" action="/gallery-create" class="dashboard-create-form">
+        <button type="submit" class="home-btn home-btn-primary">Create new gallery</button>
+      </form>
+    </section>
+
+    <section class="home-galleries" aria-labelledby="my-galleries-heading">
+      <h2 id="my-galleries-heading">Galleries</h2>
+      {{#if galleries.length}}
+      <ul class="home-gallery-grid">
+        {{#each galleries}}
+        <li class="home-gallery-card">
+          <h3>{{this.title}}</h3>
+          <p class="dashboard-meta">
+            {{#if this.isPublished}}
+            <span class="dashboard-badge dashboard-badge-live">Published</span>
+            {{else}}
+            <span class="dashboard-badge">Draft</span>
+            {{/if}}
+            {{#unless this.hasFloorplan}}<span class="dashboard-badge dashboard-badge-warn">No layout saved</span>{{/unless}}
+          </p>
+          <p class="dashboard-slug"><code>/view/{{this.slug}}</code></p>
+          <div class="dashboard-actions">
+            <a class="home-btn home-btn-primary" href="{{this.editUrl}}">Edit layout</a>
+            {{#if this.hasFloorplan}}
+            <a class="home-btn" href="{{this.viewUrl}}" target="_blank" rel="noopener">Preview</a>
+            {{/if}}
+            <form method="post" action="/gallery-publish/{{this.id}}" class="dashboard-inline-form">
+              <input type="hidden" name="published" value="{{#if this.isPublished}}0{{else}}1{{/if}}">
+              <button type="submit" class="home-btn">
+                {{#if this.isPublished}}Unpublish{{else}}Publish{{/if}}
+              </button>
+            </form>
+          </div>
+        </li>
+        {{/each}}
+      </ul>
+      {{else}}
+      <p class="home-lead">No galleries yet. Create one to start arranging rooms and artwork.</p>
+      {{/if}}
+    </section>
+  </main>
+
+  <footer class="home-footer">
+    <p><a href="/forgotPassword">Forgot password?</a></p>
+  </footer>
+</body>
+</html>

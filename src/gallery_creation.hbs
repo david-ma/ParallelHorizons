@@ -32,6 +32,7 @@
     .panel-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
     .panel-head h2 { margin: 0; }
     .panel-head a { font-size: 12px; color: var(--primary); text-decoration: none; }
+    .panel-head-links { display: flex; gap: 10px; flex-shrink: 0; }
     .btn-primary {
       width: 100%;
       padding: 11px 12px;
@@ -172,12 +173,19 @@
     .hint { margin: 0 0 8px; font-size: 12px; color: var(--muted); line-height: 1.45; }
   </style>
 </head>
-<body>
+<body
+  data-gallery-id="{{galleryId}}"
+  data-gallery-slug="{{gallerySlug}}"
+  data-gallery-title="{{galleryTitle}}"
+>
   <main class="planner">
     <section class="panel">
       <div class="panel-head">
-        <h2>Gallery Editor</h2>
-        <a href="/view" target="_blank" rel="noopener">Open viewer</a>
+        <h2>{{galleryTitle}}</h2>
+        <div class="panel-head-links">
+          <a href="/dashboard">Dashboard</a>
+          <a href="/view/{{gallerySlug}}" target="_blank" rel="noopener">Preview</a>
+        </div>
       </div>
 
       <button id="save-preview" type="button" class="btn-primary">Save &amp; preview</button>

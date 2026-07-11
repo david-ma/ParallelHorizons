@@ -6,6 +6,7 @@ This file is a practical handoff for maintainers and coding agents.
 
 | Date       | Change |
 |------------|--------|
+| 2026-07-11 | **D1 auth:** ThaliaSecurity + MariaDB + `galleries` table; `/dashboard`, `/create/:id`, DB save/publish; homepage auth CTAs; MailCatcher `mailAuth.js`. |
 | 2025-03-12 | Rapier physics: wall/floor collision via `@dimforge/rapier3d-compat`; `physics.ts` (init, createGalleryPhysics, stepPhysics); WASD/camera-relative movement (forward/right in view direction). |
 | 2025-03-12 | Split `main.ts` into modules: `types.ts`, `artwork.ts`, `layout.ts`, `spotlight.ts`, `gallery.ts`, `movement.ts`; main.ts is entry + boot/pointer lock/render loop. |
 | 2025-03-12 | AGENTS.md: added changelog, summary, roadmap, and resource links. Create page: dark mode (Charcoal Studio), scrollable Photos sidebar. |

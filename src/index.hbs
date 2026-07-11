@@ -8,7 +8,14 @@
     <div class="home-header-inner">
       <a class="home-logo" href="/">Parallel Horizons</a>
       <nav class="home-nav" aria-label="Primary">
-        <a href="/create">Editor</a>
+        {{#if loggedIn}}
+        <a href="/dashboard">Dashboard</a>
+        <a href="/profile">{{userName}}</a>
+        <a href="/logout">Log out</a>
+        {{else}}
+        <a href="/logon">Log in</a>
+        <a href="/newUser">Sign up</a>
+        {{/if}}
       </nav>
     </div>
   </header>
@@ -19,8 +26,18 @@
       <h1>Walk through the galleries</h1>
       <p class="home-lead">
         Choose an exhibition below, then explore in the browser with WASD and mouse-look.
-        Each gallery is built from a floorplan JSON file — layout, art placements, and wall finishes.
+        Each gallery is built from a floorplan — layout, art placements, and wall finishes.
       </p>
+      {{#unless loggedIn}}
+      <p class="home-hero-cta">
+        <a class="home-btn home-btn-primary" href="/newUser">Create your gallery</a>
+        <a class="home-btn" href="/logon">Log in</a>
+      </p>
+      {{else}}
+      <p class="home-hero-cta">
+        <a class="home-btn home-btn-primary" href="/dashboard">Go to dashboard</a>
+      </p>
+      {{/unless}}
     </section>
 
     <section class="home-galleries" aria-labelledby="galleries-heading">
@@ -39,7 +56,13 @@
 
     <section class="home-features" aria-labelledby="features-heading">
       <h2 id="features-heading">For creators</h2>
-      <p class="home-lead">Use the <a href="/create">floorplan editor</a> to arrange rooms and photos. Saves update the Parallel Horizons gallery.</p>
+      <p class="home-lead">
+        {{#if loggedIn}}
+        Open your <a href="/dashboard">dashboard</a> to create galleries, arrange photos on walls, and publish share links.
+        {{else}}
+        <a href="/newUser">Sign up</a> to create your own 3D exhibition — arrange rooms, place artwork, and share a link.
+        {{/if}}
+      </p>
       <ul class="home-feature-grid">
         <li>JSON floorplan layout with placards</li>
         <li>Rapier physics and camera-relative movement</li>

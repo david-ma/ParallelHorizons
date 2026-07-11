@@ -730,24 +730,39 @@ function setupTabs(): void {
   })
 }
 
+function editorContext(): { galleryId: string | null; gallerySlug: string | null } {
+  const id = document.body.dataset.galleryId?.trim()
+  const slug = document.body.dataset.gallerySlug?.trim()
+  return {
+    galleryId: id || null,
+    gallerySlug: slug || null,
+  }
+}
+
 async function saveAndPreview(): Promise<void> {
   const btn = document.getElementById('save-preview') as HTMLButtonElement | null
+  const { galleryId, gallerySlug } = editorContext()
+  if (!galleryId) {
+    showToast('Missing gallery — open the editor from your dashboard', true)
+    return
+  }
   if (btn) btn.disabled = true
   showToast('Saving…')
   try {
-    const res = await fetch('/save-floorplan', {
+    const res = await fetch(`/save-floorplan/${galleryId}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'same-origin',
       body: JSON.stringify(toData()),
     })
-    const payload = (await res.json()) as { ok?: boolean; error?: string }
+    const payload = (await res.json()) as { ok?: boolean; error?: string; slug?: string }
     if (!res.ok || !payload.ok) {
       showToast(payload.error || 'Save failed', true)
       return
     }
+    const slug = payload.slug || gallerySlug || 'parallel-horizons'
     showToast('Saved — opening preview…')
-    window.open('/view/parallel-horizons', '_blank', 'noopener')
+    window.open(`/view/${slug}`, '_blank', 'noopener')
   } catch (err) {
     showToast(err instanceof Error ? err.message : 'Save failed', true)
   } finally {
@@ -902,8 +917,12 @@ async function boot(): Promise<void> {
   setupButtons()
   renderAll()
 
+  const { gallerySlug } = editorContext()
+  const loadUrl = gallerySlug
+    ? `/api/floorplan/${encodeURIComponent(gallerySlug)}`
+    : '/galleries/parallel-horizons.json'
   try {
-    const res = await fetch('/galleries/parallel-horizons.json', { credentials: 'same-origin' })
+    const res = await fetch(loadUrl, { credentials: 'same-origin' })
     if (res.ok) applyData((await res.json()) as FloorplanData, false)
   } catch (_err) {
     // blank editor

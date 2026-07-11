@@ -16,8 +16,19 @@ Quickstart (Thalia):
 3. From the Thalia repo: `bun run bin/develop.ts gallery`
 4. Open the URL shown (e.g. `http://localhost:1339`):
    - `/` — homepage
-   - `/view` — 3D walkthrough (loads `public/gallery-floorplan.json` when present)
-   - `/create` — floorplan editor (export JSON for `/view`)
+   - `/view/:slug` — 3D walkthrough
+   - `/dashboard` — your galleries (requires sign-in)
+   - `/create/:id` — floorplan editor for a saved gallery
+
+### Auth + database (D1)
+
+1. Copy `.env.example` → `.env` (or export `DATABASE_URL`).
+2. Start MariaDB: `docker compose up -d`
+3. Push schema: `bun run db:push`
+4. First visit: open `/setup` to create the admin account, then `/newUser` for creator accounts.
+5. Password reset dev mail: run `mailcatcher` (SMTP `:1025`, web UI `:1080`).
+
+Optional test users: `bun run db:seed` (password `test-password`).
 
 Thalia compiles `src/js/*.ts` → `/dist/js/*.js` on-the-fly in development.
 
@@ -29,15 +40,18 @@ Floorplan JSON contract: see [docs/floorplan-schema.md](docs/floorplan-schema.md
 
 Done:
 
-- Thalia site: `/`, `/view`, `/create`
+- Thalia site: `/`, `/view/:slug`, `/dashboard`, `/create/:id`
+- **D1 auth:** ThaliaSecurity, MariaDB `galleries` table, save/publish floorplans
 - TypeScript viewer modules, Three.js r183, Rapier physics
-- JSON floorplan layout + async load + sample `gallery-floorplan.json`
+- JSON floorplan layout + demo galleries (`parallel-horizons`, `met-monet`)
 - Placards (title/artist/year) on JSON artworks
-- Floorplan editor at `/create`
+- Floorplan editor (owner-scoped save to DB)
 
-Next (see [docs/2026-08-11_phase1_smugmug_and_auth.md](docs/2026-08-11_phase1_smugmug_and_auth.md)):
+Next (see [docs/2026-07-11_phase_1_smugmug_and_auth.md](docs/2026-07-11_phase_1_smugmug_and_auth.md)):
 
-- Phase 1: Auth (Thalia security), SmugMug + UploadThing, photo library UI, DB-backed floorplans
+- **D2:** local-disk photo uploads + library grid
+- **D3:** SmugMug + UploadThing
+- **D4:** folder library UX
 - Mobile-friendly controls
 
 Credits:
