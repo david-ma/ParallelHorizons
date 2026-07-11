@@ -6,9 +6,14 @@ export type PhotoDto = {
   title: string
   src: string
   thumbnailUrl: string
+  folderId?: string | null
   artist?: string
   year?: string
   filename?: string
+}
+
+export type UploadPhotoOptions = {
+  folderId?: string | null
 }
 
 type UploadThingFileResult = {
@@ -72,10 +77,11 @@ async function postJsonToUploadPhoto(body: Record<string, unknown>): Promise<Pho
   return payload.photo
 }
 
-async function postMultipartFile(file: File): Promise<PhotoDto> {
+async function postMultipartFile(file: File, folderId?: string | null): Promise<PhotoDto> {
   const form = new FormData()
   form.append('fileToUpload', file)
   form.append('title', titleFromFile(file))
+  if (folderId) form.append('folderId', folderId)
   const res = await fetch('/uploadPhoto', { method: 'POST', body: form, credentials: 'same-origin' })
   const payload = (await res.json()) as { ok?: boolean; photo?: PhotoDto; error?: string }
   if (!res.ok || !payload.ok || !payload.photo) {
@@ -84,22 +90,32 @@ async function postMultipartFile(file: File): Promise<PhotoDto> {
   return payload.photo
 }
 
-async function forwardUtFileToServer(file: File, item: UploadThingFileResult): Promise<PhotoDto> {
+async function forwardUtFileToServer(
+  file: File,
+  item: UploadThingFileResult,
+  folderId?: string | null
+): Promise<PhotoDto> {
   const publicUrl = utPublicUrl(item)
   if (!publicUrl) {
     throw new Error('UploadThing returned no file URL (expected ufsUrl)')
   }
-  return postJsonToUploadPhoto({
+  const body: Record<string, unknown> = {
     uploadThingUrl: publicUrl,
     fileKey: item.key,
     filename: item.name ?? file.name,
     size: item.size ?? file.size,
     title: titleFromFile(file),
-  })
+  }
+  if (folderId) body.folderId = folderId
+  return postJsonToUploadPhoto(body)
 }
 
 /** Upload one or more image files through the best available pipeline. */
-export async function uploadPhotoFiles(files: FileList | File[]): Promise<PhotoDto[]> {
+export async function uploadPhotoFiles(
+  files: FileList | File[],
+  options: UploadPhotoOptions = {}
+): Promise<PhotoDto[]> {
+  const folderId = options.folderId ?? null
   const list = Array.from(files).filter((f) => f.type.startsWith('image/'))
   if (list.length === 0) return []
 
@@ -116,7 +132,7 @@ export async function uploadPhotoFiles(files: FileList | File[]): Promise<PhotoD
         const item = normalizeUtResult(rawResults[i])
         const file = list[i]
         if (!item || !file) continue
-        out.push(await forwardUtFileToServer(file, item))
+        out.push(await forwardUtFileToServer(file, item, folderId))
       }
       if (out.length > 0) return out
       if (rawResults.length > 0) {
@@ -128,7 +144,7 @@ export async function uploadPhotoFiles(files: FileList | File[]): Promise<PhotoD
   }
 
   for (const file of list) {
-    out.push(await postMultipartFile(file))
+    out.push(await postMultipartFile(file, folderId))
   }
   return out
 }

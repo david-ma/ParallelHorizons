@@ -4,9 +4,9 @@
 import crypto from 'node:crypto'
 import fsp from 'node:fs/promises'
 import path from 'node:path'
-import { and, desc, eq, isNull, sql } from 'drizzle-orm'
+import { and, desc, eq, inArray, isNull, or, sql, like } from 'drizzle-orm'
 import type { Website } from 'thalia/website'
-import { photos, galleries } from '../models/gallery-schema.js'
+import { photos, galleries, photoFolders } from '../models/gallery-schema.js'
 import { resolvePhotoDisplaySrc } from './smugmug-urls.js'
 
 export type PhotoDto = {
@@ -14,9 +14,17 @@ export type PhotoDto = {
   title: string
   src: string
   thumbnailUrl: string
+  folderId?: string | null
   artist?: string
   year?: string
   filename?: string
+}
+
+export type PhotoListOptions = {
+  /** `root` = folder_id IS NULL; number = folder; omit = all */
+  folderId?: 'root' | number
+  q?: string
+  unplaced?: boolean
 }
 
 export type StoredUpload = {
@@ -58,6 +66,7 @@ function rowToDto(row: {
   title: string | null
   url: string
   thumbnailUrl: string | null
+  folderId: number | null
   artist: string | null
   year: string | null
   filename: string | null
@@ -70,29 +79,98 @@ function rowToDto(row: {
     title,
     src,
     thumbnailUrl,
+    folderId: row.folderId == null ? null : String(row.folderId),
     artist: row.artist?.trim() || undefined,
     year: row.year?.trim() || undefined,
     filename: row.filename?.trim() || undefined,
   }
 }
 
-export async function listPhotosForOwner(website: Website, ownerUserId: number): Promise<PhotoDto[]> {
+const photoSelect = {
+  id: photos.id,
+  title: photos.title,
+  url: photos.url,
+  thumbnailUrl: photos.thumbnailUrl,
+  folderId: photos.folderId,
+  artist: photos.artist,
+  year: photos.year,
+  filename: photos.filename,
+}
+
+/** Photo ids referenced on any owner floorplan wall or catalog. */
+export async function collectPlacedPhotoIds(website: Website, ownerUserId: number): Promise<Set<string>> {
+  const db = drizzleOrNull(website)
+  const placed = new Set<string>()
+  if (!db) return placed
+  const rows = await db
+    .select({ floorplanJson: galleries.floorplanJson })
+    .from(galleries)
+    .where(and(eq(galleries.ownerUserId, ownerUserId), isNull(galleries.deletedAt)))
+  for (const row of rows) {
+    if (!row.floorplanJson?.trim()) continue
+    try {
+      const fp = JSON.parse(row.floorplanJson) as FloorplanLike
+      if (Array.isArray(fp.photoCatalog)) {
+        for (const p of fp.photoCatalog) {
+          if (p.id) placed.add(String(p.id))
+        }
+      }
+      const placements = fp.placements
+      if (!placements) continue
+      for (const cell of Object.values(placements)) {
+        if (!cell || typeof cell !== 'object') continue
+        for (const val of Object.values(cell)) {
+          if (typeof val === 'string' && val) placed.add(val)
+          else if (Array.isArray(val)) val.forEach((id) => id && placed.add(String(id)))
+        }
+      }
+    } catch {
+      // skip invalid JSON
+    }
+  }
+  return placed
+}
+
+export async function listPhotosForOwner(
+  website: Website,
+  ownerUserId: number,
+  options: PhotoListOptions = {}
+): Promise<PhotoDto[]> {
   const db = drizzleOrNull(website)
   if (!db) return []
+
+  const conditions = [eq(photos.ownerUserId, ownerUserId), isNull(photos.deletedAt)]
+
+  if (options.folderId === 'root') {
+    conditions.push(isNull(photos.folderId))
+  } else if (typeof options.folderId === 'number') {
+    conditions.push(eq(photos.folderId, options.folderId))
+  }
+
+  const q = options.q?.trim()
+  if (q) {
+    const pattern = `%${q.replace(/[%_\\]/g, '\\$&')}%`
+    conditions.push(
+      or(
+        like(photos.title, pattern),
+        like(photos.artist, pattern),
+        like(photos.filename, pattern)
+      )!
+    )
+  }
+
   const rows = await db
-    .select({
-      id: photos.id,
-      title: photos.title,
-      url: photos.url,
-      thumbnailUrl: photos.thumbnailUrl,
-      artist: photos.artist,
-      year: photos.year,
-      filename: photos.filename,
-    })
+    .select(photoSelect)
     .from(photos)
-    .where(and(eq(photos.ownerUserId, ownerUserId), isNull(photos.deletedAt)))
+    .where(and(...conditions))
     .orderBy(desc(photos.createdAt))
-  return rows.map(rowToDto)
+
+  let dtos = rows.map(rowToDto)
+  if (options.unplaced) {
+    const placed = await collectPlacedPhotoIds(website, ownerUserId)
+    dtos = dtos.filter((p) => !placed.has(p.id))
+  }
+  return dtos
 }
 
 export async function getPhotoForOwner(
@@ -103,15 +181,7 @@ export async function getPhotoForOwner(
   const db = drizzleOrNull(website)
   if (!db) return null
   const rows = await db
-    .select({
-      id: photos.id,
-      title: photos.title,
-      url: photos.url,
-      thumbnailUrl: photos.thumbnailUrl,
-      artist: photos.artist,
-      year: photos.year,
-      filename: photos.filename,
-    })
+    .select(photoSelect)
     .from(photos)
     .where(and(eq(photos.id, photoId), eq(photos.ownerUserId, ownerUserId), isNull(photos.deletedAt)))
     .limit(1)
@@ -126,6 +196,7 @@ export type PhotoInsertPayload = {
   filename: string
   url: string
   thumbnailUrl: string
+  folderId?: number | null
   adapterName?: string
   smugmugAlbumKey?: string
   smugmugImageKey?: string
@@ -142,7 +213,7 @@ export async function insertPhotoRecord(
   const title = payload.title?.trim() || payload.filename
   const result = await db.insert(photos).values({
     ownerUserId,
-    folderId: null,
+    folderId: payload.folderId ?? null,
     title,
     artist: payload.artist?.trim() || null,
     year: payload.year?.trim() || null,
@@ -265,4 +336,75 @@ export async function softDeletePhoto(
   if (affected === 0) return false
   await stripPhotoFromAllOwnerGalleries(website, ownerUserId, String(photoId))
   return true
+}
+
+export async function movePhotosToFolder(
+  website: Website,
+  ownerUserId: number,
+  photoIds: number[],
+  folderId: number | null
+): Promise<number> {
+  const db = drizzleOrNull(website)
+  if (!db || photoIds.length === 0) return 0
+  const unique = [...new Set(photoIds.filter((id) => Number.isFinite(id) && id > 0))]
+  if (unique.length === 0) return 0
+
+  if (folderId != null) {
+    const folderRows = await db
+      .select({ id: photoFolders.id })
+      .from(photoFolders)
+      .where(
+        and(eq(photoFolders.id, folderId), eq(photoFolders.ownerUserId, ownerUserId), isNull(photoFolders.deletedAt))
+      )
+      .limit(1)
+    if (!folderRows[0]) return 0
+  }
+
+  const result = await db
+    .update(photos)
+    .set({ folderId })
+    .where(and(eq(photos.ownerUserId, ownerUserId), inArray(photos.id, unique), isNull(photos.deletedAt)))
+  const header = Array.isArray(result) ? result[0] : result
+  return header && typeof header === 'object' && 'affectedRows' in header
+    ? Number((header as { affectedRows: number }).affectedRows)
+    : 0
+}
+
+export async function updatePhotoMetadata(
+  website: Website,
+  ownerUserId: number,
+  photoIds: number[],
+  meta: { title?: string; artist?: string; year?: string }
+): Promise<number> {
+  const db = drizzleOrNull(website)
+  if (!db || photoIds.length === 0) return 0
+  const unique = [...new Set(photoIds.filter((id) => Number.isFinite(id) && id > 0))]
+  if (unique.length === 0) return 0
+  const patch: Record<string, string | null> = {}
+  if (meta.title !== undefined) patch.title = meta.title.trim() || null
+  if (meta.artist !== undefined) patch.artist = meta.artist.trim() || null
+  if (meta.year !== undefined) patch.year = meta.year.trim() || null
+  if (Object.keys(patch).length === 0) return 0
+  const result = await db
+    .update(photos)
+    .set(patch)
+    .where(
+      and(eq(photos.ownerUserId, ownerUserId), inArray(photos.id, unique), isNull(photos.deletedAt))
+    )
+  const header = Array.isArray(result) ? result[0] : result
+  return header && typeof header === 'object' && 'affectedRows' in header
+    ? Number((header as { affectedRows: number }).affectedRows)
+    : 0
+}
+
+export async function bulkSoftDeletePhotos(
+  website: Website,
+  ownerUserId: number,
+  photoIds: number[]
+): Promise<number> {
+  let deleted = 0
+  for (const id of photoIds) {
+    if (await softDeletePhoto(website, id, ownerUserId)) deleted++
+  }
+  return deleted
 }

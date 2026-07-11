@@ -9,9 +9,17 @@ import type { RequestInfo } from 'thalia/server'
 import { recursiveObjectMerge } from 'thalia/website'
 import { ThaliaSecurity, ProfileControllerFactory, validateProfilePhotoHttpHttpsUrl, type RoleRouteRule } from 'thalia/security'
 import { isValidFloorplan } from '../src/js/floorplan.js'
-import { galleries as galleriesTable, photos as photosTable } from '../models/gallery-schema.js'
+import { galleries as galleriesTable, photos as photosTable, photoFolders as photoFoldersTable } from '../models/gallery-schema.js'
 import { loadMirrorOrigin } from './load-secrets.js'
-import { listPhotosForOwner, softDeletePhoto } from './photo-store.js'
+import { softDeletePhoto } from './photo-store.js'
+import {
+  handleFolderCreate,
+  handleFolderDelete,
+  handleFolderUpdate,
+  handleListFoldersApi,
+  handleListPhotosApi,
+  handlePhotosBulk,
+} from './photo-library-routes.js'
 import { uploadThingRouteController, uploadThingCleanupController } from './uploadthing-handler.js'
 import { galleryRoutes } from './gallery-routes.js'
 import {
@@ -177,6 +185,7 @@ const galleryDatabaseConfig = {
     schemas: {
       galleries: galleriesTable,
       photos: photosTable,
+      photoFolders: photoFoldersTable,
     },
   },
 }
@@ -242,6 +251,68 @@ const galleryControllers: RawWebsiteConfig['controllers'] = {
       return
     }
     json(res, 200, { ok: true })
+  },
+
+  'folder-create': async (res, req, website, requestInfo) => {
+    if (req.method !== 'POST') {
+      res.statusCode = 405
+      res.setHeader('Allow', 'POST')
+      res.end('Method not allowed')
+      return
+    }
+    const userId = requireUserId(requestInfo)
+    if (!userId) {
+      json(res, 401, { ok: false, error: 'Sign in required' })
+      return
+    }
+    await handleFolderCreate(res, req, website, userId)
+  },
+
+  'folder-update': async (res, req, website, requestInfo) => {
+    if (req.method !== 'POST') {
+      res.statusCode = 405
+      res.setHeader('Allow', 'POST')
+      res.end('Method not allowed')
+      return
+    }
+    const userId = requireUserId(requestInfo)
+    if (!userId) {
+      json(res, 401, { ok: false, error: 'Sign in required' })
+      return
+    }
+    const id = requestInfo.slug?.trim() || requestInfo.action?.trim()
+    await handleFolderUpdate(res, req, website, userId, id)
+  },
+
+  'folder-delete': async (res, req, website, requestInfo) => {
+    if (req.method !== 'POST') {
+      res.statusCode = 405
+      res.setHeader('Allow', 'POST')
+      res.end('Method not allowed')
+      return
+    }
+    const userId = requireUserId(requestInfo)
+    if (!userId) {
+      json(res, 401, { ok: false, error: 'Sign in required' })
+      return
+    }
+    const id = requestInfo.slug?.trim() || requestInfo.action?.trim()
+    await handleFolderDelete(res, website, userId, id)
+  },
+
+  'photos-bulk': async (res, req, website, requestInfo) => {
+    if (req.method !== 'POST') {
+      res.statusCode = 405
+      res.setHeader('Allow', 'POST')
+      res.end('Method not allowed')
+      return
+    }
+    const userId = requireUserId(requestInfo)
+    if (!userId) {
+      json(res, 401, { ok: false, error: 'Sign in required' })
+      return
+    }
+    await handlePhotosBulk(res, req, website, userId)
   },
 
   dashboard: (res, req, website, requestInfo) => {
@@ -406,8 +477,18 @@ const galleryControllers: RawWebsiteConfig['controllers'] = {
           json(res, 401, { ok: false, error: 'Sign in required' })
           return
         }
-        const photos = await listPhotosForOwner(website, userId)
-        json(res, 200, { ok: true, photos })
+        await handleListPhotosApi(res, website, userId, requestInfo.query ?? {})
+      })()
+    },
+
+    folders: (res, _req, website, requestInfo) => {
+      void (async () => {
+        const userId = requireUserId(requestInfo)
+        if (!userId) {
+          json(res, 401, { ok: false, error: 'Sign in required' })
+          return
+        }
+        await handleListFoldersApi(res, website, userId)
       })()
     },
 

@@ -52,11 +52,17 @@ function filenameFromUrl(urlString: string): string | undefined {
   }
 }
 
+function parseOptionalFolderId(raw: unknown): number | null | undefined {
+  if (raw == null || raw === '') return null
+  const id = Number(raw)
+  return Number.isFinite(id) && id > 0 ? id : undefined
+}
+
 async function persistSmugMugPhoto(
   website: Website,
   ownerUserId: number,
   bytes: Buffer,
-  meta: { filename: string; title?: string; artist?: string; year?: string },
+  meta: { filename: string; title?: string; artist?: string; year?: string; folderId?: number | null },
   albumKey: string
 ): Promise<PhotoDto> {
   const creds = await loadSmugMugCreds()
@@ -72,6 +78,7 @@ async function persistSmugMugPhoto(
     filename: stored.filename,
     url: stored.url,
     thumbnailUrl: stored.thumbnailUrl,
+    folderId: meta.folderId ?? null,
     adapterName: 'smugmug',
     smugmugAlbumKey: stored.smugmugAlbumKey,
     smugmugImageKey: stored.smugmugImageKey,
@@ -115,6 +122,7 @@ async function handleJsonUpload(
     (typeof body.filename === 'string' && body.filename.trim()) ||
     filenameFromUrl(remoteUrl) ||
     'image.jpg'
+  const folderId = parseOptionalFolderId(body.folderId)
   const photo = await persistSmugMugPhoto(
     website,
     ownerUserId,
@@ -124,6 +132,7 @@ async function handleJsonUpload(
       title: typeof body.title === 'string' ? body.title : undefined,
       artist: typeof body.artist === 'string' ? body.artist : undefined,
       year: typeof body.year === 'string' ? body.year : undefined,
+      folderId: folderId === undefined ? null : folderId,
     },
     albumKey
   )
@@ -157,11 +166,13 @@ async function handleMultipartUpload(
   const bytes = await fsp.readFile(file.filepath)
   await fsp.unlink(file.filepath).catch(() => {})
   const filename = file.originalFilename || 'upload.jpg'
+  const folderId = parseOptionalFolderId(fields.folderId)
   const meta = {
     title: fields.title || titleFromFilename(filename),
     artist: fields.artist,
     year: fields.year,
     filename,
+    folderId: folderId === undefined ? null : folderId,
   }
 
   const creds = await loadSmugMugCreds()
@@ -182,7 +193,16 @@ async function handleMultipartUpload(
   }
 
   const stored = await storeUploadFile(website.rootPath, bytes, filename)
-  const photo = await insertPhoto(website, ownerUserId, stored, meta)
+  const photo = await insertPhotoRecord(website, ownerUserId, {
+    title: meta.title,
+    artist: meta.artist,
+    year: meta.year,
+    filename: stored.filename,
+    url: stored.url,
+    thumbnailUrl: stored.url,
+    folderId: meta.folderId ?? null,
+    adapterName: 'local-disk',
+  })
   if (!photo) {
     json(res, 503, { ok: false, error: 'Database unavailable' })
     return

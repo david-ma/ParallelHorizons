@@ -6,6 +6,7 @@ This file is a practical handoff for maintainers and coding agents.
 
 | Date       | Change |
 |------------|--------|
+| 2026-07-12 | **D4 library:** `photo_folders` table + migration; folder CRUD API; photo list filters (`folderId`, `q`, `unplaced`); bulk move/labels/delete; `/library` folder tree + multi-select UI. |
 | 2026-07-12 | **D3 display:** SmugMug CDN URL helpers; UT `ufsUrl` client fix; thumbnail vs L-size URLs; 3D viewer uses Monetise `/mirror/` (`MONETISE_MIRROR_ORIGIN`). |
 | 2026-07-11 | **D3 SmugMug:** UploadThing hop, SmugMug upload via Thalia client, env-first secrets, `photos.smugmug_*` columns. |
 | 2026-07-11 | **D2 photos:** `photos` table, `/library`, local + SmugMug upload paths, soft delete + floorplan strip. |
@@ -152,6 +153,9 @@ The gallery is now running as a Thalia website and no longer depends on the old 
   - `src/gallery_creation.hbs`
 - Floorplan editor:
   - `src/js/gallery_creation.ts`
+- Photo library (D4):
+  - `src/library.hbs`, `src/js/library.ts`
+  - `config/folder-store.ts`, `config/photo-library-routes.ts`, `config/photo-store.ts`
 - Spotlight controls partial:
   - `src/partials/spotlight_sidebar.hbs`
 
@@ -213,4 +217,5 @@ Then open:
 - `/` homepage
 - `/view` 3D gallery
 - `/create` floorplan editor
+- `/library` photo library (folders + bulk)
 

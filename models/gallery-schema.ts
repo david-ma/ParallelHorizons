@@ -4,6 +4,16 @@ import type { MySqlTableWithColumns } from 'drizzle-orm/mysql-core'
 
 const users = models.users
 
+export const photoFolders: MySqlTableWithColumns<any> = mysqlTable('photo_folders', {
+  ...util.baseTableConfig,
+  ownerUserId: int('owner_user_id')
+    .notNull()
+    .references(() => users.id),
+  parentId: int('parent_id'),
+  name: util.vc('name').notNull(),
+  sortOrder: int('sort_order').notNull().default(0),
+})
+
 export const galleries: MySqlTableWithColumns<any> = mysqlTable('galleries', {
   ...util.baseTableConfig,
   slug: util.vc('slug').notNull().unique(),
@@ -21,7 +31,7 @@ export const photos: MySqlTableWithColumns<any> = mysqlTable('photos', {
   ownerUserId: int('owner_user_id')
     .notNull()
     .references(() => users.id),
-  /** Reserved for D4 folder tree */
+  /** D4 folder tree — null = library root (unsorted) */
   folderId: int('folder_id'),
   title: util.vc('title'),
   artist: util.vc('artist'),

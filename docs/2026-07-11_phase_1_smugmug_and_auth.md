@@ -497,11 +497,13 @@ export const config = recursiveObjectMerge(
 
 ### D4 — Library UX (folders + bulk)
 
-- [ ] `photo_folders` tree CRUD
-- [ ] Bulk select, move, label edit
-- [ ] Search / unplaced filter
+- [x] `photo_folders` tree CRUD
+- [x] Bulk select, move, label edit
+- [x] Search / unplaced filter
 
-**Exit:** full curator workflow from original spec.
+**Exit:** full curator workflow from original spec (create-editor folder filter still optional follow-up).
+
+**You run:** `bun run db:migrate` (applies `0003_photo_folders.sql` if not already).
 
 ### Hygiene (parallel)
 

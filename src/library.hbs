@@ -22,30 +22,76 @@
     </div>
   </header>
 
-  <main class="home-main">
-    <section class="home-hero">
+  <main class="home-main library-main">
+    <section class="home-hero library-hero">
       <p class="home-eyebrow">Photo library</p>
       <h1>Your photos</h1>
       <p class="home-lead">
-        Upload images here, then drag them onto walls in the gallery editor. Only you can see this library.
+        Organise images in folders, then drag them onto walls in the gallery editor.
       </p>
     </section>
 
-    <section class="library-upload" aria-labelledby="upload-heading">
-      <h2 id="upload-heading">Upload</h2>
-      <div id="library-dropzone" class="library-dropzone" tabindex="0">
-        <p>Drop images here or <label class="library-file-label"><span>browse</span><input id="library-file-input" type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple hidden></label></p>
-        <p class="library-upload-hint">JPEG, PNG, WebP, or GIF</p>
-      </div>
-      <p id="library-toast" class="library-toast" aria-live="polite"></p>
-    </section>
+    <div class="library-layout">
+      <aside class="library-sidebar" aria-label="Folders">
+        <div class="library-sidebar-head">
+          <h2>Folders</h2>
+          <button type="button" id="folder-create-btn" class="library-btn subtle">+ New</button>
+        </div>
+        <ul id="folder-tree" class="folder-tree"></ul>
+      </aside>
 
-    <section class="home-galleries" aria-labelledby="library-grid-heading">
-      <h2 id="library-grid-heading">Photos</h2>
-      <p id="library-empty" class="home-lead library-empty">No photos yet — upload your first image above.</p>
-      <ul id="library-grid" class="library-grid"></ul>
-    </section>
+      <div class="library-content">
+        <div class="library-toolbar">
+          <label class="library-search">
+            <span class="visually-hidden">Search</span>
+            <input id="library-search" type="search" placeholder="Search title, artist, filename…" autocomplete="off">
+          </label>
+          <label class="library-filter-check">
+            <input id="library-unplaced" type="checkbox">
+            Unplaced only
+          </label>
+          <div id="library-bulk" class="library-bulk" hidden>
+            <span id="library-bulk-count"></span>
+            <select id="library-bulk-move" aria-label="Move to folder">
+              <option value="">Move to…</option>
+              <option value="root">Unsorted</option>
+            </select>
+            <button type="button" id="library-bulk-labels" class="library-btn subtle">Edit labels</button>
+            <button type="button" id="library-bulk-delete" class="library-btn danger">Delete</button>
+          </div>
+        </div>
+
+        <section class="library-upload" aria-labelledby="upload-heading">
+          <h2 id="upload-heading">Upload</h2>
+          <div id="library-dropzone" class="library-dropzone" tabindex="0">
+            <p>Drop images here or <label class="library-file-label"><span>browse</span><input id="library-file-input" type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple hidden></label></p>
+            <p class="library-upload-hint">JPEG, PNG, WebP, or GIF — uploads go into the selected folder</p>
+          </div>
+          <p id="library-toast" class="library-toast" aria-live="polite"></p>
+        </section>
+
+        <section class="home-galleries" aria-labelledby="library-grid-heading">
+          <h2 id="library-grid-heading">Photos</h2>
+          <p id="library-empty" class="home-lead library-empty">No photos yet — upload your first image above.</p>
+          <ul id="library-grid" class="library-grid"></ul>
+        </section>
+      </div>
+    </div>
   </main>
+
+  <dialog id="library-labels-dialog" class="library-dialog">
+    <form method="dialog" id="library-labels-form">
+      <h3>Edit labels</h3>
+      <p class="library-dialog-hint">Applied to all selected photos. Leave blank to keep existing values.</p>
+      <label>Title <input name="title" type="text" autocomplete="off"></label>
+      <label>Artist <input name="artist" type="text" autocomplete="off"></label>
+      <label>Year <input name="year" type="text" autocomplete="off"></label>
+      <div class="library-dialog-actions">
+        <button type="button" id="library-labels-cancel" class="library-btn subtle">Cancel</button>
+        <button type="submit" class="library-btn">Save</button>
+      </div>
+    </form>
+  </dialog>
 
   <footer class="home-footer">
     <p><a href="/dashboard">Back to dashboard</a></p>
