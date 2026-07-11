@@ -4,7 +4,7 @@
 import * as THREE from 'three'
 import type { Gal } from './types.js'
 import { cellWorldCenter, FLOORPLAN_CELL_WORLD } from './layout.js'
-import { getSpotlightCullDebug } from './spotlight.js'
+import { classifyBeamFadeVisual, getSpotlightCullDebug } from './spotlight.js'
 
 const SIZE = 220
 const PAD = 14
@@ -154,20 +154,54 @@ export function updateDevMinimap(g: Gal): void {
 
   const cull = getSpotlightCullDebug()
   let activeCount = 0
+  let litCount = 0
+  let holdCount = 0
+  let fadeCount = 0
   for (const entry of cull) {
     const { px, py } = worldToMap(entry.x, entry.z, minX, minZ, span)
-    let fill = '#48484a'
-    if (entry.active && entry.inView) fill = '#ffd60a'
-    else if (entry.inView) fill = '#8e8e93'
-    draw.beginPath()
-    draw.arc(px, py, entry.active ? 4 : 3, 0, Math.PI * 2)
-    draw.fillStyle = fill
-    draw.fill()
-    if (entry.inView && !entry.active) {
-      draw.strokeStyle = 'rgba(100, 210, 255, 0.6)'
-      draw.lineWidth = 1
-      draw.stroke()
+    const phase = classifyBeamFadeVisual(entry.active, entry.beamFade, entry.beamOffDelayElapsed)
+    const fade = entry.beamFade
+
+    if (phase !== 'off') {
+      litCount++
+      const alpha = 0.25 + fade * 0.75
+      const radius = 2.5 + fade * 2
+      draw.beginPath()
+      draw.arc(px, py, radius, 0, Math.PI * 2)
+      draw.fillStyle = `rgba(255, 214, 10, ${alpha})`
+      draw.fill()
+
+      if (phase === 'holdOff') {
+        holdCount++
+        draw.strokeStyle = `rgba(255, 149, 0, ${0.55 + fade * 0.45})`
+        draw.lineWidth = 2
+        draw.stroke()
+      } else if (phase === 'fadeIn') {
+        fadeCount++
+        draw.strokeStyle = 'rgba(100, 210, 255, 0.75)'
+        draw.lineWidth = 1.5
+        draw.stroke()
+      } else if (phase === 'fadeOut') {
+        fadeCount++
+        draw.strokeStyle = `rgba(255, 105, 97, ${0.45 + fade * 0.45})`
+        draw.lineWidth = 1.5
+        draw.stroke()
+      }
+    } else {
+      let fill = '#48484a'
+      if (entry.inView || entry.hitboxInView) fill = '#8e8e93'
+      else if (entry.nearPlayer || entry.inHitbox) fill = '#636366'
+      draw.beginPath()
+      draw.arc(px, py, 3, 0, Math.PI * 2)
+      draw.fillStyle = fill
+      draw.fill()
+      if (entry.eligible && !entry.active) {
+        draw.strokeStyle = 'rgba(100, 210, 255, 0.6)'
+        draw.lineWidth = 1
+        draw.stroke()
+      }
     }
+
     if (entry.active) activeCount++
   }
 
@@ -184,6 +218,8 @@ export function updateDevMinimap(g: Gal): void {
   draw.fill()
 
   if (legendEl) {
-    legendEl.textContent = `Player · ${activeCount}/${cull.length} active · ${cull.filter((e) => e.inView).length} in view`
+    const proxActive = cull.filter((e) => e.active && !e.inView).length
+    legendEl.textContent =
+      `Player · ${litCount} lit · ${activeCount} active · ${holdCount} hold · ${fadeCount} fade · ${proxActive} prox`
   }
 }

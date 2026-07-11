@@ -38,10 +38,14 @@ Browser variance (Chrome/Safari vs Firefox/Cursor) is partly GPU throttling (Ene
 ### A. SpotLight culling (implemented)
 
 - Cap active lights at **8** (`maxActiveSpotlights`).
-- Eligibility: artwork centre inside **camera frustum** and **not wall-occluded** (raycast to `wallGroup`).
-- Priority: in-view rigs sorted by distance / view centrality; behind or occluded rigs never selected.
-- Culled rigs: `SpotLight.visible = false`, `intensity = 0`; fixture + emitter hidden.
-- Dev: minimap (active vs in-view), light debug panel, `?debugLights=1`, `galleryDebugSpotlights()`.
+- **Fixtures always drawn**; emitter + SpotLight **fade in 100 ms**; **2 s hold** after out of view before fade off.
+- Eligibility (any one qualifies):
+  - Artwork in **camera FOV + 3°** and not wall-occluded, or
+  - Within **4 m** of player (including behind), or
+  - Player inside **floor beam pool**, or
+  - **Floor beam pool in camera view** (center/rim, unoccluded).
+- Priority: in-view → near-player → floor hitbox; then cap at 8.
+- Dev: minimap (beam fade/hold rings), light debug panel, `?debugLights=1`.
 
 ### B. InstancedMesh fixtures (implemented)
 

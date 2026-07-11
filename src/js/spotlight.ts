@@ -140,6 +140,10 @@ export interface ArtworkSpotlightRig {
   anchor: ArtworkSpotlightAnchor
   /** When set, anchor is refreshed from live artwork pose on each apply. */
   artwork?: THREE.Object3D
+  /** 0–1 beam fade level (intensity + emitter opacity). */
+  beamFade: number
+  /** Seconds accumulated since rig became inactive (reset when active). */
+  beamOffDelayElapsed: number
 }
 
 /** Spotlight LOD — keep nearest rigs lit; see docs/2026-07-11_optimisations.md */
@@ -148,8 +152,16 @@ export const SPOTLIGHT_CULL_DEFAULTS = {
   maxWhenMany: 8,
   maxWhenHeavy: 8,
   heavyThreshold: 24,
-  /** Rigs within this radius (m) are always candidates; view direction breaks ties. */
-  nearRadius: 8,
+  /** Beam + light stay on within this radius even behind the player (m). */
+  nearActiveRadius: 4,
+  /** Seconds to ramp beam intensity and emitter on or off. */
+  beamFadeSeconds: 0.1,
+  /** Hold beam level this long after out of view before fading off. */
+  beamOffDelaySeconds: 2,
+  /** Extra degrees added to camera FOV for artwork eligibility. */
+  fovPaddingDegrees: 3,
+  /** Walkable floor top — used for floor-pool hitbox radius (m). */
+  floorY: 1.25,
 } as const
 
 export function maxActiveSpotlights(rigCount: number): number {
@@ -215,14 +227,97 @@ export function selectActiveSpotlightFlags(distancesSq: number[], maxActive: num
 const _cullCamPos = new THREE.Vector3()
 const _cullForward = new THREE.Vector3()
 const _cullPoint = new THREE.Vector3()
+const _cullLightPos = new THREE.Vector3()
+const _cullLightTarget = new THREE.Vector3()
 const _cullRayDir = new THREE.Vector3()
 const _cullProjScreen = new THREE.Matrix4()
 const _cullFrustum = new THREE.Frustum()
 const _cullRaycaster = new THREE.Raycaster()
+const _paddedCullCam = new THREE.PerspectiveCamera()
+const _hitboxSample = new THREE.Vector3()
 
-/** True when a world point lies inside the camera frustum (respects FOV + near/far). */
-export function isPointInViewFrustum(camera: THREE.Camera, point: THREE.Vector3): boolean {
-  _cullProjScreen.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse)
+/** Outer cone radius on the floor plane (m). */
+export function spotlightFloorHitRadius(lightY: number, floorY: number, coneAngle: number): number {
+  const drop = Math.max(0, lightY - floorY)
+  return Math.tan(coneAngle) * drop
+}
+
+/** Where the spotlight beam axis meets the floor; null if parallel or floor is above the light. */
+export function spotlightFloorPoolCenter(
+  lightPos: THREE.Vector3,
+  target: THREE.Vector3,
+  floorY: number,
+  out: THREE.Vector3
+): THREE.Vector3 | null {
+  _cullRayDir.copy(target).sub(lightPos)
+  const dy = _cullRayDir.y
+  if (Math.abs(dy) < 1e-6) return null
+  const t = (floorY - lightPos.y) / dy
+  if (t < 0) return null
+  return out.copy(lightPos).addScaledVector(_cullRayDir, t)
+}
+
+/** Player standing inside the lit floor pool (XZ) — pre-warms activation around corners. */
+export function isPlayerInSpotlightFloorHitbox(
+  playerPos: THREE.Vector3,
+  lightPos: THREE.Vector3,
+  target: THREE.Vector3,
+  floorY: number,
+  coneAngle: number
+): boolean {
+  const center = spotlightFloorPoolCenter(lightPos, target, floorY, _cullPoint)
+  if (!center) return false
+  const radius = spotlightFloorHitRadius(lightPos.y, floorY, coneAngle)
+  const dx = playerPos.x - center.x
+  const dz = playerPos.z - center.z
+  return dx * dx + dz * dz <= radius * radius
+}
+
+/** Floor beam pool visible to camera (center or rim), not blocked by walls. */
+export function isSpotlightFloorHitboxInView(
+  camera: THREE.Camera,
+  cameraPos: THREE.Vector3,
+  lightPos: THREE.Vector3,
+  target: THREE.Vector3,
+  floorY: number,
+  coneAngle: number,
+  wallMeshes: readonly THREE.Object3D[],
+  fovPaddingDeg: number = SPOTLIGHT_CULL_DEFAULTS.fovPaddingDegrees
+): boolean {
+  const center = spotlightFloorPoolCenter(lightPos, target, floorY, _cullPoint)
+  if (!center) return false
+  const radius = spotlightFloorHitRadius(lightPos.y, floorY, coneAngle)
+  const offsets: readonly [number, number][] = [
+    [0, 0],
+    [1, 0],
+    [-1, 0],
+    [0, 1],
+    [0, -1],
+  ]
+  for (const [ox, oz] of offsets) {
+    _hitboxSample.set(center.x + ox * radius, floorY, center.z + oz * radius)
+    if (!isPointInViewFrustum(camera, _hitboxSample, fovPaddingDeg)) continue
+    if (!isArtworkOccludedByWalls(cameraPos, _hitboxSample, wallMeshes)) return true
+  }
+  return false
+}
+
+/** True when a world point lies inside the camera frustum (optional FOV padding in degrees). */
+export function isPointInViewFrustum(
+  camera: THREE.Camera,
+  point: THREE.Vector3,
+  fovPaddingDeg: number = SPOTLIGHT_CULL_DEFAULTS.fovPaddingDegrees
+): boolean {
+  if (camera instanceof THREE.PerspectiveCamera && fovPaddingDeg > 0) {
+    _paddedCullCam.fov = camera.fov + fovPaddingDeg
+    _paddedCullCam.aspect = camera.aspect
+    _paddedCullCam.near = camera.near
+    _paddedCullCam.far = camera.far
+    _paddedCullCam.updateProjectionMatrix()
+    _cullProjScreen.multiplyMatrices(_paddedCullCam.projectionMatrix, camera.matrixWorldInverse)
+  } else {
+    _cullProjScreen.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse)
+  }
   _cullFrustum.setFromProjectionMatrix(_cullProjScreen)
   return _cullFrustum.containsPoint(point)
 }
@@ -246,6 +341,65 @@ export function isArtworkOccludedByWalls(
 }
 
 let lastCullDebug: SpotlightCullDebugEntry[] = []
+let lastBeamFadeMs = 0
+
+/** Advance off-delay timer while inactive; reset when active. */
+export function advanceBeamOffDelay(
+  active: boolean,
+  offDelayElapsed: number,
+  dtSec: number
+): number {
+  if (active) return 0
+  return offDelayElapsed + dtSec
+}
+
+/** Fade target: on immediately when active; off after hold, then ramp down. */
+export function computeBeamFadeTarget(
+  active: boolean,
+  offDelayElapsed: number,
+  currentFade: number,
+  offDelaySeconds: number = SPOTLIGHT_CULL_DEFAULTS.beamOffDelaySeconds
+): number {
+  if (active) return 1
+  if (offDelayElapsed < offDelaySeconds) return currentFade
+  return 0
+}
+
+/** Advance beam fade toward 0 or 1 over `fadeSeconds`. */
+export function stepBeamFade(
+  current: number,
+  target: number,
+  dtSec: number,
+  fadeSeconds: number = SPOTLIGHT_CULL_DEFAULTS.beamFadeSeconds
+): number {
+  if (fadeSeconds <= 0) return target
+  if (target > current) return Math.min(1, current + dtSec / fadeSeconds)
+  if (target < current) return Math.max(0, current - dtSec / fadeSeconds)
+  return current
+}
+
+/** Apply faded intensity and emitter opacity (fixtures stay visible). */
+export function applyRigBeamFade(rig: ArtworkSpotlightRig, fade: number): void {
+  const clamped = Math.max(0, Math.min(1, fade))
+  rig.beamFade = clamped
+  const { intensity, distance, angle, penumbra, decay, emitterOpacity } = rig.options
+  const emitterMat = rig.emitterDisc.material as THREE.MeshBasicMaterial
+  if (clamped <= 0) {
+    rig.emitterDisc.visible = false
+    rig.spotlight.visible = false
+    rig.spotlight.intensity = 0
+    return
+  }
+  rig.emitterDisc.visible = true
+  rig.spotlight.visible = true
+  rig.spotlight.intensity = intensity * clamped
+  rig.spotlight.distance = distance
+  rig.spotlight.angle = angle
+  rig.spotlight.penumbra = penumbra
+  rig.spotlight.decay = decay
+  rig.spotlight.target = rig.spotlightTarget
+  emitterMat.opacity = emitterOpacity * clamped
+}
 
 export type SpotlightCullDebugEntry = {
   x: number
@@ -253,7 +407,86 @@ export type SpotlightCullDebugEntry = {
   distance: number
   inView: boolean
   occluded: boolean
+  nearPlayer: boolean
+  inHitbox: boolean
+  hitboxInView: boolean
+  /** Eligible for activation (view, prox, hitbox). */
+  eligible: boolean
+  /** Selected within max-active cap this frame. */
   active: boolean
+  /** 0–1 beam brightness after fade step. */
+  beamFade: number
+  /** Seconds since rig became inactive (0 while active). */
+  beamOffDelayElapsed: number
+}
+
+export type BeamFadeVisualState = 'off' | 'on' | 'fadeIn' | 'holdOff' | 'fadeOut'
+
+/** Minimap / debug label for current beam fade phase. */
+export function classifyBeamFadeVisual(
+  active: boolean,
+  beamFade: number,
+  offDelayElapsed: number,
+  offDelaySeconds: number = SPOTLIGHT_CULL_DEFAULTS.beamOffDelaySeconds
+): BeamFadeVisualState {
+  if (beamFade <= 0) return 'off'
+  if (active) return beamFade >= 1 ? 'on' : 'fadeIn'
+  if (offDelayElapsed < offDelaySeconds) return 'holdOff'
+  return 'fadeOut'
+}
+
+export type SpotlightEligibility = {
+  eligible: boolean
+  sortKey: number
+  inView: boolean
+  occluded: boolean
+  nearPlayer: boolean
+  inHitbox: boolean
+  hitboxInView: boolean
+  distance: number
+}
+
+/** Score rig for activation: in-view first, then near-player, then floor hitbox. */
+export function evaluateSpotlightEligibility(
+  artworkCenter: THREE.Vector3,
+  lightPos: THREE.Vector3,
+  lightTarget: THREE.Vector3,
+  coneAngle: number,
+  camera: THREE.Camera,
+  cameraPos: THREE.Vector3,
+  cameraForward: THREE.Vector3,
+  wallMeshes: readonly THREE.Object3D[],
+  floorY: number = SPOTLIGHT_CULL_DEFAULTS.floorY,
+  nearRadius: number = SPOTLIGHT_CULL_DEFAULTS.nearActiveRadius,
+  fovPaddingDeg: number = SPOTLIGHT_CULL_DEFAULTS.fovPaddingDegrees
+): SpotlightEligibility {
+  const { sortKey: viewSort, distance } = spotlightCullPriority(artworkCenter, cameraPos, cameraForward)
+  const distSq = distance * distance
+  const inFrustum = isPointInViewFrustum(camera, artworkCenter, fovPaddingDeg)
+  const occluded = inFrustum ? isArtworkOccludedByWalls(cameraPos, artworkCenter, wallMeshes) : false
+  const inView = inFrustum && !occluded
+  const nearPlayer = distance <= nearRadius
+  const inHitbox = isPlayerInSpotlightFloorHitbox(cameraPos, lightPos, lightTarget, floorY, coneAngle)
+  const hitboxInView = isSpotlightFloorHitboxInView(
+    camera,
+    cameraPos,
+    lightPos,
+    lightTarget,
+    floorY,
+    coneAngle,
+    wallMeshes,
+    fovPaddingDeg
+  )
+  const eligible = inView || nearPlayer || inHitbox || hitboxInView
+
+  let sortKey: number
+  if (inView) sortKey = viewSort
+  else if (nearPlayer) sortKey = 1e8 + distSq
+  else if (hitboxInView) sortKey = 1e9 + distSq
+  else if (inHitbox) sortKey = 1e10 + distSq
+  else sortKey = 1e12 + distSq
+
+  return { eligible, sortKey, inView, occluded, nearPlayer, inHitbox, hitboxInView, distance }
 }
 
 export function getSpotlightCullDebug(): readonly SpotlightCullDebugEntry[] {
@@ -324,42 +557,8 @@ function refreshRigCullPoint(rig: ArtworkSpotlightRig, out: THREE.Vector3): THRE
   return out
 }
 
-/** Beam on/off — toggles instanced fixture visibility via instance matrix. */
-function ensureRigFixtureOn(rig: ArtworkSpotlightRig): void {
-  rig.emitterDisc.visible = true
-  setFixtureInstanceVisible(rig, true)
-}
-
-function ensureRigFixtureOff(rig: ArtworkSpotlightRig): void {
-  rig.emitterDisc.visible = false
-  setFixtureInstanceVisible(rig, false)
-}
-
-/** Restore SpotLight from rig options (after cull re-enable). */
-function ensureRigLightOn(rig: ArtworkSpotlightRig): void {
-  const { intensity, distance, angle, penumbra, decay } = rig.options
-  rig.spotlight.visible = true
-  rig.spotlight.intensity = intensity
-  rig.spotlight.distance = distance
-  rig.spotlight.angle = angle
-  rig.spotlight.penumbra = penumbra
-  rig.spotlight.decay = decay
-  rig.spotlight.target = rig.spotlightTarget
-}
-
-function ensureRigLightOff(rig: ArtworkSpotlightRig): void {
-  rig.spotlight.visible = false
-  rig.spotlight.intensity = 0
-}
-
-/** Emitter disc brightness — visual “beam on” hint when rig is active. */
-function setRigEmitterBeamLook(rig: ArtworkSpotlightRig, showBeam: boolean): void {
-  const emitterMat = rig.emitterDisc.material as THREE.MeshBasicMaterial
-  emitterMat.opacity = showBeam ? rig.options.emitterOpacity : rig.options.emitterOpacity * 0.15
-}
-
 /**
- * Cap active SpotLights by in-frustum, unoccluded priority; hide fixtures/beams for culled rigs.
+ * Cap active SpotLights by eligibility; fixtures always drawn; beams fade in 100ms, hold 2s off.
  */
 export function updateSpotlightCulling(
   camera: THREE.Camera,
@@ -368,27 +567,45 @@ export function updateSpotlightCulling(
   const rigs = registeredRigs
   if (rigs.length === 0) {
     lastCullDebug = []
+    lastBeamFadeMs = 0
     return
   }
+  const now = typeof performance !== 'undefined' ? performance.now() : 0
+  const dtSec = lastBeamFadeMs > 0 ? Math.min(0.25, (now - lastBeamFadeMs) / 1000) : 0
+  lastBeamFadeMs = now
   camera.getWorldPosition(_cullCamPos)
   camera.getWorldDirection(_cullForward)
   const maxActive = maxActiveSpotlights(rigs.length)
+
   const sortKeys: number[] = []
   const eligible: boolean[] = []
-  const meta: { distance: number; inView: boolean; occluded: boolean }[] = []
+  const meta: Omit<SpotlightEligibility, 'eligible' | 'sortKey'>[] = []
 
   for (let i = 0; i < rigs.length; i++) {
     const rig = rigs[i]!
     refreshRigCullPoint(rig, _cullPoint)
-    const { sortKey, distance } = spotlightCullPriority(_cullPoint, _cullCamPos, _cullForward)
-    const inFrustum = isPointInViewFrustum(camera, _cullPoint)
-    const occluded = inFrustum
-      ? isArtworkOccludedByWalls(_cullCamPos, _cullPoint, wallMeshes)
-      : false
-    const inView = inFrustum && !occluded
-    eligible.push(inView)
-    sortKeys.push(inView ? sortKey : 1e12 + distance * distance)
-    meta.push({ distance, inView, occluded })
+    rig.spotlight.getWorldPosition(_cullLightPos)
+    rig.spotlightTarget.getWorldPosition(_cullLightTarget)
+    const result = evaluateSpotlightEligibility(
+      _cullPoint,
+      _cullLightPos,
+      _cullLightTarget,
+      rig.options.angle,
+      camera,
+      _cullCamPos,
+      _cullForward,
+      wallMeshes
+    )
+    eligible.push(result.eligible)
+    sortKeys.push(result.sortKey)
+    meta.push({
+      inView: result.inView,
+      occluded: result.occluded,
+      nearPlayer: result.nearPlayer,
+      inHitbox: result.inHitbox,
+      hitboxInView: result.hitboxInView,
+      distance: result.distance,
+    })
   }
 
   const activeFlags = selectActiveSpotlightFlagsInView(sortKeys, maxActive)
@@ -396,18 +613,15 @@ export function updateSpotlightCulling(
 
   for (let i = 0; i < rigs.length; i++) {
     const rig = rigs[i]!
-    const active = eligible[i]! && activeFlags[i]!
-    const { distance, inView, occluded } = meta[i]!
+    const isEligible = eligible[i]!
+    const active = isEligible && activeFlags[i]!
+    const { distance, inView, occluded, nearPlayer, inHitbox, hitboxInView } = meta[i]!
     refreshRigCullPoint(rig, _cullPoint)
 
-    if (active) {
-      ensureRigFixtureOn(rig)
-      ensureRigLightOn(rig)
-      setRigEmitterBeamLook(rig, true)
-    } else {
-      ensureRigFixtureOff(rig)
-      ensureRigLightOff(rig)
-    }
+    rig.beamOffDelayElapsed = advanceBeamOffDelay(active, rig.beamOffDelayElapsed, dtSec)
+    const fadeTarget = computeBeamFadeTarget(active, rig.beamOffDelayElapsed, rig.beamFade)
+    rig.beamFade = stepBeamFade(rig.beamFade, fadeTarget, dtSec)
+    applyRigBeamFade(rig, rig.beamFade)
 
     debug.push({
       x: _cullPoint.x,
@@ -415,7 +629,13 @@ export function updateSpotlightCulling(
       distance,
       inView,
       occluded,
+      nearPlayer,
+      inHitbox,
+      hitboxInView,
+      eligible: isEligible,
       active,
+      beamFade: rig.beamFade,
+      beamOffDelayElapsed: rig.beamOffDelayElapsed,
     })
   }
   lastCullDebug = debug
@@ -617,7 +837,6 @@ function mountFixtureOnWall(
 
 export function applyArtworkSpotlightRigOptions(rig: ArtworkSpotlightRig): void {
   const options = rig.options
-  rig.spotlight.intensity = options.intensity
   rig.spotlight.distance = options.distance
   rig.spotlight.angle = options.angle
   rig.spotlight.penumbra = options.penumbra
@@ -634,8 +853,6 @@ export function applyArtworkSpotlightRigOptions(rig: ArtworkSpotlightRig): void 
   }
 
   const { right, up, normal } = wallAlignedBasis(options.wallNormal)
-  const emitterMat = rig.emitterDisc.material as THREE.MeshBasicMaterial
-  emitterMat.opacity = options.emitterOpacity
   rig.emitterDisc.position
     .copy(rig.spotlight.position)
     .add(right.multiplyScalar(options.emitterOffsetX))
@@ -646,6 +863,7 @@ export function applyArtworkSpotlightRigOptions(rig: ArtworkSpotlightRig): void 
 
   // Lamp emits from the disc (lens), not the mount point.
   rig.spotlight.position.copy(rig.emitterDisc.position)
+  applyRigBeamFade(rig, rig.beamFade)
 }
 
 export function applyGlobalTuningToAllRigs(): void {
@@ -883,6 +1101,8 @@ export function addArtworkSpotlightRig(
     options,
     anchor,
     artwork,
+    beamFade: 0,
+    beamOffDelayElapsed: 0,
   }
   applyArtworkSpotlightRigOptions(rig)
   registeredRigs.push(rig)

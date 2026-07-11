@@ -2,16 +2,24 @@ import { describe, expect, test } from 'bun:test'
 import * as THREE from 'three'
 import {
   buildSpotlightOptions,
+  evaluateSpotlightEligibility,
   formatSpotlightTuningAsCode,
   isArtworkOccludedByWalls,
+  isPlayerInSpotlightFloorHitbox,
   isPointInViewFrustum,
+  isSpotlightFloorHitboxInView,
   maxActiveSpotlights,
   resolveMaxPixelRatio,
   selectActiveSpotlightFlags,
   selectActiveSpotlightFlagsByDistance,
   selectActiveSpotlightFlagsByScore,
   selectActiveSpotlightFlagsInView,
+  advanceBeamOffDelay,
+  classifyBeamFadeVisual,
+  computeBeamFadeTarget,
+  stepBeamFade,
   spotlightCullPriority,
+  spotlightFloorHitRadius,
   type SpotlightGlobalTuning,
 } from '../../src/js/spotlight'
 
@@ -83,6 +91,48 @@ describe('maxActiveSpotlights', () => {
   test('caps at 8 for heavy galleries', () => {
     expect(maxActiveSpotlights(24)).toBe(8)
     expect(maxActiveSpotlights(30)).toBe(8)
+  })
+})
+
+describe('stepBeamFade', () => {
+  test('ramps up over fade duration', () => {
+    expect(stepBeamFade(0, 1, 0.05, 0.1)).toBe(0.5)
+    expect(stepBeamFade(0.5, 1, 0.05, 0.1)).toBe(1)
+  })
+
+  test('ramps down over fade duration', () => {
+    expect(stepBeamFade(1, 0, 0.1, 0.1)).toBe(0)
+  })
+})
+
+describe('computeBeamFadeTarget', () => {
+  test('holds brightness during off-delay', () => {
+    expect(computeBeamFadeTarget(false, 1, 1, 2)).toBe(1)
+    expect(computeBeamFadeTarget(false, 2, 0.8, 2)).toBe(0)
+  })
+
+  test('ramps on immediately when active', () => {
+    expect(computeBeamFadeTarget(true, 1.5, 0.4, 2)).toBe(1)
+  })
+})
+
+describe('advanceBeamOffDelay', () => {
+  test('resets when active', () => {
+    expect(advanceBeamOffDelay(true, 1.5, 0.1)).toBe(0)
+  })
+
+  test('accumulates while inactive', () => {
+    expect(advanceBeamOffDelay(false, 1, 0.5)).toBe(1.5)
+  })
+})
+
+describe('classifyBeamFadeVisual', () => {
+  test('labels hold and fade phases', () => {
+    expect(classifyBeamFadeVisual(false, 1, 0.5, 2)).toBe('holdOff')
+    expect(classifyBeamFadeVisual(false, 0.4, 2.1, 2)).toBe('fadeOut')
+    expect(classifyBeamFadeVisual(true, 0.4, 0, 2)).toBe('fadeIn')
+    expect(classifyBeamFadeVisual(true, 1, 0, 2)).toBe('on')
+    expect(classifyBeamFadeVisual(false, 0, 1, 2)).toBe('off')
   })
 })
 
@@ -160,7 +210,7 @@ describe('isPointInViewFrustum', () => {
     cam.position.set(0, 1.75, 0)
     cam.lookAt(0, 2, -10)
     cam.updateMatrixWorld(true)
-    expect(isPointInViewFrustum(cam, new THREE.Vector3(0, 2, -8))).toBe(true)
+    expect(isPointInViewFrustum(cam, new THREE.Vector3(0, 2, -8), 0)).toBe(true)
   })
 
   test('excludes points behind the camera', () => {
@@ -168,7 +218,105 @@ describe('isPointInViewFrustum', () => {
     cam.position.set(0, 1.75, 0)
     cam.lookAt(0, 2, -10)
     cam.updateMatrixWorld(true)
-    expect(isPointInViewFrustum(cam, new THREE.Vector3(0, 2, 5))).toBe(false)
+    expect(isPointInViewFrustum(cam, new THREE.Vector3(0, 2, 5), 0)).toBe(false)
+  })
+
+  test('FOV padding includes points just outside strict frustum', () => {
+    const cam = new THREE.PerspectiveCamera(75, 1, 0.1, 100)
+    cam.position.set(0, 1.75, 0)
+    cam.lookAt(0, 2, -10)
+    cam.updateMatrixWorld(true)
+    const edge = new THREE.Vector3(6.2, 2, -8)
+    expect(isPointInViewFrustum(cam, edge, 0)).toBe(false)
+    expect(isPointInViewFrustum(cam, edge, 3)).toBe(true)
+  })
+})
+
+describe('spotlightFloorHitRadius', () => {
+  test('scales with drop height and cone angle', () => {
+    const r = spotlightFloorHitRadius(4.2, 1.25, 0.49)
+    expect(r).toBeCloseTo(Math.tan(0.49) * (4.2 - 1.25), 5)
+  })
+})
+
+describe('isPlayerInSpotlightFloorHitbox', () => {
+  test('true when player stands in floor pool', () => {
+    const light = new THREE.Vector3(0, 4, 0)
+    const target = new THREE.Vector3(0, 2, 0)
+    const player = new THREE.Vector3(0.5, 1.75, 0)
+    expect(isPlayerInSpotlightFloorHitbox(player, light, target, 1.25, 0.49)).toBe(true)
+  })
+
+  test('false when player is outside pool radius', () => {
+    const light = new THREE.Vector3(0, 4, 0)
+    const target = new THREE.Vector3(0, 2, 0)
+    const player = new THREE.Vector3(8, 1.75, 0)
+    expect(isPlayerInSpotlightFloorHitbox(player, light, target, 1.25, 0.49)).toBe(false)
+  })
+})
+
+describe('isSpotlightFloorHitboxInView', () => {
+  test('true when floor pool center is in frustum', () => {
+    const cam = new THREE.PerspectiveCamera(75, 1, 0.1, 100)
+    cam.position.set(0, 1.75, 0)
+    cam.lookAt(0, 1.25, -6)
+    cam.updateMatrixWorld(true)
+    const light = new THREE.Vector3(0, 4, -6)
+    const target = new THREE.Vector3(0, 2, -6)
+    expect(
+      isSpotlightFloorHitboxInView(cam, cam.position, light, target, 1.25, 0.49, [], 0)
+    ).toBe(true)
+  })
+})
+
+describe('evaluateSpotlightEligibility', () => {
+  test('near player is eligible even behind camera', () => {
+    const cam = new THREE.PerspectiveCamera(75, 1, 0.1, 100)
+    cam.position.set(0, 1.75, 0)
+    cam.lookAt(0, 2, -10)
+    cam.updateMatrixWorld(true)
+    const forward = new THREE.Vector3(0, 0, -1)
+    const art = new THREE.Vector3(0, 2, 2)
+    const light = new THREE.Vector3(0, 4, 2.2)
+    const target = new THREE.Vector3(0, 2, 2)
+    const result = evaluateSpotlightEligibility(
+      art,
+      light,
+      target,
+      0.49,
+      cam,
+      cam.position,
+      forward,
+      []
+    )
+    expect(result.nearPlayer).toBe(true)
+    expect(result.eligible).toBe(true)
+    expect(result.inView).toBe(false)
+  })
+
+  test('floor hitbox in view is eligible before painting enters frustum', () => {
+    const cam = new THREE.PerspectiveCamera(75, 1, 0.1, 100)
+    cam.position.set(0, 1.75, 0)
+    cam.lookAt(6, 1.25, -8)
+    cam.updateMatrixWorld(true)
+    const forward = new THREE.Vector3()
+    cam.getWorldDirection(forward)
+    const art = new THREE.Vector3(0, 2, 5)
+    const light = new THREE.Vector3(6, 4, -8)
+    const target = new THREE.Vector3(6, 2, -8)
+    const result = evaluateSpotlightEligibility(
+      art,
+      light,
+      target,
+      0.49,
+      cam,
+      cam.position,
+      forward,
+      []
+    )
+    expect(result.hitboxInView).toBe(true)
+    expect(result.eligible).toBe(true)
+    expect(result.inView).toBe(false)
   })
 })
 
