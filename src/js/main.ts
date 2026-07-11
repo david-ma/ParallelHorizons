@@ -6,13 +6,54 @@ import * as THREE from 'three'
 import { PointerLockControls } from 'three/examples/jsm/controls/PointerLockControls.js'
 import type { Gal } from './types.js'
 import { loadFloorplanAsync, buildSceneFromFloorplan, buildMinimalGallery, applySpawnPosition } from './layout.js'
-import { attachMovementKeys, updateMovement, updateVelocityOnly } from './movement.js'
+import { attachMovementKeys, clearMovementState, updateMovement, updateVelocityOnly } from './movement.js'
 import { initRapier, createGalleryPhysics, stepPhysics } from './physics.js'
 import { initSpotlightDevPanel } from './spotlight.js'
+
+/** When the pause menu is up, refresh the frozen scene at 1 FPS instead of display rate. */
+const PAUSED_FRAME_MS = 1000
 
 let lastCalledTime: number | undefined
 let fps = 0
 let counter = 0
+let animationFrameId: number | null = null
+let pauseTimeoutId: ReturnType<typeof setTimeout> | null = null
+
+function isGameplayActive(g: Gal): boolean {
+  return !!g.screensaver || g.controls.enabled === true
+}
+
+function clearFrameSchedule(): void {
+  if (animationFrameId != null) {
+    cancelAnimationFrame(animationFrameId)
+    animationFrameId = null
+  }
+  if (pauseTimeoutId != null) {
+    clearTimeout(pauseTimeoutId)
+    pauseTimeoutId = null
+  }
+}
+
+function scheduleNextRender(g: Gal): void {
+  clearFrameSchedule()
+  if (isGameplayActive(g)) {
+    animationFrameId = requestAnimationFrame(g.render.bind(g))
+  } else {
+    pauseTimeoutId = setTimeout(() => g.render(), PAUSED_FRAME_MS)
+  }
+}
+
+function freezeWorld(g: Gal): void {
+  clearMovementState(g)
+  if (g.playerBody) g.playerBody.setLinvel({ x: 0, y: 0, z: 0 }, true)
+}
+
+function initWallBoundingBoxes(g: Gal): void {
+  for (let i = 0; i < g.wallGroup.children.length; i++) {
+    const child = g.wallGroup.children[i] as THREE.Mesh & { BBox?: THREE.Box3 }
+    child.BBox?.setFromObject(child)
+  }
+}
 
 function framerate(): void {
   if (!(globalThis as { GALLERY_DEV_TOOLS?: boolean }).GALLERY_DEV_TOOLS) return
@@ -144,17 +185,7 @@ if (Detector && !Detector.webgl) {
       const doc = g.canvas?.ownerDocument ?? document
       if ('pointerLockElement' in doc || 'mozPointerLockElement' in doc || 'webkitPointerLockElement' in doc) {
         function releaseToMenu() {
-          g.moveForward = false
-          g.moveBackward = false
-          g.moveLeft = false
-          g.moveRight = false
-          g.run = false
-          g.analogForward = 0
-          g.analogBackward = 0
-          g.analogLeft = 0
-          g.analogRight = 0
-          g.analogX = 0
-          g.analogY = 0
+          clearMovementState(g)
           const d = g.canvas?.ownerDocument ?? document
           const hasLock =
             d.pointerLockElement === g.canvas ||
@@ -168,6 +199,10 @@ if (Detector && !Detector.webgl) {
             g.controls.enabled = false
             g.menu?.classList.remove('hide')
             g.bgMenu?.classList.remove('hide')
+            freezeWorld(g)
+            g.prevTime = performance.now()
+            clearFrameSchedule()
+            scheduleNextRender(g)
           }
           console.debug('Pointer lock released; showing menu for re-entry.')
         }
@@ -252,11 +287,18 @@ if (Detector && !Detector.webgl) {
         g.menu?.classList.add('hide')
         g.bgMenu?.classList.add('hide')
         document.addEventListener('mousemove', g.moveCallback as any, false)
+        g.prevTime = performance.now()
+        clearFrameSchedule()
+        g.render()
       } else {
         g.controls.enabled = false
         g.menu?.classList.remove('hide')
         g.bgMenu?.classList.remove('hide')
         document.removeEventListener('mousemove', g.moveCallback as any, false)
+        freezeWorld(g)
+        g.prevTime = performance.now()
+        clearFrameSchedule()
+        scheduleNextRender(g)
       }
     },
 
@@ -307,13 +349,12 @@ if (Detector && !Detector.webgl) {
     render() {
       const g = gal!
       framerate()
-      requestAnimationFrame(g.render.bind(g))
-      g.animatedObjects.forEach((obj) => obj.render(obj))
-      if (g.screensaver || g.controls.enabled === true) {
+
+      if (isGameplayActive(g)) {
         g.initialRender = false
+        g.animatedObjects.forEach((obj) => obj.render(obj))
         const currentTime = performance.now()
         const delta = (currentTime - g.prevTime) / 1000
-        // Physics path when Rapier is set up and we have pointer lock (not screensaver)
         const usePhysics = g.physicsWorld && g.playerBody && !g.screensaver
         if (usePhysics) {
           updateVelocityOnly(g, delta)
@@ -329,7 +370,6 @@ if (Detector && !Detector.webgl) {
             }
           }
         } else {
-          // Legacy path: updateMovement (camera-relative velocity + manual collision) and wall color reset
           updateMovement(g, delta)
           g.raycaster.setFromCamera(g.mouse.clone(), g.camera)
           g.intersects = g.raycaster.intersectObjects(g.paintings)
@@ -372,14 +412,14 @@ if (Detector && !Detector.webgl) {
         g.renderer.render(g.scene, g.camera)
       } else {
         g.prevTime = performance.now()
-      }
-      if (g.initialRender === true) {
-        for (let i = 0; i < g.wallGroup.children.length; i++) {
-          const child = g.wallGroup.children[i] as THREE.Mesh & { BBox?: THREE.Box3 }
-          child.BBox?.setFromObject(child)
+        if (g.initialRender) {
+          initWallBoundingBoxes(g)
+          g.initialRender = false
         }
         g.renderer.render(g.scene, g.camera)
       }
+
+      scheduleNextRender(g)
     },
   } as unknown as Gal
 

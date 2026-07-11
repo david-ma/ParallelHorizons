@@ -37,6 +37,21 @@ function getCameraForwardRight(g: Gal): { dir: THREE.Vector3; right: THREE.Vecto
   return { dir: _dir, right: _right }
 }
 
+export function clearMovementState(g: Gal): void {
+  g.moveForward = false
+  g.moveBackward = false
+  g.moveLeft = false
+  g.moveRight = false
+  g.run = false
+  g.analogForward = 0
+  g.analogBackward = 0
+  g.analogLeft = 0
+  g.analogRight = 0
+  g.analogX = 0
+  g.analogY = 0
+  g.moveVelocity.set(0, 0, 0)
+}
+
 /**
  * Attaches keydown/keyup listeners for WASD, arrows, and space (jump).
  */

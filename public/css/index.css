@@ -185,3 +185,219 @@ canvas {
     position: relative;
     z-index: 1;
 }
+
+/* —— Homepage (scrollable; viewer pages keep overflow:hidden on body) —— */
+body.page-home {
+	overflow: auto;
+	height: auto;
+	min-height: 100%;
+	background: #1c1c1e;
+	color: #f2f2f7;
+	font-family: Lato, sans-serif;
+	font-size: 16px;
+	line-height: 1.55;
+}
+
+.home-header {
+	border-bottom: 1px solid #3a3a3d;
+	background: #2c2c2e;
+}
+
+.home-header-inner {
+	max-width: 960px;
+	margin: 0 auto;
+	padding: 1rem 1.25rem;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 1rem;
+}
+
+.home-logo {
+	font-family: Oswald, sans-serif;
+	letter-spacing: 0.06em;
+	font-size: 1.1rem;
+	color: #f2f2f7;
+	text-decoration: none;
+}
+
+.home-nav {
+	display: flex;
+	gap: 1.25rem;
+	font-size: 0.95rem;
+}
+
+.home-nav a {
+	color: #b8b8c2;
+	text-decoration: none;
+}
+
+.home-nav a:hover {
+	color: #0a84ff;
+}
+
+.home-main {
+	max-width: 960px;
+	margin: 0 auto;
+	padding: 2.5rem 1.25rem 3rem;
+}
+
+.home-hero {
+	margin-bottom: 3rem;
+}
+
+.home-eyebrow {
+	margin: 0 0 0.5rem;
+	font-size: 0.8rem;
+	text-transform: uppercase;
+	letter-spacing: 0.12em;
+	color: #5e5ce6;
+}
+
+.home-hero h1 {
+	margin: 0 0 1rem;
+	font-family: Oswald, sans-serif;
+	font-size: clamp(2rem, 5vw, 2.75rem);
+	font-weight: 400;
+	line-height: 1.15;
+	letter-spacing: 0.02em;
+}
+
+.home-lead {
+	margin: 0 0 1.5rem;
+	max-width: 38em;
+	color: #b8b8c2;
+	font-size: 1.05rem;
+}
+
+.home-cta {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.75rem;
+	margin-bottom: 1rem;
+}
+
+.home-btn {
+	display: inline-block;
+	padding: 0.65rem 1.25rem;
+	border-radius: 8px;
+	font-family: Oswald, sans-serif;
+	letter-spacing: 0.06em;
+	text-decoration: none;
+	transition: filter 0.2s;
+}
+
+.home-btn:hover {
+	filter: brightness(1.08);
+}
+
+.home-btn-primary {
+	background: #0a84ff;
+	color: #fff;
+}
+
+.home-btn-secondary {
+	background: transparent;
+	color: #f2f2f7;
+	border: 1px solid #48484f;
+}
+
+.home-note {
+	margin: 0;
+	font-size: 0.85rem;
+	color: #8e8e93;
+}
+
+.home-note a {
+	color: #0a84ff;
+}
+
+.home-steps,
+.home-features,
+.home-credits {
+	margin-bottom: 2.5rem;
+}
+
+.home-steps h2,
+.home-features h2,
+.home-credits h2 {
+	font-family: Oswald, sans-serif;
+	font-weight: 400;
+	letter-spacing: 0.04em;
+	margin: 0 0 1rem;
+	font-size: 1.35rem;
+}
+
+.home-step-list {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+	display: grid;
+	gap: 1rem;
+}
+
+@media (min-width: 640px) {
+	.home-step-list {
+		grid-template-columns: repeat(3, 1fr);
+	}
+}
+
+.home-step-list li {
+	background: #2c2c2e;
+	border: 1px solid #3a3a3d;
+	border-radius: 8px;
+	padding: 1rem;
+}
+
+.home-step-list h3 {
+	margin: 0 0 0.35rem;
+	font-family: Oswald, sans-serif;
+	font-size: 1rem;
+	letter-spacing: 0.04em;
+}
+
+.home-step-list p {
+	margin: 0;
+	font-size: 0.9rem;
+	color: #b8b8c2;
+}
+
+.home-feature-grid {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+	display: grid;
+	gap: 0.5rem;
+}
+
+@media (min-width: 480px) {
+	.home-feature-grid {
+		grid-template-columns: 1fr 1fr;
+	}
+}
+
+.home-feature-grid li {
+	padding: 0.65rem 0.85rem;
+	background: #242426;
+	border-radius: 6px;
+	font-size: 0.9rem;
+	color: #d1d1d6;
+}
+
+.home-credits p {
+	margin: 0;
+	color: #8e8e93;
+	font-size: 0.9rem;
+}
+
+.home-credits a {
+	color: #0a84ff;
+}
+
+.home-footer {
+	border-top: 1px solid #3a3a3d;
+	padding: 1.25rem;
+	text-align: center;
+	font-size: 0.8rem;
+	color: #636366;
+}

@@ -18,6 +18,7 @@ This file is a practical handoff for maintainers and coding agents.
 | 2025-03-11 | Dev modal on bottom-right; Esc shows menu; classList for hide/show; z-index for menu/canvas. |
 | 2025-03-11 | Spotlight: one fixture + light; GLB from Poly Pizza (iPoly3D, CC0); wall-mounted; emitter disc “on” look; credits in README + index. |
 | 2026-07-11 | Async floorplan load (`loadFloorplanAsync`), loading overlay, `buildMinimalGallery` fallback, sample `gallery-floorplan.json`, schema doc, per-artwork spotlights in JSON mode. |
+| 2026-08-11 | Legacy `public/` demos removed; homepage refresh; Phase 1 plan (`docs/2026-08-11_phase1_smugmug_and_auth.md`); unit tests; pause menu 1 FPS power save. |
 
 ---
 

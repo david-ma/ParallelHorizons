@@ -35,10 +35,9 @@ Done:
 - Placards (title/artist/year) on JSON artworks
 - Floorplan editor at `/create`
 
-Next (see AGENTS.md):
+Next (see [docs/2026-08-11_phase1_smugmug_and_auth.md](docs/2026-08-11_phase1_smugmug_and_auth.md)):
 
-- Auth (Thalia security), user dashboard, UploadThing uploads
-- Save floorplans to DB instead of file export
+- Phase 1: Auth (Thalia security), SmugMug + UploadThing, photo library UI, DB-backed floorplans
 - Mobile-friendly controls
 
 Credits:

@@ -45,7 +45,6 @@ export const config: RawWebsiteConfig = {
   domains: ['localhost', '127.0.0.1'],
 
   controllers: {
-    '': page('index'),
     create: page('gallery_creation'),
     'save-floorplan': async (res, req, website, requestInfo) => {
       if (requestInfo.action && requestInfo.action !== '') {

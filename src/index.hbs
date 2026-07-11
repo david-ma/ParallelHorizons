@@ -1,17 +1,74 @@
 <!DOCTYPE html>
 <html lang="en-AU">
 <head>
-  {{> head title="Home"}}
+  {{> head title="Parallel Horizons"}}
 </head>
-<body>
-  <main class="home">
-    <h1>3D Gallery</h1>
-    <p>Create your own virtual gallery: upload photos, arrange them on the walls, and share a link others can walk through in 3D.</p>
-    <p><a href="/view">View demo gallery</a> — or log in to create your own (coming soon).</p>
-    <section>
+<body class="page-home">
+  <header class="home-header">
+    <div class="home-header-inner">
+      <a class="home-logo" href="/">Parallel Horizons</a>
+      <nav class="home-nav" aria-label="Primary">
+        <a href="/view">Demo gallery</a>
+        <a href="/create">Editor</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="home-main">
+    <section class="home-hero">
+      <p class="home-eyebrow">3D virtual exhibition</p>
+      <h1>Build a gallery people can walk through</h1>
+      <p class="home-lead">
+        Upload your work, organise it on your server, arrange rooms on a floor plan, and share a link.
+        Visitors explore in the browser with pointer-lock — no app install.
+      </p>
+      <div class="home-cta">
+        <a class="home-btn home-btn-primary" href="/view">Walk the demo</a>
+        <a class="home-btn home-btn-secondary" href="/create">Open editor</a>
+      </div>
+      <p class="home-note">Signed-in uploads, photo library, and SmugMug integration are Phase 1 — documented in the repository under <code>docs/2026-08-11_phase1_smugmug_and_auth.md</code>.</p>
+    </section>
+
+    <section class="home-steps" aria-labelledby="how-heading">
+      <h2 id="how-heading">How it works</h2>
+      <ol class="home-step-list">
+        <li>
+          <h3>Curate</h3>
+          <p>Upload photos, folder them, and label title, artist, and year. Our database holds structure; SmugMug stores the files.</p>
+        </li>
+        <li>
+          <h3>Layout</h3>
+          <p>Activate rooms on a grid, drag art onto walls, set spawn point and wall finish, tune labels.</p>
+        </li>
+        <li>
+          <h3>Publish</h3>
+          <p>Share a read-only link. Visitors walk with WASD, mouse-look, and spotlit artwork.</p>
+        </li>
+      </ol>
+    </section>
+
+    <section class="home-features" aria-labelledby="features-heading">
+      <h2 id="features-heading">What’s in the demo today</h2>
+      <ul class="home-feature-grid">
+        <li>JSON floorplan layout with placards</li>
+        <li>Rapier physics and camera-relative movement</li>
+        <li>Per-artwork spotlights and procedural wall materials</li>
+        <li>Floorplan editor with undo/redo and save-to-preview</li>
+      </ul>
+    </section>
+
+    <section class="home-credits">
       <h2>Credits</h2>
-      <p>Spotlight 3D model by iPoly3D from <a href="https://poly.pizza/m/YohOCmn0hO">Poly Pizza</a> (CC0).</p>
+      <p>
+        Originally from <a href="https://twitter.com/owlsketch">@owlsketch</a>’s WebGL gallery concept.
+        David Ma’s Tap Gallery exhibition. Spotlight model by iPoly3D on
+        <a href="https://poly.pizza/m/YohOCmn0hO">Poly Pizza</a> (CC0).
+      </p>
     </section>
   </main>
+
+  <footer class="home-footer">
+    <p>Thalia + Three.js</p>
+  </footer>
 </body>
 </html>
