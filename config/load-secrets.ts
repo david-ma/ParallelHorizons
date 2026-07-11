@@ -113,3 +113,12 @@ export function resolveImageAdapter(hasSmugMugCreds: boolean): ImageAdapterName 
   if (forced === 'local-disk' || forced === 'smugmug') return forced
   return hasSmugMugCreds ? 'smugmug' : 'local-disk'
 }
+
+/** Monetise (or compatible) origin for GET /mirror/https://… — enables WebGL textures from SmugMug CDN. */
+export function loadMirrorOrigin(): string {
+  return (
+    process.env.MONETISE_MIRROR_ORIGIN?.trim() ||
+    process.env.GALLERY_MIRROR_ORIGIN?.trim() ||
+    ''
+  ).replace(/\/$/, '')
+}

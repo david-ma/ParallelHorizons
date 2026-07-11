@@ -10,6 +10,7 @@ import {
   requestHttpsUtf8,
 } from 'thalia/images'
 import type { SmugMugCredentials } from './load-secrets.js'
+import { resolveSmugMugPhotoUrls } from './smugmug-urls.js'
 
 export type SmugMugStoredPhoto = {
   url: string
@@ -76,15 +77,11 @@ export async function uploadBytesToSmugMugAlbum(
 
   const imageKeyRaw = albumImage.ImageKey ?? albumImage.Key
   const imageKey = typeof imageKeyRaw === 'string' ? imageKeyRaw : ''
-  const thumb =
-    (typeof albumImage.ThumbnailUrl === 'string' && albumImage.ThumbnailUrl) ||
-    ack.Image.URL ||
-    ''
-  const url = ack.Image.URL || thumb
+  const { url, thumbnailUrl } = resolveSmugMugPhotoUrls(albumImage, ack.Image.URL)
 
   return {
     url,
-    thumbnailUrl: thumb || url,
+    thumbnailUrl,
     smugmugImageKey: imageKey,
     smugmugAlbumKey: albumKey.replace(/!.*$/, ''),
     filename,

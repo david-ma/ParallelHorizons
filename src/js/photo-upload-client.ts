@@ -13,6 +13,8 @@ export type PhotoDto = {
 
 type UploadThingFileResult = {
   url?: string
+  ufsUrl?: string
+  appUrl?: string
   key?: string
   name?: string
   size?: number
@@ -23,12 +25,37 @@ declare global {
     uploadFilesToUploadThing?: (
       route: string,
       opts: { files: File[] }
-    ) => Promise<UploadThingFileResult[]>
+    ) => Promise<unknown[]>
   }
 }
 
 function titleFromFile(file: File): string {
   return file.name.replace(/\.[^.]+$/, '') || file.name
+}
+
+/** UT v7 uses `ufsUrl`; older clients used `url` / `appUrl`. */
+function utPublicUrl(item: UploadThingFileResult): string | undefined {
+  return item.ufsUrl?.trim() || item.url?.trim() || item.appUrl?.trim() || undefined
+}
+
+function normalizeUtResult(raw: unknown): UploadThingFileResult | null {
+  if (!raw || typeof raw !== 'object') return null
+  const obj = raw as Record<string, unknown>
+  const data =
+    obj.data && typeof obj.data === 'object' && !Array.isArray(obj.data)
+      ? (obj.data as Record<string, unknown>)
+      : obj
+  const pick = (k: string): string | undefined =>
+    typeof data[k] === 'string' && data[k].trim() ? data[k].trim() : undefined
+  const size = typeof data.size === 'number' ? data.size : undefined
+  return {
+    url: pick('url'),
+    ufsUrl: pick('ufsUrl'),
+    appUrl: pick('appUrl'),
+    key: pick('key'),
+    name: pick('name'),
+    size,
+  }
 }
 
 async function postJsonToUploadPhoto(body: Record<string, unknown>): Promise<PhotoDto> {
@@ -57,6 +84,20 @@ async function postMultipartFile(file: File): Promise<PhotoDto> {
   return payload.photo
 }
 
+async function forwardUtFileToServer(file: File, item: UploadThingFileResult): Promise<PhotoDto> {
+  const publicUrl = utPublicUrl(item)
+  if (!publicUrl) {
+    throw new Error('UploadThing returned no file URL (expected ufsUrl)')
+  }
+  return postJsonToUploadPhoto({
+    uploadThingUrl: publicUrl,
+    fileKey: item.key,
+    filename: item.name ?? file.name,
+    size: item.size ?? file.size,
+    title: titleFromFile(file),
+  })
+}
+
 /** Upload one or more image files through the best available pipeline. */
 export async function uploadPhotoFiles(files: FileList | File[]): Promise<PhotoDto[]> {
   const list = Array.from(files).filter((f) => f.type.startsWith('image/'))
@@ -67,24 +108,22 @@ export async function uploadPhotoFiles(files: FileList | File[]): Promise<PhotoD
 
   if (ut) {
     try {
-      const uploaded = await ut('smugmugImage', { files: list })
-      for (let i = 0; i < uploaded.length; i += 1) {
-        const item = uploaded[i]
+      const rawResults = await ut('smugmugImage', { files: list })
+      if (!Array.isArray(rawResults)) {
+        throw new Error('UploadThing returned an unexpected response')
+      }
+      for (let i = 0; i < rawResults.length; i += 1) {
+        const item = normalizeUtResult(rawResults[i])
         const file = list[i]
-        if (!item?.url || !file) continue
-        out.push(
-          await postJsonToUploadPhoto({
-            uploadThingUrl: item.url,
-            fileKey: item.key,
-            filename: item.name ?? file.name,
-            size: item.size ?? file.size,
-            title: titleFromFile(file),
-          })
-        )
+        if (!item || !file) continue
+        out.push(await forwardUtFileToServer(file, item))
       }
       if (out.length > 0) return out
-    } catch {
-      // fall through to multipart
+      if (rawResults.length > 0) {
+        throw new Error('UploadThing finished but no usable file URLs were returned')
+      }
+    } catch (err) {
+      console.warn('[photo-upload] UploadThing path failed, trying multipart', err)
     }
   }
 

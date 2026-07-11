@@ -11,8 +11,13 @@ type PhotoItem = {
   id: string
   title: string
   src: string
+  thumbnailUrl?: string
   artist?: string
   year?: string | number
+}
+
+function photoThumbSrc(photo: Pick<PhotoItem, 'src' | 'thumbnailUrl'>): string {
+  return photo.thumbnailUrl?.trim() || photo.src
 }
 
 type WallPlacements = Record<Wall, string>
@@ -335,7 +340,8 @@ function renderPhotoList(): void {
     tile.className = `photo-tile${selectedPhotoId === photo.id ? ' selected' : ''}${isPlaced ? ' placed' : ''}`
     tile.dataset.photoId = photo.id
     const meta = placardMetaLine(photo)
-    tile.innerHTML = `<img src="${photo.src}" alt="${escapeHtml(photo.title)}"><p class="photo-title">${escapeHtml(photo.title)}</p>${meta ? `<p class="photo-meta">${escapeHtml(meta)}</p>` : ''}${isPlaced ? '<p class="photo-meta">On wall</p>' : ''}`
+    const thumbSrc = photoThumbSrc(photo)
+    tile.innerHTML = `<img src="${thumbSrc}" alt="${escapeHtml(photo.title)}"><p class="photo-title">${escapeHtml(photo.title)}</p>${meta ? `<p class="photo-meta">${escapeHtml(meta)}</p>` : ''}${isPlaced ? '<p class="photo-meta">On wall</p>' : ''}`
 
     tile.addEventListener('click', (event) => {
       event.stopPropagation()
@@ -358,11 +364,33 @@ function renderPhotoList(): void {
   }
 }
 
+function isDirectImageSrc(src: string): boolean {
+  const s = src.trim()
+  if (!s) return false
+  if (/\.(jpe?g|png|gif|webp)(\?|#|$)/i.test(s)) return true
+  return s.includes('photos.smugmug.com/photos/')
+}
+
+function pickDisplaySrc(preferred: string, fallback: string): string {
+  if (isDirectImageSrc(preferred)) return preferred
+  if (isDirectImageSrc(fallback)) return fallback
+  return preferred || fallback
+}
+
 function mergePhotoCatalog(incoming: PhotoItem[]): void {
   incoming.forEach((imported) => {
     const idx = photoCatalog.findIndex((p) => p.id === imported.id)
-    if (idx >= 0) photoCatalog[idx] = { ...photoCatalog[idx], ...imported }
-    else photoCatalog.push(imported)
+    if (idx >= 0) {
+      const keep = photoCatalog[idx]
+      photoCatalog[idx] = {
+        ...keep,
+        ...imported,
+        src: pickDisplaySrc(keep.src, imported.src),
+        thumbnailUrl: imported.thumbnailUrl?.trim() || keep.thumbnailUrl,
+      }
+    } else {
+      photoCatalog.push(imported)
+    }
   })
 }
 
@@ -672,10 +700,11 @@ function drawGrid(): void {
     if (!photo) return
     const pos = thumbPositionCenter(slot.cell, slot.wall)
     const parent = d3.select(this.parentNode as SVGGElement)
+    const thumbSrc = photoThumbSrc(photo)
     const img = parent
       .append('image')
       .attr('class', 'placed-art')
-      .attr('href', photo.src)
+      .attr('href', thumbSrc)
       .attr('x', pos.x)
       .attr('y', pos.y)
       .attr('width', THUMB_SIZE)
@@ -689,7 +718,7 @@ function drawGrid(): void {
 
     img
       .on('mousedown', (event: MouseEvent) => {
-        beginArtPointerDrag(event, slot, photoId, photo.src)
+        beginArtPointerDrag(event, slot, photoId, thumbSrc)
       })
       .on('click', (event: MouseEvent) => {
         if (suppressArtClick) {
@@ -870,9 +899,11 @@ async function uploadEditorPhotos(files: FileList | File[]): Promise<void> {
     const uploaded = await uploadPhotoFiles(list)
     await loadOwnerPhotos()
     updatePreview()
-    if (uploaded.length > 0) {
-      showToast(`Uploaded ${uploaded.length} photo${uploaded.length === 1 ? '' : 's'}`)
+    if (uploaded.length === 0) {
+      showToast('No photos were saved', true)
+      return
     }
+    showToast(`Uploaded ${uploaded.length} photo${uploaded.length === 1 ? '' : 's'}`)
   } catch (err) {
     showToast(err instanceof Error ? err.message : 'Upload failed', true)
   }

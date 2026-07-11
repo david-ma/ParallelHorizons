@@ -10,7 +10,7 @@ import { recursiveObjectMerge } from 'thalia/website'
 import { ThaliaSecurity, ProfileControllerFactory, validateProfilePhotoHttpHttpsUrl, type RoleRouteRule } from 'thalia/security'
 import { isValidFloorplan } from '../src/js/floorplan.js'
 import { galleries as galleriesTable, photos as photosTable } from '../models/gallery-schema.js'
-import { handleUploadPhoto } from './photo-upload.js'
+import { loadMirrorOrigin } from './load-secrets.js'
 import { listPhotosForOwner, softDeletePhoto } from './photo-store.js'
 import { uploadThingRouteController, uploadThingCleanupController } from './uploadthing-handler.js'
 import { galleryRoutes } from './gallery-routes.js'
@@ -115,6 +115,7 @@ function viewPageData(website: Website, entry: GalleryEntry): Record<string, unk
     floorplanUrl: entry.floorplanPath,
     galleryTitle: entry.title,
     gallerySlug: entry.slug,
+    mirrorOrigin: loadMirrorOrigin(),
     version: website.version,
   }
 }

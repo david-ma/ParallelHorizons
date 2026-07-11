@@ -156,7 +156,7 @@ Primary reference for **images + upload + cache**.
 | **DB cache** | Thalia `albums` + `images` tables; read DB first, background `smugmug-topup.ts` sync |
 | **Upload** | Browser → **UploadThing** (`/api/uploadthing`) → server fetches buffer → **`uploadToAlbum()`** → insert `images` row |
 | **Cleanup** | `uploadthing-cleanup.ts` + `data/uploadthing-temp.json` |
-| **Display** | SmugMug CDN URLs in DB (`url`, `thumbnailUrl`); no local image proxy |
+| **Display** | SmugMug CDN URLs in DB (`url`, `thumbnailUrl`); 2D UI uses CDN directly; **3D viewer** uses Monetise `/mirror/` (SmugMug CDN has no CORS for WebGL) |
 | **Security** | `recursiveObjectMerge(ThaliaSecurity.securityConfig(), smugmugConfig)` + explicit **`domains`** list |
 | **Routes** | `/galleries`, `/album/:slug`, `/uploadPhoto`, `/create-album`, CRUD machines |
 
@@ -220,7 +220,11 @@ Gallery should **mirror this pattern** in its own `tests/integration/` — gated
 
 ### Monetise — `/usr/local/dev/monetise`
 
-Useful for Thalia project layout (drizzle, tests, pm2) — not image pipeline.
+Thalia project layout (drizzle, tests, pm2). Also hosts **`GET /mirror/https://…`** — streams an upstream URL unchanged with permissive CORS for WebGL textures.
+
+Gallery sets **`MONETISE_MIRROR_ORIGIN`** (e.g. `https://monetiseyourwebsite.com`); `artwork-source.ts` rewrites floorplan artwork URLs to `{origin}/mirror/{smugmugCdnUrl}`. See `docs/2026-07-11_diary.md` (2026-07-12 section).
+
+Production mirror verified 2026-07-12. Local dev: run Monetise and point gallery `.env` at that origin.
 
 ---
 
@@ -483,6 +487,8 @@ export const config = recursiveObjectMerge(
 - [x] `photos.smugmug_*` + `adapter_name` columns
 - [x] Browser: `uploadthing-init.js` + shared `photo-upload-client.ts`
 - [x] UploadThing temp cleanup (`data/uploadthing-temp.json`)
+- [x] SmugMug CDN URL resolution (`smugmug-urls.ts`); UT client `ufsUrl` fix
+- [x] 3D viewer artwork via Monetise `/mirror/` (`MONETISE_MIRROR_ORIGIN`, `artwork-source.ts`)
 - [ ] Existing local `/uploads/` rows unchanged until re-upload (by design)
 
 **Exit:** new uploads land on SmugMug (BINGO album); local-disk when `THALIA_IMAGE_ADAPTER=local-disk` or no creds.

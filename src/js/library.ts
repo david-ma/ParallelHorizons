@@ -63,9 +63,11 @@ async function uploadFiles(files: FileList | File[]): Promise<void> {
   try {
     const uploaded = await uploadPhotoFiles(list)
     await reload()
-    if (uploaded.length > 0) {
-      showToast(`Uploaded ${uploaded.length} photo${uploaded.length === 1 ? '' : 's'}`)
+    if (uploaded.length === 0) {
+      showToast('No photos were saved', true)
+      return
     }
+    showToast(`Uploaded ${uploaded.length} photo${uploaded.length === 1 ? '' : 's'}`)
   } catch (err) {
     showToast(err instanceof Error ? err.message : 'Upload failed', true)
   }

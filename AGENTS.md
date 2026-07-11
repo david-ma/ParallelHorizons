@@ -6,6 +6,7 @@ This file is a practical handoff for maintainers and coding agents.
 
 | Date       | Change |
 |------------|--------|
+| 2026-07-12 | **D3 display:** SmugMug CDN URL helpers; UT `ufsUrl` client fix; thumbnail vs L-size URLs; 3D viewer uses Monetise `/mirror/` (`MONETISE_MIRROR_ORIGIN`). |
 | 2026-07-11 | **D3 SmugMug:** UploadThing hop, SmugMug upload via Thalia client, env-first secrets, `photos.smugmug_*` columns. |
 | 2026-07-11 | **D2 photos:** `photos` table, `/library`, local + SmugMug upload paths, soft delete + floorplan strip. |
 | 2026-07-11 | **D1 auth:** ThaliaSecurity + MariaDB + `galleries` table; `/dashboard`, `/create/:id`, DB save/publish; homepage auth CTAs; MailCatcher `mailAuth.js`. |
@@ -139,6 +140,7 @@ The gallery is now running as a Thalia website and no longer depends on the old 
   - `main.ts` — entry, boot, pointer lock, create/render; async Rapier init then physics-driven or legacy movement
   - `physics.ts` — Rapier world, floor/wall colliders, player body, step + camera sync
   - `layout.ts` — load + build from floorplan JSON
+  - `artwork-source.ts` — Monetise `/mirror/` URL rewrite for WebGL textures
   - `gallery.ts` — default (hardcoded) gallery
   - `artwork.ts` — frames/moulding
   - `spotlight.ts` — rig + dev sliders
@@ -160,6 +162,8 @@ The gallery is now running as a Thalia website and no longer depends on the old 
 - **Camera-relative movement** (`movement.ts`): Forward = camera look direction flattened to XZ; right = `dir × up` (right-hand rule). Use **dir×up** for right so A/D map to left/right; **up×dir** would flip them.
 - **Physics vs legacy**: In `main.ts` render, `usePhysics = g.physicsWorld && g.playerBody && !g.screensaver`. When true we call `updateVelocityOnly` + `stepPhysics` (Rapier); else `updateMovement` (velocity + manual wall collision + PointerLockControls moveForward/moveRight).
 - **Rapier**: Used only with pointer lock. Screensaver keeps legacy movement. Floor top at y=1.25, player center 1.75; walls built from `g.wallGroup` (world matrix + BoxGeometry params).
+- **SmugMug URLs**: Upload ack `Image.URL` is a gallery page, not a JPEG — use `config/smugmug-urls.ts` for L-size CDN `url` + `thumbnailUrl`. 2D UI uses thumbnail; floorplan `src` holds L URL.
+- **WebGL artwork (CORS)**: SmugMug CDN has no `Access-Control-Allow-Origin`. Set **`MONETISE_MIRROR_ORIGIN`**; `artwork-source.ts` rewrites external `src` to `{origin}/mirror/{url}`. `layout.ts` sets `TextureLoader.crossOrigin = 'anonymous'`. Mirror lives in `/usr/local/dev/monetise`, not this repo.
 
 ---
 

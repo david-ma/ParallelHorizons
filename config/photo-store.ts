@@ -7,6 +7,7 @@ import path from 'node:path'
 import { and, desc, eq, isNull, sql } from 'drizzle-orm'
 import type { Website } from 'thalia/website'
 import { photos, galleries } from '../models/gallery-schema.js'
+import { resolvePhotoDisplaySrc } from './smugmug-urls.js'
 
 export type PhotoDto = {
   id: string
@@ -62,7 +63,7 @@ function rowToDto(row: {
   filename: string | null
 }): PhotoDto {
   const title = row.title?.trim() || row.filename?.trim() || `Photo ${row.id}`
-  const src = row.url
+  const src = resolvePhotoDisplaySrc(row.url, row.thumbnailUrl)
   const thumbnailUrl = row.thumbnailUrl?.trim() || src
   return {
     id: String(row.id),

@@ -90,4 +90,23 @@ describe('collectFloorplanArtworkSources', () => {
     })
     expect(sources.sort()).toEqual(['/photos/a.jpg', '/photos/b.jpg'])
   })
+
+  test('uses Monetise mirror for external catalog URLs when origin is set', () => {
+    ;(globalThis as { GALLERY_MIRROR_ORIGIN?: string }).GALLERY_MIRROR_ORIGIN =
+      'http://localhost:3000'
+    const sources = collectFloorplanArtworkSources({
+      activeCells: ['2,1'],
+      placements: { '2,1': { west: ['1'] } },
+      photoCatalog: [
+        {
+          id: '1',
+          src: 'https://photos.smugmug.com/photos/i-k/0/h/L/i-k-L.jpg',
+        },
+      ],
+    })
+    expect(sources).toEqual([
+      'http://localhost:3000/mirror/https://photos.smugmug.com/photos/i-k/0/h/L/i-k-L.jpg',
+    ])
+    delete (globalThis as { GALLERY_MIRROR_ORIGIN?: string }).GALLERY_MIRROR_ORIGIN
+  })
 })

@@ -8,6 +8,7 @@ import { addFrameToArtwork, addPlacardToArtwork } from './artwork.js'
 import { addGalleryCeiling, createFloorMaterial, createWallMaterial, preloadFloorTexture, resolveWallTextureStyle } from './materials.js'
 import { addArtworkSpotlightRig, spotlightOptionsForArtwork } from './spotlight.js'
 import { isValidFloorplan } from './floorplan.js'
+import { artworkSourceUrl } from './artwork-source.js'
 
 export { isValidFloorplan } from './floorplan.js'
 export { preloadFloorTexture } from './materials.js'
@@ -20,6 +21,7 @@ const DEFAULT_GRID_COLS = 5
 const DEFAULT_EYE_Y = 1.75
 
 const artworkTextureLoader = new THREE.TextureLoader()
+artworkTextureLoader.crossOrigin = 'anonymous'
 
 function configureArtworkTexture(tex: THREE.Texture): THREE.Texture {
   tex.colorSpace = THREE.SRGBColorSpace
@@ -43,7 +45,8 @@ export function collectFloorplanArtworkSources(data: FloorplanBlob): string[] {
       const ids = Array.isArray(raw) ? raw : typeof raw === 'string' && raw ? [raw] : []
       ids.forEach((photoId, idx) => {
         const entry = catalogById.get(photoId)
-        sources.add(entry?.src || `/img/Artworks/${idx % 30}.jpg`)
+        const fallback = `/img/Artworks/${idx % 30}.jpg`
+        sources.add(entry ? artworkSourceUrl({ id: entry.id, src: entry.src || fallback }) : fallback)
       })
     })
   })
@@ -268,7 +271,8 @@ export function buildSceneFromFloorplan(
       const start = -((ids.length - 1) * step) / 2
       ids.forEach((photoId, idx) => {
         const entry = catalogById.get(photoId)
-        const source = entry?.src || `/img/Artworks/${idx % 30}.jpg`
+        const fallback = `/img/Artworks/${idx % 30}.jpg`
+        const source = entry ? artworkSourceUrl({ id: entry.id, src: entry.src || fallback }) : fallback
         const tex = artworkTexture(source, textureCache)
         const mat = new THREE.MeshLambertMaterial({ map: tex })
         const art = new THREE.Group()
