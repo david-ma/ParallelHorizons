@@ -25,4 +25,7 @@ jobs:
       - name: Test
         env:
           NODE_ENV: test
-        run: bun test
+          SKIP_DATABASE_TESTS: "1"
+          SKIP_MAILCATCHER_TESTS: "1"
+          SKIP_GALLERY_INTEGRATION: "1"
+        run: bun test tests/unit

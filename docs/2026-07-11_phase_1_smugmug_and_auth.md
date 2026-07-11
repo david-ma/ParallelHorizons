@@ -1,8 +1,23 @@
 # Phase 1 — Self-service galleries, SmugMug, and auth
 
-**Date:** 2026-08-11  
-**Status:** Planning  
+**Date:** 2026-07-11 (updated)  
+**Status:** Planning → **ready to build (Plan D chosen)**  
 **Repo:** [owlsketch/gallery](https://github.com/owlsketch/gallery) (public — treat secrets accordingly)
+
+---
+
+## Decision (2026-07-11)
+
+**Proceed with Plan D — Staged Creator MVP.**
+
+Ship auth + DB-backed galleries + local-disk photo uploads first (no SmugMug blocker), then add SmugMug/UploadThing and full library UX in later slices. Performance work on the 3D engine is sufficient for Met on Safari; product gap is **identity, persistence, and a creator path**.
+
+| Slice | Outcome | Target |
+|-------|---------|--------|
+| **D1** | Auth, DB, dashboard, save/publish floorplan | Creators can sign up and share `/view/:slug` |
+| **D2** | Local-disk uploads + photo grid in editor | Real photos, no mock catalog |
+| **D3** | SmugMug + UploadThing | Production-grade image hosting |
+| **D4** | Folder library, bulk organise | Full curator UX |
 
 ---
 
@@ -14,9 +29,83 @@ Let people **self-service create 3D walkthrough galleries**:
 2. **Upload and organise photos** (SmugMug for durable image hosting; our DB as source of truth for structure and labels)
 3. **Curate** — folders, bulk select, drag-and-drop, metadata (title, artist, year, tags)
 4. **Lay out** — extend today’s `/create` floorplan editor; placements reference our photo records, not hardcoded `/img/Artworks/*.jpg`
-5. **Publish** — share link (`/view/:slug`) for visitors; owner edits at `/create/:id` or `/dashboard`
+5. **Publish** — share link (`/view/:slug`) for visitors; owner edits at `/dashboard` → `/create/:id`
 
-Today’s viewer (`/view`), editor (`/create`), floorplan JSON schema, physics, spotlights, and procedural materials are the **3D engine**. Phase 1 adds **identity, persistence, and a photo library** around that engine.
+Today’s viewer (`/view`), editor (`/create`), floorplan JSON schema, physics, spotlights, and procedural materials are the **3D engine** (cross-browser perf validated — see [2026-07-11_optimisations.md](./2026-07-11_optimisations.md)). Phase 1 adds **identity, persistence, and a photo library** around that engine.
+
+---
+
+## User workflow (target)
+
+### Visitor (no account)
+
+1. Land on **`/`** — see product pitch + **public galleries** (published slugs from manifest/DB).
+2. Click **Enter gallery** → **`/view/:slug`** — walkthrough (pointer lock, same as today).
+3. Optional footer CTA: **Create your own** → `/newUser` or `/logon`.
+
+### Creator — first visit (onboarding)
+
+```text
+/newUser  →  account created (role: user)
+    ↓
+/dashboard  →  empty state: “Create your first gallery”
+    ↓
+/create/:id  →  floorplan editor (new row in DB)
+    ↓
+[Upload photos]  →  /library or inline sidebar (D2+)
+    ↓
+Place on walls, set spawn, wall style, labels
+    ↓
+Save  →  POST floorplan to DB (owner-scoped)
+    ↓
+Publish toggle  →  isPublished=true
+    ↓
+Copy share link  →  /view/:slug
+```
+
+### Creator — return visit
+
+1. **`/logon`** (or session cookie → straight to dashboard).
+2. **`/dashboard`** — cards: title, updated, published/draft, **Edit** / **View** / **Copy link**.
+3. **`/library`** (D2+) — upload and organise photos; drag into **`/create/:id`** sidebar.
+4. **`/profile`** — name, email (Thalia profile); optional avatar URL later.
+
+### Password reset (Thalia built-in)
+
+1. **`/forgotPassword`** — enter email → Thalia sends mail via configured transport.
+2. User opens link from email → **`/resetPassword?token=…`** → set new password.
+3. **`/logon`** with new password.
+
+**Dev:** [MailCatcher](https://mailcatcher.me/) on `127.0.0.1:1025` (SMTP) / `:1080` (web UI). **`config/mailAuth.js`** is safe to commit (no secrets) — copy from `example-auth`.
+
+**Prod:** gitignored `mailAuth.prod.js` or env-based SMTP; never commit credentials.
+
+### First deploy (empty DB)
+
+1. Operator opens **`/setup`** once → creates first **`admin`**.
+2. Further accounts via **`/newUser`** (unless `disableSelfRegistration: true`).
+
+---
+
+## Information architecture (pages)
+
+| Path | Audience | Purpose |
+|------|----------|---------|
+| **`/`** | Guest + SEO | Marketing hero, featured public galleries, **Sign up** / **Log in** |
+| **`/view/:slug`** | Guest | 3D walkthrough; only if `isPublished` (or owner preview) |
+| **`/logon`**, **`/logout`** | All | Thalia auth |
+| **`/newUser`**, **`/createNewUser`** | Guest | Self-registration |
+| **`/setup`** | Guest (once) | Bootstrap admin |
+| **`/forgotPassword`**, **`/resetPassword`** | Guest | Password reset flow |
+| **`/dashboard`** | User | My galleries — list, create, publish, links |
+| **`/library`** | User | Photo grid + upload (D2 local disk; D4 folders) |
+| **`/create/:id`** | User | Floorplan editor (existing UI; load/save from DB) |
+| **`/profile`**, **`/profile/:id`** | User | Account profile (Thalia `ProfileControllerFactory`) |
+| **`/admin`**, **`/users`**, … | Admin | Thalia defaults when guard enabled |
+
+**Homepage changes (D1):** replace “Editor”-only nav with **Log in / Sign up** (guest) or **Dashboard / Library** (session). Keep public gallery grid; add **“Start free”** hero CTA.
+
+**Demo content:** keep **`parallel-horizons`**, **`met-monet`** in `public/galleries/` as read-only showcases until DB migration copies them (optional seed script).
 
 ---
 
@@ -77,38 +166,133 @@ Copy or adapt: `lib-smugmug.ts`, `uploadthing.ts`, `uploadthing-cleanup.ts`, `sm
 
 ### Auth — `/usr/local/dev/Thalia/websites/example-auth`
 
-Primary reference for **ThaliaSecurity + MariaDB**.
+Primary reference for **ThaliaSecurity + MariaDB + mail**.
 
 | Area | Pattern |
 |------|---------|
 | **Enable guard** | Merge config must include `users`, `sessions`, `audits` machines → `RoleRouteGuard` auto-enabled |
 | **Bootstrap** | First visit `/setup` → admin user; then `/logon` |
-| **Mail** | `config/mailAuth.js` (MailCatcher in dev) |
+| **Registration** | `/newUser` + POST `/createNewUser`; disable via `disableSelfRegistration: true` |
+| **Password reset** | `/forgotPassword` → email → `/resetPassword?token=` (Thalia controllers) |
+| **Mail dev** | `config/mailAuth.js` → MailCatcher SMTP `127.0.0.1:1025` (committed, no secrets) |
+| **Mail prod** | Separate transport file or env; not in public repo |
 | **DB** | `docker-compose.yml` MariaDB + `drizzle.config.ts` + `bun drizzle-kit push` |
 | **Routes** | `RoleRouteRule[]` per path; copy auth paths from example-auth; add gallery paths |
+| **Profiles** | Optional `ProfileControllerFactory` (`/profile`, `/profile/:id`) |
 
-### Monetise — `/usr/local/dev/monetise`
+**Config merge sketch** (same as example-auth):
 
-Not a SmugMug reference. Useful for **Thalia project layout** (drizzle, tests, `config/config.ts`, pm2/Docker). No image pipeline to reuse for gallery Phase 1.
+```typescript
+const mailAuthPath = path.join(import.meta.dirname, 'mailAuth.js')
+const security = new ThaliaSecurity({ mailAuthPath })
+export const config = recursiveObjectMerge(
+  recursiveObjectMerge(security.securityConfig(), galleryDatabaseConfig),
+  { domains: [...], routes: galleryRoutes, controllers: { ...existing } }
+)
+```
+
+**Critical:** every host you use (`localhost:1337`, production domain) must appear in **`config.domains`** or the guard returns 401 for everything.
+
+### Thalia auth integration tests + MailCatcher
+
+From **Thalia** repo (`tests/Integration/request-handler.test.ts`):
+
+| Env var | Default in CI | When `0` / unset |
+|---------|---------------|------------------|
+| **`SKIP_EXAMPLE_AUTH_TESTS`** | `1` | Run full example-auth HTTP + login matrix |
+| **`SKIP_DATABASE_TESTS`** | `1` | Run `database-online.test.ts` against real MySQL |
+| **`SKIP_MAILCATCHER_TESTS`** | `1` | Run forgot-password E2E (polls `http://127.0.0.1:1080/messages`) |
+
+**Local password-reset test:**
+
+```bash
+mailcatcher   # SMTP :1025, web UI :1080
+cd /path/to/Thalia/websites/example-auth && docker compose up -d && bun drizzle-kit push
+# seed users if needed — see example-auth README
+SKIP_MAILCATCHER_TESTS=0 SKIP_EXAMPLE_AUTH_TESTS=0 bun test tests/Integration/request-handler.test.ts
+```
+
+Gallery should **mirror this pattern** in its own `tests/integration/` — gated, never required in GitHub Actions.
 
 ### UploadThing → SmugMug skill
 
 `/Users/david/.cursor/skills/uploadthing-smugmug/SKILL.md` — end-to-end upload pipeline notes for the SmugMug site.
 
+### Monetise — `/usr/local/dev/monetise`
+
+Useful for Thalia project layout (drizzle, tests, pm2) — not image pipeline.
+
 ---
 
-## Current gallery state (2026-08-11)
+## Plan comparison
+
+Four ways to ship “people can use it”. Evaluated 2026-07-11.
+
+### Plan A — Big bang (original Phase 1a→1d)
+
+Auth + SmugMug + UploadThing + folder library + DB galleries in one push.
+
+| Pros | Cons |
+|------|------|
+| Complete vision | SmugMug credentials block local dev |
+| One architecture | Long time to first user |
+| | Hard to test in CI |
+
+### Plan B — Auth + DB only
+
+Login, dashboard, save floorplan to DB; keep mock/static photos.
+
+| Pros | Cons |
+|------|------|
+| Fast auth validation | Creators still stuck with demo images |
+| Low risk | Weak “self-service” story |
+
+### Plan C — SmugMug-first
+
+Skip local uploads; require SmugMug before any creator launch.
+
+| Pros | Cons |
+|------|------|
+| Production URLs day one | Secrets + OAuth friction for every contributor |
+| CDN from start | Blocks contributors without SmugMug account |
+
+### Plan D — Staged Creator MVP ✅ **chosen**
+
+| Stage | Scope |
+|-------|--------|
+| **D1** | ThaliaSecurity, MariaDB, `galleries` table, dashboard, protect `/create`, publish `/view/:slug` |
+| **D2** | `ThaliaImageUploader` **`local-disk`** adapter (`data/uploads/`), photo grid, wire `/create` sidebar |
+| **D3** | Swap adapter to SmugMug + UploadThing (`secrets.js`) |
+| **D4** | Folder tree, bulk curator (original library UX) |
+
+| Pros | Cons |
+|------|------|
+| **Ship D1 quickly** — real accounts + share links | Two upload implementations (disk → SmugMug) |
+| Local dev **without secrets** (D2) | Must migrate URLs when moving to CDN |
+| Same `photos` table throughout | |
+| Matches **example-auth** (`THALIA_IMAGE_ADAPTER=local-disk`) | |
+| CI stays **unit-only**; integration gated | |
+
+**Why not A:** D1+D2 delivers a demoable product; SmugMug is an adapter swap, not a rewrite.
+
+**Why not B:** Photos are core to “gallery creator” — D2 is only one slice after auth.
+
+**Why not C:** Public repo + volunteer devs need a path without SmugMug keys.
+
+---
+
+## Current gallery state (2026-07-11)
 
 | Piece | Status |
 |-------|--------|
-| `/view` 3D viewer | TS modules, Rapier, JSON floorplan, spotlights, materials, placards |
-| `/create` editor | Grid, drag placements, spawn, labels, wall style, save to **`public/gallery-floorplan.json`** |
+| `/view` 3D viewer | Multi-slug manifest, perf tooling, Safari tier — **engine ready** |
+| `/create` editor | Full editor; save writes **`public/gallery-floorplan.json`** (dev only) |
+| Homepage | Product narrative; **no auth CTAs yet** |
 | Auth | **None** — all routes public |
 | Photo source | Mock `photoCatalog` + static `/img/Artworks/` |
-| Persistence | Single JSON file on disk |
-| Tests | 21 unit tests (`bun test`) on floorplan/layout/materials/spotlight |
-
-**Legacy cleanup (this pass):** removed pre-Thalia standalone HTML demos and vendored Three.js bundles under `public/js/` (see `docs/legacy/ARCHIVE.md`). Thalia serves compiled TS from `src/js/`.
+| Persistence | JSON files under `public/galleries/` |
+| Tests | **69 unit tests** (`bun test`); CI typecheck + unit only |
+| `config/secrets.js.example` | Shape for SmugMug + UploadThing (not wired) |
 
 ---
 
@@ -260,60 +444,81 @@ export const config = recursiveObjectMerge(
 
 ---
 
-## Implementation phases
+## Implementation phases (Plan D)
 
-### Phase 0 — Hygiene (done / in progress)
+### D1 — Auth + gallery persistence (build first)
 
-- [x] Legacy demo HTML + vendored Three.js removed from `public/`
-- [x] Homepage refresh (product narrative, CTAs)
-- [x] Unit tests for floorplan validation
-- [ ] Commit open work on `main` (pause power-save, homepage, plan)
-- [ ] `config/.gitignore` + `.env.example`
-- [ ] Update `AGENTS.md` changelog
+- [ ] `docker-compose.yml` + `.env.example` + `drizzle.config.ts` (from example-auth)
+- [ ] `models/drizzle-schema.ts` — users/sessions/audits (Thalia) + **`galleries`**
+- [ ] `config/mailAuth.js` (MailCatcher) + merge **`ThaliaSecurity`** in `config/config.ts`
+- [ ] Route rules: public `/`, `/view/:slug` (published only); protect `/create`, `/dashboard`, `/save-floorplan`
+- [ ] **`/dashboard`** — list/create galleries; publish toggle; copy share link
+- [ ] **`/view/:slug`** — load floorplan from DB when published (fallback: manifest JSON for demos)
+- [ ] Homepage: **Sign up / Log in**; hero CTA **Create your gallery**
+- [ ] Replace **`save-floorplan`** disk write with **owner-scoped DB update**
+- [ ] `scripts/seed-test-users.ts` (copy example-auth pattern)
 
-### Phase 1a — Auth + DB skeleton
+**Exit:** signed-up user creates a gallery, publishes, shares `/view/:slug`. Guest can still browse demo galleries.
 
-- [ ] `docker-compose.yml` + `drizzle.config.ts` (from example-auth)
-- [ ] `models/drizzle-schema.ts` — users, sessions, audits + `galleries` stub
-- [ ] Merge `ThaliaSecurity` into `config/config.ts`
-- [ ] Route rules; verify **every** deployment host in `domains`
-- [ ] `/setup` → admin; protect `/create`, `/save-floorplan`
-- [ ] Homepage: “Log in” / “Sign up” links
+**Manual test:** `/setup` → `/newUser` → create gallery → publish → open share link in incognito.
 
-**Exit:** only logged-in users can save; visitors can still `/view` demo.
+### D2 — Local-disk photos
 
-### Phase 1b — SmugMug + UploadThing
+- [ ] `photos` table (`url`, `thumbnailUrl`, `ownerUserId`, labels)
+- [ ] **`ThaliaImageUploader`** with `THALIA_IMAGE_ADAPTER=local-disk` (default in dev)
+- [ ] **`/library`** — upload + grid; serve files from `/uploads/…`
+- [ ] Wire **`/create/:id`** sidebar to owner’s photos API
+- [ ] Floorplan `photoCatalog` uses DB photo ids + `/uploads/…` URLs
+
+**Exit:** creator uploads JPGs, places on walls, publishes — no SmugMug.
+
+### D3 — SmugMug + UploadThing
 
 - [ ] Gitignored `config/secrets.js` + `loadSmugMugCreds()`
-- [ ] Copy/adapt upload router + `/uploadPhoto` + cleanup
-- [ ] `photos` table + minimal **`/library`** page (grid only, one folder)
-- [ ] Wire upload UI into library
+- [ ] Switch adapter to SmugMug (staging/prod); optional UploadThing hop
+- [ ] Migration: existing local URLs → SmugMug URLs on re-upload or batch job
 
-**Exit:** user can upload photos; URLs stored in DB.
+**Exit:** production image hosting matches smugmug site pattern.
 
-### Phase 1c — Photo library UX
+### D4 — Library UX (folders + bulk)
 
-- [ ] Folder tree CRUD + drag-drop organise
-- [ ] Bulk select / move / label edit
-- [ ] Connect `/create` sidebar to library API
+- [ ] `photo_folders` tree CRUD
+- [ ] Bulk select, move, label edit
+- [ ] Search / unplaced filter
 
-**Exit:** curator workflow replaces mock catalog.
+**Exit:** full curator workflow from original spec.
 
-### Phase 1d — Gallery persistence + publish
+### Hygiene (parallel)
 
-- [ ] `galleries` CRUD; save floorplan to DB
-- [ ] `/view/:slug` loads owner’s published floorplan + resolves photo URLs
-- [ ] Dashboard: list galleries, edit, publish toggle, copy share link
-
-**Exit:** end-to-end self-service MVP.
+- [x] Legacy demos removed; homepage refresh; unit tests; perf tooling
+- [ ] `.env.example` committed; README link to this doc
+- [ ] Update `AGENTS.md` when D1 lands
 
 ### Phase 2 (later)
 
-- Per-wall textures (already gallery-wide in JSON)
-- SmugMug sync / top-up background jobs
-- Telemetry overlay (diary plan)
-- Mobile controls
-- Optional AI labelling (Mistral path in smugmug site)
+- Per-wall textures, telemetry POST route, mobile controls, AI labelling
+
+---
+
+## Legacy phase labels (superseded by Plan D)
+
+<details>
+<summary>Original Phase 0–1d checklist (reference)</summary>
+
+### Phase 0 — Hygiene
+
+- [x] Legacy demo HTML removed
+- [x] Homepage refresh, unit tests, perf
+
+### Phase 1a — Auth + DB skeleton → **=D1**
+
+### Phase 1b — SmugMug + UploadThing → **=D3**
+
+### Phase 1c — Photo library UX → **=D4**
+
+### Phase 1d — Gallery persistence → **=D1**
+
+</details>
 
 ---
 
@@ -358,18 +563,45 @@ gallery/
 
 ## Testing strategy
 
+### CI (`.github/workflows/ci.yml`) — always green
+
+```yaml
+env:
+  NODE_ENV: test
+  SKIP_DATABASE_TESTS: "1"
+  SKIP_MAILCATCHER_TESTS: "1"
+  SKIP_GALLERY_INTEGRATION: "1"   # add when integration tests exist
+run: bun test tests/unit
+```
+
+Unit tests only in CI — no MariaDB, MailCatcher, or SmugMug.
+
+### Local integration (opt-in)
+
+| Script / command | Requires |
+|------------------|----------|
+| `docker compose up -d && bun drizzle-kit push` | MariaDB |
+| `mailcatcher` | Password-reset test |
+| `bun run test:integration:auth` (to add) | DB + seed users |
+| `SKIP_MAILCATCHER_TESTS=0 bun test tests/integration/auth-mail.test.ts` (to add) | DB + MailCatcher |
+| `SMUGMUG_RUN_INTEGRATION=1 bun test …` (D3) | Staging SmugMug creds |
+
+Copy Thalia’s **`scripts/seed-test-users.ts`** pattern: fixed test emails + `test-password`.
+
+### Layers
+
 | Layer | What |
 |-------|------|
-| Unit | Already: floorplan, materials, spotlight — extend `parseWallStyle`, slug helpers |
-| Integration | Auth logon, POST `/save-floorplan` with session cookie, upload mock |
-| Manual | UploadThing → SmugMug on staging creds; `/view/:slug` as guest |
-| Gated | SmugMug live API tests with `SMUGMUG_RUN_INTEGRATION=1` (copy smugmug site pattern) |
+| Unit | Floorplan, materials, spotlight, perf, quality — **already 69 tests** |
+| Integration | Logon cookie, save floorplan 401/403, publish guest read, forgot-password + MailCatcher |
+| Manual | Full creator journey D1→D2; `/view/:slug` incognito |
 
 ---
 
 ## Related docs
 
 - [floorplan-schema.md](./floorplan-schema.md) — viewer ↔ editor JSON contract  
+- [2026-07-11_optimisations.md](./2026-07-11_optimisations.md) — viewer perf, cross-browser validation  
 - [2026-07-11_diary.md](./2026-07-11_diary.md) — viewer/editor history, performance notes  
 - [legacy/ARCHIVE.md](./legacy/ARCHIVE.md) — removed pre-Thalia assets  
 - Thalia: `websites/smugmug/docs/service-to-service.md` — calling upload from another site via `X-Host`
@@ -378,4 +610,13 @@ gallery/
 
 ## Immediate next step
 
-**Phase 1a:** add MariaDB + `ThaliaSecurity` merge and protect `/create` — smallest step that unlocks everything else without yet building the full library UI.
+**Start D1:** copy `example-auth` docker-compose + drizzle schema stub + `ThaliaSecurity` merge into gallery `config/config.ts`. Smallest vertical slice: **logged-in user saves a floorplan to DB and publishes `/view/:slug`**.
+
+Suggested first PR:
+
+1. Infrastructure (compose, drizzle, mailAuth.js, security merge, routes)
+2. `galleries` table + dashboard HBS
+3. Redirect `/create` → `/create/:id` with auth
+4. Homepage auth CTAs
+
+Do **not** block D1 on SmugMug or library UI.
