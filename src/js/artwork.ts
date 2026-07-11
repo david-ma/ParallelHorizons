@@ -95,3 +95,89 @@ export function addFrameToArtwork(parent: THREE.Group, artWidth: number, artHeig
   right.position.set(artWidth / 2 + matThickness + frameThickness / 2, 0, -frameDepth / 2)
   parent.add(right)
 }
+
+export interface PlacardInfo {
+  title?: string
+  artist?: string
+  year?: string | number
+}
+
+function buildPlacardTexture(info: PlacardInfo): THREE.CanvasTexture | null {
+  const title = info.title?.trim()
+  const artist = info.artist?.trim()
+  const year = info.year != null ? String(info.year).trim() : ''
+  if (!title && !artist && !year) return null
+
+  const rows: Array<{ text: string; font: string; color: string; size: number }> = []
+  if (title) rows.push({ text: title, font: 'bold 26px Georgia, "Times New Roman", serif', color: '#1a1a1a', size: 26 })
+  if (artist) rows.push({ text: artist, font: '18px Georgia, "Times New Roman", serif', color: '#333333', size: 18 })
+  if (year) rows.push({ text: year, font: '16px Georgia, "Times New Roman", serif', color: '#555555', size: 16 })
+
+  const canvas = document.createElement('canvas')
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return null
+
+  const width = 512
+  const padX = 20
+  const padY = 14
+  const lineGap = 5
+  let contentHeight = padY
+  for (const row of rows) {
+    ctx.font = row.font
+    contentHeight += row.size + lineGap
+  }
+  contentHeight += padY - lineGap
+
+  canvas.width = width
+  canvas.height = Math.max(72, contentHeight)
+
+  ctx.fillStyle = '#f8f6ef'
+  ctx.fillRect(0, 0, canvas.width, canvas.height)
+  ctx.strokeStyle = '#d8d4c8'
+  ctx.lineWidth = 2
+  ctx.strokeRect(1, 1, canvas.width - 2, canvas.height - 2)
+
+  let y = padY
+  for (const row of rows) {
+    ctx.font = row.font
+    ctx.fillStyle = row.color
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'top'
+    const maxTextWidth = width - padX * 2
+    let text = row.text
+    while (text.length > 1 && ctx.measureText(text).width > maxTextWidth) {
+      text = text.slice(0, -1)
+    }
+    if (text !== row.text && text.length > 3) text = text.slice(0, -3) + '…'
+    ctx.fillText(text, width / 2, y)
+    y += row.size + lineGap
+  }
+
+  const texture = new THREE.CanvasTexture(canvas)
+  texture.colorSpace = THREE.SRGBColorSpace
+  texture.minFilter = THREE.LinearFilter
+  return texture
+}
+
+/**
+ * Museum-style label card mounted below the artwork (local space; parent faces the room).
+ */
+export function addPlacardToArtwork(parent: THREE.Group, artWidth: number, artHeight: number, info: PlacardInfo): void {
+  const texture = buildPlacardTexture(info)
+  if (!texture) return
+
+  const matThickness = 0.045
+  const frameThickness = 0.06
+  const gapBelowFrame = 0.06
+  const frameBottom = artHeight / 2 + matThickness + frameThickness
+  const placardWidth = artWidth * 0.95
+  const aspect = texture.image.height / texture.image.width
+  const placardHeight = placardWidth * aspect
+
+  const placard = new THREE.Mesh(
+    new THREE.PlaneGeometry(placardWidth, placardHeight),
+    new THREE.MeshBasicMaterial({ map: texture, transparent: true, toneMapped: false })
+  )
+  placard.position.set(0, -(frameBottom + gapBelowFrame + placardHeight / 2), 0.004)
+  parent.add(placard)
+}

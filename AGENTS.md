@@ -83,7 +83,7 @@ The gallery is now running as a Thalia website and no longer depends on the old 
 2. ~~Replace synchronous JSON load in `layout.ts` with an async load + loading state.~~
 3. (Done) JSON gallery-build logic lives in `layout.ts`; legacy fallback in `gallery.ts`.
 4. Apply tuned spotlight settings from one fixture to all generated fixtures when requested.
-5. Add basic placards (title/artist/year) support in JSON and render beside artworks.
+5. ~~Add basic placards (title/artist/year) support in JSON and render beside artworks.~~
 
 ---
 

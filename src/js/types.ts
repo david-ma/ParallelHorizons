@@ -16,7 +16,7 @@ export interface FloorplanBlob {
   grid?: { rows?: number; cols?: number }
   activeCells?: string[]
   placements?: Record<string, string | FloorplanWallPlacements>
-  photoCatalog?: Array<{ id: string; src: string; title?: string }>
+  photoCatalog?: Array<{ id: string; src: string; title?: string; artist?: string; year?: string | number }>
 }
 
 export interface Gal {

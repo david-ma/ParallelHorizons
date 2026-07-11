@@ -32,12 +32,12 @@ Done:
 - Thalia site: `/`, `/view`, `/create`
 - TypeScript viewer modules, Three.js r183, Rapier physics
 - JSON floorplan layout + async load + sample `gallery-floorplan.json`
+- Placards (title/artist/year) on JSON artworks
 - Floorplan editor at `/create`
 
 Next (see AGENTS.md):
 
 - Auth (Thalia security), user dashboard, UploadThing uploads
-- Placards (title/artist/year) beside artworks
 - Save floorplans to DB instead of file export
 - Mobile-friendly controls
 

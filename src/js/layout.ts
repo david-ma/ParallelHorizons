@@ -4,7 +4,7 @@
 import * as THREE from 'three'
 import type { Gal } from './types.js'
 import type { FloorplanBlob, FloorplanWallPlacements } from './types.js'
-import { addFrameToArtwork } from './artwork.js'
+import { addFrameToArtwork, addPlacardToArtwork } from './artwork.js'
 import { addArtworkSpotlightRig, spotlightOptionsForArtwork } from './spotlight.js'
 
 const DEFAULT_FLOORPLAN_URL = '/gallery-floorplan.json'
@@ -91,7 +91,7 @@ export function buildSceneFromFloorplan(g: Gal, data: FloorplanBlob): void {
   const rows = Math.max(1, Number(data.grid?.rows) || DEFAULT_GRID_ROWS)
   const cols = Math.max(1, Number(data.grid?.cols) || DEFAULT_GRID_COLS)
   const active = new Set((data.activeCells || []).map(String))
-  const photoById = new Map((data.photoCatalog || []).map((p) => [p.id, p.src]))
+  const catalogById = new Map((data.photoCatalog || []).map((p) => [p.id, p]))
 
   addBaseLighting(g)
   const { floorWidth, floorDepth } = addFloor(g, rows, cols)
@@ -140,7 +140,8 @@ export function buildSceneFromFloorplan(g: Gal, data: FloorplanBlob): void {
       const step = Math.min(1.5, (CELL_WORLD - 1) / Math.max(1, ids.length + 1))
       const start = -((ids.length - 1) * step) / 2
       ids.forEach((photoId, idx) => {
-        const source = photoById.get(photoId) || `/img/Artworks/${idx % 30}.jpg`
+        const entry = catalogById.get(photoId)
+        const source = entry?.src || `/img/Artworks/${idx % 30}.jpg`
         const tex = new THREE.TextureLoader().load(source)
         tex.colorSpace = THREE.SRGBColorSpace
         tex.minFilter = THREE.LinearFilter
@@ -150,6 +151,11 @@ export function buildSceneFromFloorplan(g: Gal, data: FloorplanBlob): void {
         plane.position.z = 0.005
         art.add(plane)
         addFrameToArtwork(art, 1.2, 0.8)
+        addPlacardToArtwork(art, 1.2, 0.8, {
+          title: entry?.title,
+          artist: entry?.artist,
+          year: entry?.year,
+        })
         const p = placeOnWall(wallName, center.x, center.z, start + idx * step)
         art.position.set(p.x, p.y, p.z)
         art.rotation.y = p.ry

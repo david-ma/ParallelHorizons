@@ -63,13 +63,15 @@ Legacy whole-cell string (photo on north wall only):
 
 | Field | Type | Required |
 |-------|------|----------|
-| `photoCatalog` | `{ id, src, title? }[]` | Recommended |
+| `photoCatalog` | `{ id, src, title?, artist?, year? }[]` | Recommended |
 
 | Field | Type | Notes |
 |-------|------|-------|
 | `id` | string | Referenced from `placements` |
 | `src` | string | URL path to image (e.g. `/img/Artworks/0.jpg`) |
-| `title` | string | Optional; not rendered in 3D yet (placards planned) |
+| `title` | string | Shown on placard below artwork |
+| `artist` | string | Optional; second line on placard |
+| `year` | string \| number | Optional; third line on placard |
 
 If a placement references an unknown id, the viewer falls back to `/img/Artworks/{index % 30}.jpg`.
 
@@ -95,7 +97,6 @@ See `public/gallery-floorplan.json` in the repo.
 
 ## Future (not in v2)
 
-- Placards (`title`, `artist`, `year`) beside artworks
 - Spotlight tuning overrides in JSON (viewer currently adds one default rig per artwork)
 - 3D props / objects array
 - Schema migration helpers for v1 → v2

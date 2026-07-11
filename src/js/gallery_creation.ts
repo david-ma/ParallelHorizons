@@ -7,6 +7,8 @@ type PhotoItem = {
   id: string
   title: string
   src: string
+  artist?: string
+  year?: string | number
 }
 
 /** One photo id per wall (empty string = none). Paintings only on walls, not in the middle of cells. */

@@ -82,14 +82,13 @@
     { "id": "photo-0", "title": "Photo 1", "src": "/img/Artworks/0.jpg" },
     { "id": "photo-1", "title": "Photo 2", "src": "/img/Artworks/1.jpg" },
     { "id": "photo-2", "title": "Photo 3", "src": "/img/Artworks/2.jpg" },
-    { "id": "photo-3", "title": "Photo 4", "src": "/img/Artworks/3.jpg" },
-    { "id": "photo-4", "title": "Photo 5", "src": "/img/Artworks/4.jpg" },
-    { "id": "photo-5", "title": "Photo 6", "src": "/img/Artworks/5.jpg" },
-    { "id": "photo-6", "title": "Photo 7", "src": "/img/Artworks/6.jpg" },
-    { "id": "photo-7", "title": "Photo 8", "src": "/img/Artworks/7.jpg" },
-    { "id": "photo-8", "title": "Photo 9", "src": "/img/Artworks/8.jpg" },
-    { "id": "photo-9", "title": "Photo 10", "src": "/img/Artworks/9.jpg" },
-    { "id": "photo-10", "title": "Photo 11", "src": "/img/Artworks/10.jpg" },
-    { "id": "photo-11", "title": "Photo 12", "src": "/img/Artworks/11.jpg" }
+    { "id": "photo-3", "title": "Parallel Horizons", "artist": "David Ma", "year": "2023", "src": "/img/Artworks/3.jpg" },
+    { "id": "photo-4", "title": "Evening Light", "artist": "David Ma", "year": "2023", "src": "/img/Artworks/4.jpg" },
+    { "id": "photo-5", "title": "Coastal Study", "artist": "David Ma", "year": "2022", "src": "/img/Artworks/5.jpg" },
+    { "id": "photo-6", "title": "Urban Frame", "artist": "David Ma", "year": "2022", "src": "/img/Artworks/6.jpg" },
+    { "id": "photo-7", "title": "Quiet Room", "artist": "David Ma", "year": "2023", "src": "/img/Artworks/7.jpg" },
+    { "id": "photo-9", "title": "Open Sky", "artist": "David Ma", "year": "2021", "src": "/img/Artworks/9.jpg" },
+    { "id": "photo-10", "title": "Gallery Walk", "artist": "David Ma", "year": "2023", "src": "/img/Artworks/10.jpg" },
+    { "id": "photo-11", "title": "Last Light", "artist": "David Ma", "year": "2022", "src": "/img/Artworks/11.jpg" }
   ]
 }
