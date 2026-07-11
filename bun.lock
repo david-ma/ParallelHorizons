@@ -364,7 +364,7 @@
 
     "sql-escaper": ["sql-escaper@1.3.3", "", {}, "sha512-BsTCV265VpTp8tm1wyIm1xqQCS+Q9NHx2Sr+WcnUrgLrQ6yiDIvHYJV5gHxsj1lMBy2zm5twLaZao8Jd+S8JJw=="],
 
-    "thalia": ["thalia@github:david-ma/Thalia#5ded18b", { "dependencies": { "bcryptjs": "^3.0.3", "bun": "^1.3.14", "cheerio": "^1.2.0", "drizzle-orm": "^0.45.2", "formidable": "^3.5.4", "get-port-please": "^3.2.0", "handlebars": "^4.7.9", "highlight.js": "^11.11.1", "marked": "^18.0.5", "marked-highlight": "^2.2.4", "mysql2": "^3.22.5", "nodemailer": "^9.0.1", "sass": "1.101.0", "socket.io": "^4.8.3" }, "bin": { "thalia": "./server/cli.ts", "thalia-develop": "./bin/develop.ts", "thalia-sitemap": "./bin/sitemap.ts" } }, "david-ma-Thalia-5ded18b", "sha512-0NhKTTPrGgoqyxhSrF2n2ak07183bOBqCuOosaYFG1SZXbfMBzwXNWBrEK70Jej+d+kIpBmghfLK9yfMkZwHAg=="],
+    "thalia": ["thalia@github:david-ma/Thalia#fc1bf88", { "dependencies": { "bcryptjs": "^3.0.3", "bun": "^1.3.14", "cheerio": "^1.2.0", "drizzle-orm": "^0.45.2", "formidable": "^3.5.4", "get-port-please": "^3.2.0", "handlebars": "^4.7.9", "highlight.js": "^11.11.1", "marked": "^18.0.5", "marked-highlight": "^2.2.4", "mysql2": "^3.22.5", "nodemailer": "^9.0.1", "sass": "1.101.0", "socket.io": "^4.8.3" }, "bin": { "thalia": "./server/cli.ts", "thalia-develop": "./bin/develop.ts", "thalia-sitemap": "./bin/sitemap.ts" } }, "david-ma-Thalia-fc1bf88", "sha512-evaEsW6wUWPe48+XF/wHHDjBZaoAyESBNKHPzzZHbG7Cy6fdvKHO2v0Jch+ljETvwkN+cTucYN0xL2Xzwoi4Dg=="],
 
     "three": ["three@0.183.2", "", {}, "sha512-di3BsL2FEQ1PA7Hcvn4fyJOlxRRgFYBpMTcyOgkwJIaDOdJMebEFPA+t98EvjuljDx4hNulAGwF6KIjtwI5jgQ=="],
 

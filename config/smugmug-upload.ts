@@ -1,14 +1,14 @@
 /**
  * Upload image bytes to SmugMug and return URLs + keys for gallery `photos` rows.
  */
-import { SmugMugClient } from 'thalia/server/images/smugmug/client.js'
-import { normalizeSmugMugAlbumUri } from 'thalia/server/images/smugmug/album-uri.js'
-import { smugmugBundleAuthorization } from 'thalia/server/images/smugmug/oauth.js'
 import {
+  SmugMugClient,
+  normalizeSmugMugAlbumUri,
+  smugmugBundleAuthorization,
   parseSmugMugMultipartUploadResponse,
   parseSmugMugVerbosityAlbumImage,
-} from 'thalia/server/images/smugmug/response-parsers.js'
-import { requestHttpsUtf8 } from 'thalia/server/util/https-request.js'
+  requestHttpsUtf8,
+} from 'thalia/images'
 import type { SmugMugCredentials } from './load-secrets.js'
 
 export type SmugMugStoredPhoto = {

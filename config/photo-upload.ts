@@ -6,7 +6,7 @@ import type { IncomingMessage, ServerResponse } from 'http'
 import type { Website } from 'thalia/website'
 import { readLimitedJsonObject } from 'thalia/controllers'
 import { parseForm } from 'thalia/util'
-import { fetchRemoteHttpsImageBytes, pickRemoteFileUrl } from 'thalia/server/images/remote-image-fetch.js'
+import { fetchRemoteHttpsImageBytes, pickRemoteFileUrl } from 'thalia/images'
 import {
   insertPhoto,
   insertPhotoRecord,
@@ -41,6 +41,15 @@ function firstFile(files: Record<string, unknown>): { filepath: string; mimetype
 
 function titleFromFilename(filename: string): string {
   return filename.replace(/\.[^.]+$/, '') || filename
+}
+
+function filenameFromUrl(urlString: string): string | undefined {
+  try {
+    const base = new URL(urlString).pathname.split('/').pop()
+    return base?.trim() || undefined
+  } catch {
+    return undefined
+  }
 }
 
 async function persistSmugMugPhoto(
@@ -99,12 +108,12 @@ async function handleJsonUpload(
     return
   }
 
-  const { bytes, filename: remoteName } = await fetchRemoteHttpsImageBytes(remoteUrl, {
-    filenameHint: typeof body.filename === 'string' ? body.filename : undefined,
+  const { buffer: bytes } = await fetchRemoteHttpsImageBytes(remoteUrl, {
+    log: { website: 'gallery', service: 'uploadthing' },
   })
   const filename =
     (typeof body.filename === 'string' && body.filename.trim()) ||
-    remoteName ||
+    filenameFromUrl(remoteUrl) ||
     'image.jpg'
   const photo = await persistSmugMugPhoto(
     website,
