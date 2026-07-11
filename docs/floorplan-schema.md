@@ -91,7 +91,8 @@ See `public/gallery-floorplan.json` in the repo.
 ## Workflow
 
 1. Open `/create`, activate cells, drag photos onto wall bands.
-2. Export or download JSON.
+2. Click a photo (or double-click a placement on the grid) to edit **title**, **artist**, and **year** in the Placard panel.
+3. Export or download JSON.
 3. Save as `public/gallery-floorplan.json` (or host elsewhere and set `GALLERY_FLOORPLAN_URL`).
 4. Open `/view` — layout loads asynchronously with a loading overlay.
 

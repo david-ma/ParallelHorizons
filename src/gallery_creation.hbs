@@ -63,8 +63,31 @@
       padding-right: 4px;
     }
     .photo-tile { border: 1px solid var(--border); border-radius: 6px; padding: 4px; background: #262629; cursor: grab; user-select: none; }
+    .photo-tile.selected { border-color: var(--primary); box-shadow: 0 0 0 1px var(--primary); }
     .photo-tile img { display: block; width: 100%; aspect-ratio: 1 / 1; object-fit: cover; border-radius: 4px; }
     .photo-title { margin: 4px 0 0; font-size: 12px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .photo-meta { margin: 2px 0 0; font-size: 10px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .placard-editor { margin-top: 12px; padding: 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface-2); }
+    .placard-editor.placard-empty .placard-fields { display: none; }
+    .placard-editor:not(.placard-empty) .placard-empty-hint { display: none; }
+    .placard-fields { display: grid; gap: 8px; }
+    .placard-fields label { display: grid; gap: 4px; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+    .placard-fields input {
+      font: inherit;
+      font-size: 14px;
+      text-transform: none;
+      letter-spacing: normal;
+      color: var(--text);
+      padding: 8px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: #1f1f21;
+    }
+    .placard-fields input:focus { outline: none; border-color: var(--primary); }
+    .placard-preview { margin: 0 0 8px; padding: 8px; background: #f8f6ef; color: #1a1a1a; border-radius: 4px; font-size: 12px; line-height: 1.4; }
+    .placard-preview .pv-title { font-weight: 700; font-family: Georgia, serif; }
+    .placard-preview .pv-artist { color: #333; font-family: Georgia, serif; }
+    .placard-preview .pv-year { color: #555; font-family: Georgia, serif; }
     .canvas-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px; overflow: auto; }
     #floorplan-svg { background: #222225; border: 1px solid var(--border); border-radius: 6px; }
     .cell { fill: #313135; stroke: #4a4a52; cursor: pointer; }
@@ -82,12 +105,23 @@
       <div class="controls">
         <button id="export-json" type="button">Export JSON</button>
         <label for="import-json">Import JSON<input id="import-json" type="file" accept="application/json"></label>
+        <button id="load-current" type="button">Load Current</button>
         <button id="reset-layout" type="button">Reset Layout</button>
         <button id="download-layout" type="button">Download File</button>
       </div>
       <textarea id="json-preview" readonly></textarea>
-      <p class="hint">Click cells to activate floor tiles. Drag photos onto the wall segments (dashed edges) of an active cell—one image per wall. Deactivating a cell removes all its artworks.</p>
-      <h2 style="margin-top: 12px;">Photos (Mock)</h2>
+      <p class="hint">Click cells to activate floor tiles. Drag photos onto wall segments (dashed edges). Click a photo below to edit its placard (title, artist, year).</p>
+      <h2 style="margin-top: 12px;">Placard</h2>
+      <div id="placard-editor" class="placard-editor placard-empty">
+        <p class="hint placard-empty-hint">Select a photo to edit its label.</p>
+        <div class="placard-fields">
+          <div id="placard-preview" class="placard-preview" aria-hidden="true"></div>
+          <label>Title<input id="placard-title" type="text" autocomplete="off"></label>
+          <label>Artist<input id="placard-artist" type="text" autocomplete="off"></label>
+          <label>Year<input id="placard-year" type="text" inputmode="numeric" autocomplete="off"></label>
+        </div>
+      </div>
+      <h2 style="margin-top: 12px;">Photos</h2>
       <div id="photo-list"></div>
     </section>
 

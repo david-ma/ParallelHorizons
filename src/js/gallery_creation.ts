@@ -30,7 +30,6 @@ const CELL_GAP = 14
 const PADDING = 18
 const WALL_BAND = 24
 const THUMB_SIZE = 14
-const THUMB_GAP = 2
 
 const photoCatalog: PhotoItem[] = Array.from({ length: 12 }, (_, i) => ({
   id: `photo-${i}`,
@@ -40,6 +39,7 @@ const photoCatalog: PhotoItem[] = Array.from({ length: 12 }, (_, i) => ({
 
 const activeCells = new Set<CellKey>()
 const placements: CellPlacements = {}
+let selectedPhotoId: string | null = null
 
 function cellKey(row: number, col: number): CellKey {
   return `${row},${col}`
@@ -54,30 +54,22 @@ function ensureCellWalls(key: CellKey): WallPlacements {
   return placements[key]
 }
 
-function nearestWall(
-  cell: { x: number; y: number },
-  clientX: number,
-  clientY: number,
-  svgRect: DOMRect
-): Wall {
-  const px = clientX - svgRect.left
-  const py = clientY - svgRect.top
-  const leftDist = Math.abs(px - cell.x)
-  const rightDist = Math.abs(px - (cell.x + CELL_SIZE))
-  const topDist = Math.abs(py - cell.y)
-  const bottomDist = Math.abs(py - (cell.y + CELL_SIZE))
+function getPhoto(id: string): PhotoItem | undefined {
+  return photoCatalog.find((p) => p.id === id)
+}
 
-  const min = Math.min(leftDist, rightDist, topDist, bottomDist)
-  if (min === topDist) return 'north'
-  if (min === rightDist) return 'east'
-  if (min === bottomDist) return 'south'
-  return 'west'
+function placardMetaLine(photo: PhotoItem): string {
+  const parts: string[] = []
+  if (photo.artist?.trim()) parts.push(photo.artist.trim())
+  if (photo.year != null && String(photo.year).trim()) parts.push(String(photo.year).trim())
+  return parts.join(' · ')
 }
 
 /** Place one photo on a wall section (replaces any existing). Only walls get art. */
 function placePhoto(cell: { key: CellKey }, wall: Wall, photoId: string): void {
   const walls = ensureCellWalls(cell.key)
   walls[wall] = photoId
+  selectPhoto(photoId)
   drawGrid()
   updatePreview()
 }
@@ -88,7 +80,13 @@ function toData(): FloorplanData {
     grid: { rows: GRID_ROWS, cols: GRID_COLS },
     activeCells: Array.from(activeCells),
     placements: JSON.parse(JSON.stringify(placements)),
-    photoCatalog,
+    photoCatalog: photoCatalog.map((p) => ({
+      id: p.id,
+      title: p.title,
+      src: p.src,
+      ...(p.artist?.trim() ? { artist: p.artist.trim() } : {}),
+      ...(p.year != null && String(p.year).trim() ? { year: p.year } : {}),
+    })),
   }
 }
 
@@ -96,6 +94,81 @@ function updatePreview(): void {
   const el = document.getElementById('json-preview') as HTMLTextAreaElement | null
   if (!el) return
   el.value = JSON.stringify(toData(), null, 2)
+}
+
+function selectPhoto(id: string | null): void {
+  selectedPhotoId = id
+  renderPhotoList()
+  renderPlacardEditor()
+}
+
+function renderPlacardEditor(): void {
+  const panel = document.getElementById('placard-editor')
+  const titleInput = document.getElementById('placard-title') as HTMLInputElement | null
+  const artistInput = document.getElementById('placard-artist') as HTMLInputElement | null
+  const yearInput = document.getElementById('placard-year') as HTMLInputElement | null
+  const preview = document.getElementById('placard-preview')
+  if (!panel || !titleInput || !artistInput || !yearInput || !preview) return
+
+  const photo = selectedPhotoId ? getPhoto(selectedPhotoId) : undefined
+  panel.classList.toggle('placard-empty', !photo)
+
+  if (!photo) {
+    titleInput.value = ''
+    artistInput.value = ''
+    yearInput.value = ''
+    preview.innerHTML = ''
+    return
+  }
+
+  titleInput.value = photo.title
+  artistInput.value = photo.artist ?? ''
+  yearInput.value = photo.year != null ? String(photo.year) : ''
+
+  const titleHtml = photo.title.trim()
+    ? `<div class="pv-title">${escapeHtml(photo.title.trim())}</div>`
+    : ''
+  const artistHtml = photo.artist?.trim()
+    ? `<div class="pv-artist">${escapeHtml(photo.artist.trim())}</div>`
+    : ''
+  const yearHtml =
+    photo.year != null && String(photo.year).trim()
+      ? `<div class="pv-year">${escapeHtml(String(photo.year).trim())}</div>`
+      : ''
+  preview.innerHTML = titleHtml || artistHtml || yearHtml ? titleHtml + artistHtml + yearHtml : '<div class="pv-year">(empty placard)</div>'
+}
+
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+}
+
+function applyPlacardFromForm(): void {
+  if (!selectedPhotoId) return
+  const photo = getPhoto(selectedPhotoId)
+  const titleInput = document.getElementById('placard-title') as HTMLInputElement | null
+  const artistInput = document.getElementById('placard-artist') as HTMLInputElement | null
+  const yearInput = document.getElementById('placard-year') as HTMLInputElement | null
+  if (!photo || !titleInput || !artistInput || !yearInput) return
+
+  photo.title = titleInput.value
+  const artist = artistInput.value.trim()
+  if (artist) photo.artist = artist
+  else delete photo.artist
+  const yearRaw = yearInput.value.trim()
+  if (yearRaw) {
+    const asNum = Number(yearRaw)
+    photo.year = Number.isFinite(asNum) && String(asNum) === yearRaw ? asNum : yearRaw
+  } else {
+    delete photo.year
+  }
+
+  renderPhotoList()
+  renderPlacardEditor()
+  updatePreview()
 }
 
 function renderPhotoList(): void {
@@ -113,9 +186,16 @@ function renderPhotoList(): void {
     }
 
     const tile = document.createElement('div')
-    tile.className = 'photo-tile'
+    tile.className = `photo-tile${selectedPhotoId === photo.id ? ' selected' : ''}`
     tile.dataset.photoId = photo.id
-    tile.innerHTML = `<img src="${photo.src}" alt="${photo.title}"><p class="photo-title">${photo.title}</p>`
+    const meta = placardMetaLine(photo)
+    tile.innerHTML = `<img src="${photo.src}" alt="${escapeHtml(photo.title)}"><p class="photo-title">${escapeHtml(photo.title)}</p>${meta ? `<p class="photo-meta">${escapeHtml(meta)}</p>` : ''}`
+
+    tile.addEventListener('click', (event) => {
+      event.stopPropagation()
+      selectPhoto(photo.id)
+    })
+
     bindDragPayload(tile)
     const img = tile.querySelector('img') as HTMLImageElement | null
     if (img) bindDragPayload(img)
@@ -123,15 +203,29 @@ function renderPhotoList(): void {
   })
 }
 
+function mergePhotoCatalog(incoming: PhotoItem[]): void {
+  incoming.forEach((imported) => {
+    const idx = photoCatalog.findIndex((p) => p.id === imported.id)
+    if (idx >= 0) {
+      photoCatalog[idx] = { ...photoCatalog[idx], ...imported }
+    } else {
+      photoCatalog.push(imported)
+    }
+  })
+}
+
 function applyData(data: FloorplanData): void {
   activeCells.clear()
   Object.keys(placements).forEach((k) => delete placements[k])
+
+  if (Array.isArray(data.photoCatalog)) {
+    mergePhotoCatalog(data.photoCatalog)
+  }
 
   ;(data.activeCells || []).forEach((k) => activeCells.add(k as CellKey))
 
   Object.entries((data as any).placements || {}).forEach(([k, value]) => {
     if (!activeCells.has(k)) return
-    // Backward compatibility: whole-cell string or old array-per-wall shape.
     if (typeof value === 'string') {
       placements[k] = emptyWalls()
       placements[k].north = value
@@ -147,11 +241,12 @@ function applyData(data: FloorplanData): void {
     }
   })
 
+  renderPhotoList()
+  renderPlacardEditor()
   drawGrid()
   updatePreview()
 }
 
-/** Position for the single thumbnail: center of the wall section (edge band), not at corners. */
 function thumbPositionCenter(cell: { x: number; y: number }, wall: Wall): { x: number; y: number } {
   const cx = cell.x + CELL_SIZE / 2 - THUMB_SIZE / 2
   const cy = cell.y + CELL_SIZE / 2 - THUMB_SIZE / 2
@@ -188,7 +283,7 @@ function drawGrid(): void {
     .on('click', (_event: MouseEvent, d: { key: CellKey }) => {
       if (activeCells.has(d.key)) {
         activeCells.delete(d.key)
-        delete placements[d.key] // Deactivating a square removes all its artworks
+        delete placements[d.key]
       } else {
         activeCells.add(d.key)
         ensureCellWalls(d.key)
@@ -239,15 +334,21 @@ function drawGrid(): void {
       if (!photoId) return
       placePhoto(d.cell, d.wall, photoId)
     })
+    .on('dblclick', (event: MouseEvent, d: { cell: { key: CellKey }; wall: Wall }) => {
+      const photoId = placements[d.cell.key]?.[d.wall] ?? ''
+      if (!photoId) return
+      event.stopPropagation()
+      selectPhoto(photoId)
+    })
 
-  // One thumbnail per wall section, centered on the wall band (not at corners)
   wallZones.each(function (this: SVGRectElement, d: { cell: { key: CellKey; x: number; y: number }; wall: Wall }) {
     const photoId = placements[d.cell.key]?.[d.wall] ?? ''
     if (!photoId) return
-    const photo = photoCatalog.find((p) => p.id === photoId)
+    const photo = getPhoto(photoId)
     if (!photo) return
     const pos = thumbPositionCenter(d.cell, d.wall)
-    d3.select(this.parentNode as SVGGElement)
+    const parent = d3.select(this.parentNode as SVGGElement)
+    parent
       .append('image')
       .attr('href', photo.src)
       .attr('x', pos.x)
@@ -256,6 +357,18 @@ function drawGrid(): void {
       .attr('height', THUMB_SIZE)
       .attr('pointer-events', 'none')
       .attr('preserveAspectRatio', 'xMidYMid slice')
+    if (selectedPhotoId === photoId) {
+      parent
+        .append('rect')
+        .attr('x', pos.x - 1)
+        .attr('y', pos.y - 1)
+        .attr('width', THUMB_SIZE + 2)
+        .attr('height', THUMB_SIZE + 2)
+        .attr('fill', 'none')
+        .attr('stroke', '#0a84ff')
+        .attr('stroke-width', 2)
+        .attr('pointer-events', 'none')
+    }
   })
 }
 
@@ -269,11 +382,18 @@ function downloadJsonFile(filename: string, data: unknown): void {
   URL.revokeObjectURL(url)
 }
 
+function setupPlacardEditor(): void {
+  ;['placard-title', 'placard-artist', 'placard-year'].forEach((id) => {
+    document.getElementById(id)?.addEventListener('input', applyPlacardFromForm)
+  })
+}
+
 function setupButtons(): void {
   const exportBtn = document.getElementById('export-json')
   const downloadBtn = document.getElementById('download-layout')
   const resetBtn = document.getElementById('reset-layout')
   const importInput = document.getElementById('import-json') as HTMLInputElement | null
+  const loadCurrentBtn = document.getElementById('load-current')
 
   exportBtn?.addEventListener('click', async () => {
     const json = JSON.stringify(toData(), null, 2)
@@ -293,6 +413,7 @@ function setupButtons(): void {
   resetBtn?.addEventListener('click', () => {
     activeCells.clear()
     Object.keys(placements).forEach((k) => delete placements[k])
+    selectPhoto(null)
     drawGrid()
     updatePreview()
   })
@@ -307,14 +428,41 @@ function setupButtons(): void {
     } catch (err) {
       console.error('Failed to import floorplan JSON:', err)
     }
+    importInput.value = ''
+  })
+
+  loadCurrentBtn?.addEventListener('click', async () => {
+    try {
+      const res = await fetch('/gallery-floorplan.json', { credentials: 'same-origin' })
+      if (!res.ok) {
+        console.error('No gallery-floorplan.json found.')
+        return
+      }
+      const data = (await res.json()) as FloorplanData
+      applyData(data)
+    } catch (err) {
+      console.error('Failed to load gallery-floorplan.json:', err)
+    }
   })
 }
 
-function boot(): void {
+async function boot(): Promise<void> {
+  setupPlacardEditor()
+  setupButtons()
   renderPhotoList()
+  renderPlacardEditor()
   drawGrid()
   updatePreview()
-  setupButtons()
+
+  try {
+    const res = await fetch('/gallery-floorplan.json', { credentials: 'same-origin' })
+    if (res.ok) {
+      const data = (await res.json()) as FloorplanData
+      applyData(data)
+    }
+  } catch (_err) {
+    // start blank when no floorplan on server
+  }
 }
 
-boot()
+void boot()
