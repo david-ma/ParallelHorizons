@@ -255,11 +255,34 @@ export function createCeilingMaterial(width: number, depth: number): THREE.MeshL
   })
 }
 
+let cachedFloorTexture: THREE.Texture | null = null
+
+export async function preloadFloorTexture(): Promise<void> {
+  if (cachedFloorTexture) return
+  cachedFloorTexture = await new Promise((resolve, reject) => {
+    new THREE.TextureLoader().load(
+      '/img/Textures/Floor.jpg',
+      (tex) => {
+        tex.colorSpace = THREE.SRGBColorSpace
+        tex.wrapS = THREE.RepeatWrapping
+        tex.wrapT = THREE.RepeatWrapping
+        resolve(tex)
+      },
+      undefined,
+      (err) => reject(err instanceof Error ? err : new Error(String(err)))
+    )
+  })
+}
+
 export function createFloorMaterial(repeatU: number, repeatV: number): THREE.MeshPhongMaterial {
-  const floorText = new THREE.TextureLoader().load('/img/Textures/Floor.jpg')
-  floorText.colorSpace = THREE.SRGBColorSpace
-  floorText.wrapS = THREE.RepeatWrapping
-  floorText.wrapT = THREE.RepeatWrapping
+  let floorText = cachedFloorTexture
+  if (!floorText) {
+    floorText = new THREE.TextureLoader().load('/img/Textures/Floor.jpg')
+    floorText.colorSpace = THREE.SRGBColorSpace
+    floorText.wrapS = THREE.RepeatWrapping
+    floorText.wrapT = THREE.RepeatWrapping
+    cachedFloorTexture = floorText
+  }
   floorText.repeat.set(repeatU, repeatV)
   return new THREE.MeshPhongMaterial({ map: floorText })
 }

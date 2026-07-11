@@ -5,6 +5,7 @@
 import type * as THREE from 'three'
 import type { Gal } from './types.js'
 import { classifyBeamFadeVisual, getSpotlightCullDebug } from './spotlight.js'
+import { clientBrowserLabel } from './quality.js'
 
 export type FramePhases = {
   anim: number
@@ -27,6 +28,8 @@ export type SlowFrameRecord = {
   cam: { x: number; y: number; z: number }
   dpr: number
   gallery: string
+  browser: string
+  git: string
 }
 
 const SLOW_RING_MAX = 40
@@ -84,6 +87,29 @@ export function gallerySlug(): string {
   return m?.[1] ?? 'default'
 }
 
+export function gitRevision(): string {
+  const sha = (globalThis as { GALLERY_GIT_SHA?: string }).GALLERY_GIT_SHA?.trim()
+  if (sha) return sha
+  return cachedGitHash ?? 'unknown'
+}
+
+let cachedGitHash: string | null = null
+let versionFetch: Promise<string | null> | null = null
+
+/** Thalia `/version` JSON — fallback when page omits injected gitHash. */
+export function fetchGitHashFromVersion(): Promise<string | null> {
+  if (versionFetch) return versionFetch
+  versionFetch = fetch('/version', { credentials: 'same-origin' })
+    .then((res) => (res.ok ? res.json() : null))
+    .then((data) => {
+      const hash = typeof data?.gitHash === 'string' ? data.gitHash.trim() : ''
+      if (hash) cachedGitHash = hash
+      return hash || null
+    })
+    .catch(() => null)
+  return versionFetch
+}
+
 function collectLightStats(): { total: number; active: number; lit: number; hold: number; shading: number } {
   const cull = getSpotlightCullDebug()
   let active = 0
@@ -123,6 +149,9 @@ export function initDevPerf(): void {
   }
   g.galleryDumpPerf = galleryDumpPerf
   g.galleryPerfSummary = galleryPerfSummary
+
+  const injected = (globalThis as { GALLERY_GIT_SHA?: string }).GALLERY_GIT_SHA?.trim()
+  if (!injected) void fetchGitHashFromVersion()
 }
 
 function shouldRecordSlow(frameMs: number, budgetMs: number): boolean {
@@ -163,6 +192,8 @@ function buildSlowRecord(
     },
     dpr: g.renderer.getPixelRatio(),
     gallery: gallerySlug(),
+    browser: clientBrowserLabel(),
+    git: gitRevision(),
   }
 }
 
@@ -277,6 +308,8 @@ export function galleryPerfSummary(): Record<string, unknown> {
     ev: 'gallery.perf_summary',
     ts: Math.round(performance.now()),
     gallery: gallerySlug(),
+    browser: clientBrowserLabel(),
+    git: gitRevision(),
     framesSampled: frames.length,
     frameMs: {
       avg: Math.round(avg * 10) / 10,

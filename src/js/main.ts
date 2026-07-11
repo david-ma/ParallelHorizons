@@ -5,10 +5,11 @@
 import * as THREE from 'three'
 import { PointerLockControls } from 'three/examples/jsm/controls/PointerLockControls.js'
 import type { Gal } from './types.js'
-import { loadFloorplanAsync, buildSceneFromFloorplan, buildMinimalGallery, applySpawnPosition, preloadFloorplanTextures } from './layout.js'
+import { loadFloorplanAsync, buildSceneFromFloorplan, buildMinimalGallery, applySpawnPosition, preloadFloorplanTextures, preloadFloorTexture } from './layout.js'
 import { attachMovementKeys, clearMovementState, updateMovement, updateVelocityOnly } from './movement.js'
 import { initRapier, createGalleryPhysics, stepPhysics } from './physics.js'
 import { initSpotlightDevPanel, updateSpotlightCulling, resolveMaxPixelRatio } from './spotlight.js'
+import { preferNoAntialias } from './quality.js'
 import { initDevMinimap, updateDevMinimap } from './minimap.js'
 import { initSpotlightDebug, updateSpotlightDebug } from './spotlight-debug.js'
 import { initDevPerf, markPhase, recordFrame, type FramePhases } from './perf.js'
@@ -119,7 +120,7 @@ if (Detector && !Detector.webgl) {
     euler: new THREE.Euler(0, 0, 0, 'YXZ'),
     scene: new THREE.Scene(),
     camera: new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000),
-    renderer: new THREE.WebGLRenderer({ antialias: true }),
+    renderer: new THREE.WebGLRenderer({ antialias: !preferNoAntialias() }),
     raycaster: new THREE.Raycaster(),
     mouse: new THREE.Vector2(0, 0),
     pastX: 0,
@@ -319,6 +320,8 @@ if (Detector && !Detector.webgl) {
       try {
         const data = await loadFloorplanAsync()
         if (data) {
+          setLayoutLoading(true, 'Loading textures…')
+          await preloadFloorTexture()
           const textures = await preloadFloorplanTextures(data, (loaded, total) => {
             setLayoutLoading(true, `Loading artwork textures… ${loaded}/${total}`)
           })
@@ -326,7 +329,15 @@ if (Detector && !Detector.webgl) {
           buildSceneFromFloorplan(gal!, data, textures)
           applySpawnPosition(gal!, data)
         } else {
+          await preloadFloorTexture()
           buildMinimalGallery(gal!)
+        }
+        applyViewportSize(gal!)
+        if (gal!.wallGroup?.children) {
+          updateSpotlightCulling(gal!.camera, gal!.wallGroup.children)
+          gal!.renderer.render(gal!.scene, gal!.camera)
+          updateSpotlightCulling(gal!.camera, gal!.wallGroup.children)
+          gal!.renderer.render(gal!.scene, gal!.camera)
         }
       } finally {
         setLayoutLoading(false)

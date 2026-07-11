@@ -192,6 +192,74 @@ After fixes, re-run `?profile=1` on the same path:
 
 **`geos` 130 → 150 over long session:** likely fixture instancing pool + placard meshes settling; not a runaway leak (plateaus at ~150 for 25 paintings). Monitor if it keeps climbing in longer sessions.
 
+### Safari — parallel-horizons (same gallery, same fixes)
+
+Chrome post-fix max was **5.2 ms**. Safari on the same layout shows recurring **~340–410 ms** GPU stalls:
+
+| Metric | Chrome (post-fix) | Safari |
+|--------|-------------------|--------|
+| `frameMs.max` | 5.2 | **409** |
+| `frameMs.p95` | 4.0 | 4.0 |
+| `phaseAvgMs.render` | 1.2 | **3.8** |
+| `slowCount` | 6 | **11** |
+| `lights.shading` | ≤ 8 | ≤ 8 ✓ |
+
+**Pattern:** six slow frames at **341–409 ms**, almost all in `render`, with **low draw counts** (25–40) — not CPU cull, not texture climb (`tex` stable at 24). Looks like **Safari WebGL / Metal driver stalls** on Lambert + dynamic spots + MSAA, not our old 25-light bug.
+
+One late frame had `spotCull: 13 ms` (ts ~22 s) — unusual on Safari; worth watching but not the main issue.
+
+**Mitigations (implemented):**
+
+| Change | Where |
+|--------|--------|
+| Safari spotlight cap **4** (was 8) | `quality.ts` → `resolveSpotlightCap` |
+| Safari DPR cap **1.0** (≥10 paintings) | `quality.ts` → `resolvePixelRatioCap` |
+| **MSAA off** on Safari (`antialias: false`) | `main.ts`; override with `?quality=high` |
+| **Floor texture preload** | `materials.ts` + load pipeline |
+| **Shader warm-up** — 2 renders before PLAY | `main.ts` `create()` |
+| **`browser` field** in perf JSONL | `perf.ts` |
+
+Re-test Safari with `?profile=1`; compare `browser:"safari"` dumps. Use `?quality=high` only to A/B MSAA/DPR cost.
+
+### After Safari mitigations (cross-browser summary)
+
+Commit **`68bc46c`** — parallel-horizons, `?profile=1`, same walk path.
+
+| Metric | Chrome | Firefox | Safari (after) |
+|--------|--------|---------|----------------|
+| `frameMs.max` (rolling) | 4 | 11 | 10 |
+| `frameMs.p95` | 2.2 | 4 | 3 |
+| `phaseAvgMs.render` | 0.8 | 1.2 | 1.1 |
+| `slowCount` | 7 | 9 | 1 |
+| Worst slow-frame `render` | 72 ms | **115 ms** | 73 ms |
+| `shading` cap | 8 | ≤ 8 ✓ | 4 (Safari tier) |
+| Felt laggy? | No | **No** | No (after tier) |
+
+Safari mitigations (`quality.ts`: cap 4 lights, DPR 1.0, no MSAA) removed recurring **~360 ms** stalls. Chrome, Firefox, and Safari (tiered) all feel smooth in playtesting.
+
+### Firefox — parallel-horizons (`68bc46c`)
+
+Nine slow frames captured; **max rolling `frameMs` 11** by end of session (early spikes rolled out of the 120-frame buffer). Worst entries in the slow ring:
+
+| ts ~s | frameMs | render | shading | notes |
+|-------|---------|--------|---------|-------|
+| 0.7 | 37 | 36 | 8 | early load, `tex` 19→ climbing |
+| 3.6–4.3 | 42–**115** | 42–115 | 7→3 | cluster while walking south-west; low draw calls (29–41) |
+| 4.9 | 23 | 23 | 8 | `geos` 138 — late mesh settle |
+
+Same pattern as Chrome: **GPU `render`**, not `spotCull`. Hold/visual working (`lit: 16`, `shading: 3–8`). No Firefox-specific quality tier needed — desktop cap (8 lights, DPR 1.25, MSAA on) is fine.
+
+**“Slow” frames you didn’t feel:** budget is `max(20 ms, median × 1.75)`. A single 48–115 ms frame is one–two missed frames at 60 Hz, not a multi-second hitch. The counter is for catching regressions (e.g. 683 ms or 409 ms), not everyday variance.
+
+### Perf dump metadata
+
+Each `gallery.perf_summary` / `slow_frame` line includes:
+
+| Field | Source |
+|-------|--------|
+| `browser` | `quality.clientBrowserLabel()` |
+| `git` | Thalia `website.version.gitHash` (injected in `gallery.hbs`; fallback `GET /version`) |
+
 ---
 
 ## Next optimisations (priority order)
@@ -203,7 +271,7 @@ Profiling (parallel-horizons) ruled out cull CPU. Remaining levers:
 | **High** | Preload artwork textures (N) | **Done** |
 | **High** | GPU shade cap — hold visual-only (A) | **Done** |
 | **Medium** | Instanced emitter discs (H) | Future |
-| **Medium** | MSAA / antialias tier (J) | Future |
+| **Medium** | MSAA / antialias tier (J) | **Safari off**; `?quality=high` override |
 | **Medium** | Texture atlas / max dimension per quality | Future |
 | **Low** | Merge wall geometry (O) | Future |
 | **Low** | Spotlight cull raycast cache (M) | Future — only 0.4 ms avg here |
@@ -273,7 +341,7 @@ Also time **one-off loads** separately (floorplan, textures, Rapier, GLB) — fi
 One compact JSON object per line (`ev: slow_frame`). Paste into chat or `grep slow_frame logs/...` for agent analysis.
 
 ```json
-{"ev":"slow_frame","ts":12450,"frameMs":31.2,"budgetMs":16.7,"phases":{"anim":0.1,"move":0.4,"spotCull":14.2,"minimap":0.6,"debug":0.2,"render":15.1},"render":{"calls":187,"tris":12400,"tex":34},"lights":{"total":30,"active":8,"lit":9,"hold":2,"shading":8},"scene":{"paintings":30,"walls":48},"cam":{"x":12.1,"y":1.75,"z":-4.2},"dpr":1.25,"gallery":"met-monet"}
+{"ev":"slow_frame","ts":12450,"frameMs":31.2,"budgetMs":16.7,"phases":{"anim":0.1,"move":0.4,"spotCull":14.2,"minimap":0.6,"debug":0.2,"render":15.1},"render":{"calls":187,"tris":12400,"tex":34},"lights":{"total":30,"active":8,"lit":9,"hold":2,"shading":8},"scene":{"paintings":30,"walls":48},"cam":{"x":12.1,"y":1.75,"z":-4.2},"dpr":1.25,"gallery":"met-monet","browser":"chrome","git":"a1b2c3d"}
 ```
 
 | Field | Purpose |
@@ -282,6 +350,7 @@ One compact JSON object per line (`ev: slow_frame`). Paste into chat or `grep sl
 | `render.calls/tris/tex` | GPU load proxy |
 | `lights.shading` | GPU SpotLights with intensity > 0 (≤8) |
 | `cam` | Reproduce viewpoint |
+| `browser` / `git` | Cross-browser comparison; tie dump to build |
 | Short keys | Fewer tokens when pasted to an agent |
 
 **Ring buffer:** keep last **20–50** slow frames in memory. Expose on `globalThis`:
@@ -410,3 +479,6 @@ Use the **same walk** each run (e.g. north corridor → turn → back). Compare 
 | 2026-07-11 | **`perf.ts` shipped:** phase timers, slow-frame ring buffer, dev HUD, `?profile=1`, `galleryDumpPerf()` / `galleryPerfSummary()`. |
 | 2026-07-11 | **parallel-horizons profile:** GPU render bottleneck documented; texture preload + GPU shade cap (hold visual-only) implemented. |
 | 2026-07-11 | **Post-fix re-test:** max frame 683 ms → **5.2 ms**; shading capped at 8; 6 slow frames (20–41 ms) remain from minor lazy uploads. |
+| 2026-07-11 | **Safari profile:** recurring ~360 ms GPU stalls; `quality.ts` tier (cap 4 lights, DPR 1.0, no MSAA), floor preload, shader warm-up. |
+| 2026-07-11 | **Safari re-test:** max 409 ms → **10 ms**; `git` field in perf JSONL via Thalia `website.version.gitHash`. |
+| 2026-07-11 | **Firefox profile:** 9 slow frames (max 115 ms render), imperceptible; no Firefox tier needed. |

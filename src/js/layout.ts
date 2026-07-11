@@ -5,11 +5,12 @@ import * as THREE from 'three'
 import type { Gal } from './types.js'
 import type { FloorplanBlob, FloorplanWallPlacements } from './types.js'
 import { addFrameToArtwork, addPlacardToArtwork } from './artwork.js'
-import { addGalleryCeiling, createFloorMaterial, createWallMaterial, resolveWallTextureStyle } from './materials.js'
+import { addGalleryCeiling, createFloorMaterial, createWallMaterial, preloadFloorTexture, resolveWallTextureStyle } from './materials.js'
 import { addArtworkSpotlightRig, spotlightOptionsForArtwork } from './spotlight.js'
 import { isValidFloorplan } from './floorplan.js'
 
 export { isValidFloorplan } from './floorplan.js'
+export { preloadFloorTexture } from './materials.js'
 
 const DEFAULT_FLOORPLAN_URL = '/gallery-floorplan.json'
 export const FLOORPLAN_CELL_WORLD = 6

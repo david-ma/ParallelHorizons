@@ -175,6 +175,7 @@
   <script>
     globalThis.GALLERY_FLOORPLAN_URL = "{{floorplanUrl}}";
     globalThis.GALLERY_DEV_TOOLS = {{#if production}}false{{else}}true{{/if}};
+    globalThis.GALLERY_GIT_SHA = "{{version.gitHash}}";
   </script>
   <script type="text/javascript" src="/js/Detector.js"></script>
   <script type="module" src="/js/main.js"></script>

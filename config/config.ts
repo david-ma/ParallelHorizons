@@ -54,6 +54,7 @@ function viewPageData(website: Website, entry: GalleryEntry): Record<string, unk
     floorplanUrl: entry.floorplanPath,
     galleryTitle: entry.title,
     gallerySlug: entry.slug,
+    version: website.version,
   }
 }
 
@@ -75,7 +76,7 @@ export const config: RawWebsiteConfig = {
   controllers: {
     '': (res, req, website, requestInfo) => {
       const galleries = loadGalleryManifest(website.rootPath)
-      page('index', { galleries })(res, req, website, requestInfo)
+      page('index', { galleries, version: website.version })(res, req, website, requestInfo)
     },
     create: page('gallery_creation'),
     'save-floorplan': async (res, req, website, requestInfo) => {

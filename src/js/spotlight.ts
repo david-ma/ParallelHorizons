@@ -3,6 +3,7 @@
  */
 import * as THREE from 'three'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
+import { resolvePixelRatioCap, resolveSpotlightCap } from './quality.js'
 
 export const SPOTLIGHT_MODEL_URL = '/models/spotlight/Spotlight.glb'
 
@@ -165,10 +166,7 @@ export const SPOTLIGHT_CULL_DEFAULTS = {
 } as const
 
 export function maxActiveSpotlights(rigCount: number): number {
-  if (rigCount <= 0) return 0
-  if (rigCount <= SPOTLIGHT_CULL_DEFAULTS.maxWhenFew) return rigCount
-  if (rigCount >= SPOTLIGHT_CULL_DEFAULTS.heavyThreshold) return SPOTLIGHT_CULL_DEFAULTS.maxWhenHeavy
-  return SPOTLIGHT_CULL_DEFAULTS.maxWhenMany
+  return resolveSpotlightCap(rigCount)
 }
 
 /** Lower sortKey = lit first. In-view rigs sort by distance/centring; behind use 1e12 + dist². */
@@ -658,7 +656,7 @@ export function resolveMaxPixelRatio(paintingCount: number, search = '', deviceR
   const q = new URLSearchParams(search).get('quality')
   if (q === 'low') return 1
   if (q === 'high') return 2
-  const cap = paintingCount >= 20 ? 1.25 : 2
+  const cap = resolvePixelRatioCap(paintingCount, search)
   const dpr = deviceRatio ?? (typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1)
   return Math.min(dpr, cap)
 }
