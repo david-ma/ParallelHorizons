@@ -5,7 +5,7 @@
 import * as THREE from 'three'
 import { PointerLockControls } from 'three/examples/jsm/controls/PointerLockControls.js'
 import type { Gal } from './types.js'
-import { loadFloorplanAsync, buildSceneFromFloorplan, buildMinimalGallery, applySpawnPosition } from './layout.js'
+import { loadFloorplanAsync, buildSceneFromFloorplan, buildMinimalGallery, applySpawnPosition, preloadFloorplanTextures } from './layout.js'
 import { attachMovementKeys, clearMovementState, updateMovement, updateVelocityOnly } from './movement.js'
 import { initRapier, createGalleryPhysics, stepPhysics } from './physics.js'
 import { initSpotlightDevPanel, updateSpotlightCulling, resolveMaxPixelRatio } from './spotlight.js'
@@ -319,7 +319,11 @@ if (Detector && !Detector.webgl) {
       try {
         const data = await loadFloorplanAsync()
         if (data) {
-          buildSceneFromFloorplan(gal!, data)
+          const textures = await preloadFloorplanTextures(data, (loaded, total) => {
+            setLayoutLoading(true, `Loading artwork textures… ${loaded}/${total}`)
+          })
+          setLayoutLoading(true, 'Building gallery…')
+          buildSceneFromFloorplan(gal!, data, textures)
           applySpawnPosition(gal!, data)
         } else {
           buildMinimalGallery(gal!)

@@ -22,7 +22,7 @@ export type SlowFrameRecord = {
   budgetMs: number
   phases: FramePhases
   render: { calls: number; tris: number; tex: number; geos: number }
-  lights: { total: number; active: number; lit: number; hold: number }
+  lights: { total: number; active: number; lit: number; hold: number; shading: number }
   scene: { paintings: number; walls: number }
   cam: { x: number; y: number; z: number }
   dpr: number
@@ -84,17 +84,19 @@ export function gallerySlug(): string {
   return m?.[1] ?? 'default'
 }
 
-function collectLightStats(): { total: number; active: number; lit: number; hold: number } {
+function collectLightStats(): { total: number; active: number; lit: number; hold: number; shading: number } {
   const cull = getSpotlightCullDebug()
   let active = 0
   let lit = 0
   let hold = 0
+  let shading = 0
   for (const e of cull) {
     if (e.active) active++
     if (e.beamFade > 0) lit++
+    if (e.gpuShade > 0) shading++
     if (classifyBeamFadeVisual(e.active, e.beamFade, e.beamOffDelayElapsed) === 'holdOff') hold++
   }
-  return { total: cull.length, active, lit, hold }
+  return { total: cull.length, active, lit, hold, shading }
 }
 
 /** Elapsed ms since `startMs` (from performance.now()). */
@@ -206,7 +208,7 @@ function updateHud(frameMs: number, medianMs: number, budgetMs: number, phases: 
     detailEl.textContent = [
       `calls ${info.render.calls}`,
       `tris ${info.render.triangles}`,
-      `lit ${lights.lit}/${lights.total}`,
+      `shade ${lights.shading}/${lights.total}`,
       `slow ${slowRing.length}`,
       `top ${top}`,
     ].join(' · ')

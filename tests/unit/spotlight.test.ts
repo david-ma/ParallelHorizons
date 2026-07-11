@@ -17,6 +17,7 @@ import {
   advanceBeamOffDelay,
   classifyBeamFadeVisual,
   computeBeamFadeTarget,
+  computeGpuShadeFade,
   stepBeamFade,
   spotlightCullPriority,
   spotlightFloorHitRadius,
@@ -123,6 +124,14 @@ describe('advanceBeamOffDelay', () => {
 
   test('accumulates while inactive', () => {
     expect(advanceBeamOffDelay(false, 1, 0.5)).toBe(1.5)
+  })
+})
+
+describe('computeGpuShadeFade', () => {
+  test('only active rigs shade the scene', () => {
+    expect(computeGpuShadeFade(true, 1)).toBe(1)
+    expect(computeGpuShadeFade(true, 0.4)).toBe(0.4)
+    expect(computeGpuShadeFade(false, 1)).toBe(0)
   })
 })
 

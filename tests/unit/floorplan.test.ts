@@ -2,7 +2,7 @@ import { describe, expect, test } from 'bun:test'
 import { readFileSync } from 'fs'
 import { join } from 'path'
 import { isValidFloorplan, parseWallStyle } from '../../src/js/floorplan'
-import { cellWorldCenter, getSpawnPosition } from '../../src/js/layout'
+import { cellWorldCenter, collectFloorplanArtworkSources, getSpawnPosition } from '../../src/js/layout'
 
 describe('isValidFloorplan', () => {
   test('accepts minimal valid document', () => {
@@ -73,5 +73,21 @@ describe('getSpawnPosition', () => {
 
   test('defaults to origin at eye height', () => {
     expect(getSpawnPosition(null)).toEqual({ x: 0, y: 1.75, z: 0 })
+  })
+})
+
+describe('collectFloorplanArtworkSources', () => {
+  test('collects unique catalog URLs from placements', () => {
+    const sources = collectFloorplanArtworkSources({
+      activeCells: ['1,1'],
+      placements: {
+        '1,1': { north: ['a', 'b'], east: ['a'] },
+      },
+      photoCatalog: [
+        { id: 'a', src: '/photos/a.jpg' },
+        { id: 'b', src: '/photos/b.jpg' },
+      ],
+    })
+    expect(sources.sort()).toEqual(['/photos/a.jpg', '/photos/b.jpg'])
   })
 })

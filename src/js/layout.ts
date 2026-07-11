@@ -18,6 +18,83 @@ const DEFAULT_GRID_ROWS = 5
 const DEFAULT_GRID_COLS = 5
 const DEFAULT_EYE_Y = 1.75
 
+const artworkTextureLoader = new THREE.TextureLoader()
+
+function configureArtworkTexture(tex: THREE.Texture): THREE.Texture {
+  tex.colorSpace = THREE.SRGBColorSpace
+  tex.minFilter = THREE.LinearFilter
+  return tex
+}
+
+/** Unique artwork image URLs referenced by a floorplan (for preload). */
+export function collectFloorplanArtworkSources(data: FloorplanBlob): string[] {
+  const catalogById = new Map((data.photoCatalog || []).map((p) => [p.id, p]))
+  const active = new Set((data.activeCells || []).map(String))
+  const sources = new Set<string>()
+
+  active.forEach((key) => {
+    const placements = data.placements?.[key]
+    const normalized: FloorplanWallPlacements =
+      typeof placements === 'string' ? { north: [placements] } : (placements as FloorplanWallPlacements) || {}
+
+    ;(['north', 'east', 'south', 'west'] as const).forEach((wallName) => {
+      const raw = normalized[wallName]
+      const ids = Array.isArray(raw) ? raw : typeof raw === 'string' && raw ? [raw] : []
+      ids.forEach((photoId, idx) => {
+        const entry = catalogById.get(photoId)
+        sources.add(entry?.src || `/img/Artworks/${idx % 30}.jpg`)
+      })
+    })
+  })
+
+  return [...sources]
+}
+
+export function loadArtworkTexture(url: string): Promise<THREE.Texture> {
+  return new Promise((resolve, reject) => {
+    artworkTextureLoader.load(
+      url,
+      (tex) => resolve(configureArtworkTexture(tex)),
+      undefined,
+      (err) => reject(err instanceof Error ? err : new Error(String(err)))
+    )
+  })
+}
+
+/** Decode and upload all floorplan artwork textures before first walk. */
+export async function preloadFloorplanTextures(
+  data: FloorplanBlob,
+  onProgress?: (loaded: number, total: number) => void
+): Promise<Map<string, THREE.Texture>> {
+  const sources = collectFloorplanArtworkSources(data)
+  const cache = new Map<string, THREE.Texture>()
+  if (sources.length === 0) return cache
+
+  let loaded = 0
+  await Promise.all(
+    sources.map((src) =>
+      loadArtworkTexture(src)
+        .then((tex) => {
+          cache.set(src, tex)
+          loaded++
+          onProgress?.(loaded, sources.length)
+        })
+        .catch((err) => {
+          console.warn('[gallery] artwork texture failed:', src, err)
+          loaded++
+          onProgress?.(loaded, sources.length)
+        })
+    )
+  )
+  return cache
+}
+
+function artworkTexture(source: string, cache?: Map<string, THREE.Texture>): THREE.Texture {
+  const cached = cache?.get(source)
+  if (cached) return cached
+  return configureArtworkTexture(artworkTextureLoader.load(source))
+}
+
 /** World XZ for a grid cell centre (matches buildSceneFromFloorplan). */
 export function cellWorldCenter(
   row: number,
@@ -130,8 +207,13 @@ export function buildMinimalGallery(g: Gal, rows = DEFAULT_GRID_ROWS, cols = DEF
 
 /**
  * Builds scene (floor, walls, artworks, spotlights) from a floorplan blob and attaches to g.
+ * Pass preloaded `textureCache` from {@link preloadFloorplanTextures} to avoid GPU upload hitches while walking.
  */
-export function buildSceneFromFloorplan(g: Gal, data: FloorplanBlob): void {
+export function buildSceneFromFloorplan(
+  g: Gal,
+  data: FloorplanBlob,
+  textureCache?: Map<string, THREE.Texture>
+): void {
   const rows = Math.max(1, Number(data.grid?.rows) || DEFAULT_GRID_ROWS)
   const cols = Math.max(1, Number(data.grid?.cols) || DEFAULT_GRID_COLS)
   const active = new Set((data.activeCells || []).map(String))
@@ -186,9 +268,7 @@ export function buildSceneFromFloorplan(g: Gal, data: FloorplanBlob): void {
       ids.forEach((photoId, idx) => {
         const entry = catalogById.get(photoId)
         const source = entry?.src || `/img/Artworks/${idx % 30}.jpg`
-        const tex = new THREE.TextureLoader().load(source)
-        tex.colorSpace = THREE.SRGBColorSpace
-        tex.minFilter = THREE.LinearFilter
+        const tex = artworkTexture(source, textureCache)
         const mat = new THREE.MeshLambertMaterial({ map: tex })
         const art = new THREE.Group()
         const plane = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 0.8), mat)

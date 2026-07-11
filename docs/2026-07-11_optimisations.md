@@ -37,8 +37,9 @@ Browser variance (Chrome/Safari vs Firefox/Cursor) is partly GPU throttling (Ene
 
 ### A. SpotLight culling (implemented)
 
-- Cap active lights at **8** (`maxActiveSpotlights`).
-- **Fixtures always drawn**; emitter + SpotLight **fade in 100 ms**; **2 s hold** after out of view before fade off.
+- Cap **GPU-shading** spotlights at **8** (`maxActiveSpotlights`).
+- **Fixtures always drawn**; emitter **fade in 100 ms**; **2 s hold** after out of view before fade off.
+- **Hold is visual-only:** emitters stay lit during hold, but `SpotLight.intensity = 0` unless the rig is cap-active (fixes open galleries shading 25 lights at once).
 - Eligibility (any one qualifies):
   - Artwork in **camera FOV + 3°** and not wall-occluded, or
   - Within **4 m** of player (including behind), or
@@ -106,41 +107,107 @@ Browser variance (Chrome/Safari vs Firefox/Cursor) is partly GPU throttling (Ene
 - **`clone(false)` NaN bug:** dropped GLB children → empty bbox → NaN light positions → no illumination. Fixed with `cloneFixtureWithSharedAssets` (now instancing).
 - **Pointer lock:** use `renderer.domElement`, not first `canvas` (minimap).
 
-### M. Spotlight cull CPU (future — high payoff)
+### M. Spotlight cull CPU (future — low priority after profiling)
 
 - `updateSpotlightCulling()` runs every frame: up to **30 rigs × frustum check × wall-occlusion raycast**.
-- Likely CPU hotspot in Met gallery; profile before more GPU tweaks.
-- Mitigations: cache occlusion per rig for N frames, spatial index for walls, skip raycast when not in padded FOV.
+- **parallel-horizons profile: ~0.4 ms avg** — not the bottleneck vs GPU render.
+- Mitigations if needed later: cache occlusion per rig for N frames, spatial index for walls.
 
-### N. Painting textures (future)
+### N. Painting texture preload (implemented)
 
-- 30 unique textures → 30 GPU binds + memory.
-- Texture atlas or shared loader cache; optional max dimension per `?quality=`.
+- Floorplan artworks used fire-and-forget `TextureLoader.load()` → GPU upload hitches on first draw while walking.
+- **`preloadFloorplanTextures()`** in `layout.ts` decodes all catalog URLs before PLAY; loading screen shows progress.
+- `buildSceneFromFloorplan(g, data, textureCache)` reuses preloaded textures.
 
 ### O. Merge wall segments (future)
 
 - Fewer draw calls when many floorplan cells are active.
 
-### P. Phase profiling module (planned — see Telemetry below)
+### P. Phase profiling module (implemented)
 
 - `src/js/perf.ts` — rolling stats, slow-frame ring buffer, `galleryDumpPerf()` for agent-readable output.
 
 ---
 
+## Profiling results — parallel-horizons stress test (2026-07-11)
+
+Captured with `?profile=1` on `/view/parallel-horizons` (25 paintings, open floorplan, no inner walls).
+
+### Summary
+
+| Metric | Value | Meaning |
+|--------|-------|---------|
+| `frameMs.p50` | **0.8 ms** | Most frames are fast |
+| `frameMs.max` | **683.5 ms** | Occasional catastrophic hitches |
+| `phaseAvgMs.spotCull` | **0.4 ms** | CPU culling is **not** the bottleneck |
+| `phaseAvgMs.render` | **2.2 ms** | GPU dominates averages and all slow frames |
+
+**Verdict:** lag is **`renderer.render` (GPU)**, not spotlight cull CPU.
+
+### Slow-frame patterns
+
+**1. Texture upload while walking (early session, ts ~2.5–4 s)**
+
+| frameMs | render | tex | geos |
+|---------|--------|-----|------|
+| 156.8 | 156 | 40 | 104 |
+| 138.1 | 137.4 | 48 | 126 |
+
+`tex` climbed **30 → 48** and `geos` **78 → 134** during the walk — classic async decode + first-draw GPU upload (`layout.ts` lazy load).
+
+**Fix:** preload all artwork textures before PLAY (N — implemented).
+
+**2. All lights shading at once (683 ms spike, ts ~22.9 s)**
+
+```json
+"lit":25, "hold":17, "active":8, "render":683.2
+```
+
+Cap selected **8 active**, but **25 emitters** still had `beamFade > 0` (hold + fade). Each held rig kept `SpotLight.intensity > 0`, so Lambert walls evaluated **25 dynamic lights** in an open room.
+
+**Fix:** split visual fade from GPU shade — only cap-active rigs set `SpotLight.intensity` (A — updated).
+
+### Re-test checklist
+
+After fixes, re-run `?profile=1` on the same path:
+
+- [x] `lights.shading` stays ≤ 8 (confirmed: 4–8 in all slow frames)
+- [x] `frameMs.max` well below 683 ms (**5.2 ms** post-fix)
+- [~] `tex`/`geos` stable during walk — mostly stable after ~4 s; small early climb remains (see below)
+
+### After fixes (same gallery, same day)
+
+| Metric | Before | After | Δ |
+|--------|--------|-------|---|
+| `frameMs.max` | **683.5** | **5.2** | −99% |
+| `frameMs.p50` | 0.8 | 1.5 | similar |
+| `frameMs.p95` | 3.8 | 4.0 | similar |
+| `slowCount` | 18 | **6** | −67% |
+| `phaseAvgMs.render` | 2.2 | **1.2** | −45% |
+| `lights.shading` (worst) | **25** | **≤ 8** | cap working |
+
+**Verdict:** fixes worked. Catastrophic hitches gone; session feels smooth. Remaining slow frames are **20–41 ms** (not 683 ms), all GPU `render`.
+
+**Residual early spikes (ts ~2–4 s):** `tex` 25 → 31, `geos` 83 → 101 on first slow frames — artwork preload covers painting URLs; remaining uploads likely **placard `CanvasTexture`s**, **floor JPG** (`materials.ts` lazy load), and **spotlight GLB** instancing init. Optional follow-up: preload floor + defer placards or bake at build time.
+
+**`geos` 130 → 150 over long session:** likely fixture instancing pool + placard meshes settling; not a runaway leak (plateaus at ~150 for 25 paintings). Monitor if it keeps climbing in longer sessions.
+
+---
+
 ## Next optimisations (priority order)
 
-Product-side wins (A–D) are largely done. Further gains depend on **measuring where time goes** before changing more code.
+Profiling (parallel-horizons) ruled out cull CPU. Remaining levers:
 
-| Priority | Change | Why |
-|----------|--------|-----|
-| **High** | Phase profiling in render loop | Unknown split between culling, physics, legacy collision, and `renderer.render`. |
-| **High** | Reduce spotlight cull raycasts (M) | Up to 30 occlusion checks × all walls, every frame. |
-| **Medium** | Instanced emitter discs (H) | 30 meshes → 1 instanced draw call. |
-| **Medium** | Painting texture strategy (N) | Fewer binds and lower GPU memory. |
-| **Medium** | MSAA / antialias tier (J) | Fill rate on Retina with Lambert + dynamic spots. |
-| **Low–medium** | Merge wall geometry (O) | Draw calls in large floorplans. |
-| **Future** | Baked probes / lightmaps (G) | Fragment lighting on distant walls. |
-| **Skip** | Fixture poly reduction (F) | 660 tris instanced is not the bottleneck. |
+| Priority | Change | Status |
+|----------|--------|--------|
+| **High** | Preload artwork textures (N) | **Done** |
+| **High** | GPU shade cap — hold visual-only (A) | **Done** |
+| **Medium** | Instanced emitter discs (H) | Future |
+| **Medium** | MSAA / antialias tier (J) | Future |
+| **Medium** | Texture atlas / max dimension per quality | Future |
+| **Low** | Merge wall geometry (O) | Future |
+| **Low** | Spotlight cull raycast cache (M) | Future — only 0.4 ms avg here |
+| **Skip** | Fixture poly reduction (F) | Not the bottleneck |
 
 Real enemies remain: **dynamic spotlights × Lambert walls**, **fill rate (DPR + MSAA)**, and **browser/GPU throttling** (e.g. Chrome Energy Saver caps rAF — see diary). Ceiling/wall textures are not the story.
 
@@ -154,23 +221,11 @@ Goal: lightweight, privacy-conscious measurement so we can answer “how fast, o
 
 | Metric | Source | Notes |
 |--------|--------|-------|
-| FPS (current) | `framerate()` in `main.ts` | Dev only; updates `#fps` every ~15 frames |
-| Spotlight state | Minimap, `?debugLights=1`, `galleryDebugSpotlights()` | Active/lit/hold/fade; not timed |
-| Minimap | `minimap.ts` | Visual only |
-
-### What we do not track yet
-
-| Metric | Source (when built) |
-|--------|---------------------|
-| FPS avg / min / p95 | Rolling buffer in `perf.ts` |
-| Frame time ms | `performance.now()` delta per frame |
-| Phase breakdown | Timers around render-loop sections |
-| Draw calls, triangles, textures | `renderer.info.render` / `renderer.info.memory` |
-| JS heap | `performance.memory` (Chrome; omit elsewhere) |
-| Load timings | Floorplan fetch, Rapier init, GLB parse, first frame |
-| Slow-frame capture | Ring buffer, JSONL export |
-
-Refactor candidate: extract `framerate()` into `src/js/perf.ts` (noted in diary).
+| FPS + frame ms | `perf.ts` HUD | Dev only; min FPS + dominant phase |
+| Phase breakdown | `main.ts` render | anim, move, spotCull, minimap, debug, render |
+| Slow frames | `galleryDumpPerf()` | JSONL ring buffer, `?profile=1` |
+| Draw calls / tris / shade count | `perf.ts` HUD | `renderer.info` + `gpuShade` |
+| Spotlight state | Minimap, `?debugLights=1` | visual lit vs GPU shade |
 
 ### Tier 1 — Dev HUD (always on in dev, no logs)
 
@@ -218,14 +273,14 @@ Also time **one-off loads** separately (floorplan, textures, Rapier, GLB) — fi
 One compact JSON object per line (`ev: slow_frame`). Paste into chat or `grep slow_frame logs/...` for agent analysis.
 
 ```json
-{"ev":"slow_frame","ts":12450,"frameMs":31.2,"budgetMs":16.7,"phases":{"anim":0.1,"move":0.4,"spotCull":14.2,"minimap":0.6,"debug":0.2,"render":15.1},"render":{"calls":187,"tris":12400,"tex":34},"lights":{"total":30,"active":8,"lit":9,"hold":2},"scene":{"paintings":30,"walls":48},"cam":{"x":12.1,"y":1.75,"z":-4.2},"dpr":1.25,"gallery":"met-monet"}
+{"ev":"slow_frame","ts":12450,"frameMs":31.2,"budgetMs":16.7,"phases":{"anim":0.1,"move":0.4,"spotCull":14.2,"minimap":0.6,"debug":0.2,"render":15.1},"render":{"calls":187,"tris":12400,"tex":34},"lights":{"total":30,"active":8,"lit":9,"hold":2,"shading":8},"scene":{"paintings":30,"walls":48},"cam":{"x":12.1,"y":1.75,"z":-4.2},"dpr":1.25,"gallery":"met-monet"}
 ```
 
 | Field | Purpose |
 |-------|---------|
 | `phases` | Which subsystem to optimise |
 | `render.calls/tris/tex` | GPU load proxy |
-| `lights` | Correlates with Lambert fragment cost |
+| `lights.shading` | GPU SpotLights with intensity > 0 (≤8) |
 | `cam` | Reproduce viewpoint |
 | Short keys | Fewer tokens when pasted to an agent |
 
@@ -323,7 +378,7 @@ Use the **same walk** each run (e.g. north corridor → turn → back). Compare 
 - [x] Dev overlay — extend `#fps` with avg/min ms, draw calls, lit lights
 - [x] `galleryDumpPerf()` / `galleryPerfSummary()` on `globalThis`
 - [x] `?profile=1` — enable JSONL capture for 60 s then auto-off + summary
-- [ ] Time one-off loads (floorplan, Rapier, GLB, textures)
+- [x] Time one-off loads (floorplan, artwork textures via preload progress)
 - [ ] `POST /telemetry/gallery` → `logs/gallery-telemetry.jsonl` (dev only)
 - [ ] Document final schema in `docs/telemetry-schema.md` when implemented
 - [ ] Cross-browser session snapshots once Tier 1 HUD exists (Chrome / Safari / Cursor)
@@ -353,3 +408,5 @@ Use the **same walk** each run (e.g. north corridor → turn → back). Compare 
 | 2026-07-11 | **InstancedMesh fix:** GLB parent `spotlight002` has 100× scale — bake hierarchy into geometry; mount proxy keeps full tree for wall-flush bbox. |
 | 2026-07-11 | **Telemetry plan:** Tier 1 HUD, Tier 2 slow-frame JSONL + `galleryDumpPerf()`, Tier 3 session snapshots; debug workflow and build todo added to this doc. |
 | 2026-07-11 | **`perf.ts` shipped:** phase timers, slow-frame ring buffer, dev HUD, `?profile=1`, `galleryDumpPerf()` / `galleryPerfSummary()`. |
+| 2026-07-11 | **parallel-horizons profile:** GPU render bottleneck documented; texture preload + GPU shade cap (hold visual-only) implemented. |
+| 2026-07-11 | **Post-fix re-test:** max frame 683 ms → **5.2 ms**; shading capped at 8; 6 slow frames (20–41 ms) remain from minor lazy uploads. |

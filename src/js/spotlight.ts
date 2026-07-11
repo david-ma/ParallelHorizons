@@ -378,27 +378,36 @@ export function stepBeamFade(
   return current
 }
 
-/** Apply faded intensity and emitter opacity (fixtures stay visible). */
-export function applyRigBeamFade(rig: ArtworkSpotlightRig, fade: number): void {
-  const clamped = Math.max(0, Math.min(1, fade))
-  rig.beamFade = clamped
+/** GPU shading fade: only cap-selected active rigs shade the scene (hold is visual-only). */
+export function computeGpuShadeFade(active: boolean, visualFade: number): number {
+  return active ? Math.max(0, Math.min(1, visualFade)) : 0
+}
+
+/** Apply emitter opacity (visualFade) and SpotLight intensity (shadeFade). Fixtures stay visible. */
+export function applyRigBeamFade(rig: ArtworkSpotlightRig, visualFade: number, shadeFade?: number): void {
+  const visual = Math.max(0, Math.min(1, visualFade))
+  const shade = Math.max(0, Math.min(1, shadeFade ?? visualFade))
+  rig.beamFade = visual
   const { intensity, distance, angle, penumbra, decay, emitterOpacity } = rig.options
   const emitterMat = rig.emitterDisc.material as THREE.MeshBasicMaterial
-  if (clamped <= 0) {
+  if (visual <= 0) {
     rig.emitterDisc.visible = false
+  } else {
+    rig.emitterDisc.visible = true
+    emitterMat.opacity = emitterOpacity * visual
+  }
+  if (shade <= 0) {
     rig.spotlight.visible = false
     rig.spotlight.intensity = 0
     return
   }
-  rig.emitterDisc.visible = true
   rig.spotlight.visible = true
-  rig.spotlight.intensity = intensity * clamped
+  rig.spotlight.intensity = intensity * shade
   rig.spotlight.distance = distance
   rig.spotlight.angle = angle
   rig.spotlight.penumbra = penumbra
   rig.spotlight.decay = decay
   rig.spotlight.target = rig.spotlightTarget
-  emitterMat.opacity = emitterOpacity * clamped
 }
 
 export type SpotlightCullDebugEntry = {
@@ -414,8 +423,10 @@ export type SpotlightCullDebugEntry = {
   eligible: boolean
   /** Selected within max-active cap this frame. */
   active: boolean
-  /** 0–1 beam brightness after fade step. */
+  /** 0–1 emitter brightness after fade step. */
   beamFade: number
+  /** 0–1 SpotLight contribution (≤8 active; hold does not shade). */
+  gpuShade: number
   /** Seconds since rig became inactive (0 while active). */
   beamOffDelayElapsed: number
 }
@@ -621,7 +632,8 @@ export function updateSpotlightCulling(
     rig.beamOffDelayElapsed = advanceBeamOffDelay(active, rig.beamOffDelayElapsed, dtSec)
     const fadeTarget = computeBeamFadeTarget(active, rig.beamOffDelayElapsed, rig.beamFade)
     rig.beamFade = stepBeamFade(rig.beamFade, fadeTarget, dtSec)
-    applyRigBeamFade(rig, rig.beamFade)
+    const gpuShade = computeGpuShadeFade(active, rig.beamFade)
+    applyRigBeamFade(rig, rig.beamFade, gpuShade)
 
     debug.push({
       x: _cullPoint.x,
@@ -635,6 +647,7 @@ export function updateSpotlightCulling(
       eligible: isEligible,
       active,
       beamFade: rig.beamFade,
+      gpuShade,
       beamOffDelayElapsed: rig.beamOffDelayElapsed,
     })
   }
@@ -863,7 +876,7 @@ export function applyArtworkSpotlightRigOptions(rig: ArtworkSpotlightRig): void 
 
   // Lamp emits from the disc (lens), not the mount point.
   rig.spotlight.position.copy(rig.emitterDisc.position)
-  applyRigBeamFade(rig, rig.beamFade)
+  applyRigBeamFade(rig, rig.beamFade, 0)
 }
 
 export function applyGlobalTuningToAllRigs(): void {
