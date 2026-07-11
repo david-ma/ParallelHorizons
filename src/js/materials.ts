@@ -237,7 +237,7 @@ export function resolveWallTextureStyle(floorplan?: FloorplanBlob | null): WallT
 }
 
 /** World-space metres covered by one texture repeat (~3 m for paint finishes; tighter for concrete). */
-function wallTextureMetersPerRepeat(style: WallTextureStyle): number {
+export function wallTextureMetersPerRepeat(style: WallTextureStyle): number {
   return style === 'concrete' ? 0.65 : 3
 }
 

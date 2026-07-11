@@ -1,6 +1,7 @@
 declare const d3: any
 
 import { WALL_TEXTURE_OPTIONS, type WallTextureStyle } from './types.js'
+import { parseWallStyle } from './floorplan.js'
 
 type CellKey = string
 type Wall = 'north' | 'east' | 'south' | 'west'
@@ -48,7 +49,6 @@ const MAX_HISTORY = 100
 const DRAG_FROM_MIME = 'application/x-gallery-from'
 const DRAG_THRESHOLD_PX = 5
 const DEFAULT_SPAWN: CellKey = '2,2'
-const VALID_WALL_STYLES = new Set(WALL_TEXTURE_OPTIONS.map((o) => o.value))
 
 type ArtPointerDrag = {
   photoId: string
@@ -356,11 +356,6 @@ function mergePhotoCatalog(incoming: PhotoItem[]): void {
     if (idx >= 0) photoCatalog[idx] = { ...photoCatalog[idx], ...imported }
     else photoCatalog.push(imported)
   })
-}
-
-function parseWallStyle(value: unknown): WallTextureStyle {
-  if (typeof value === 'string' && VALID_WALL_STYLES.has(value as WallTextureStyle)) return value as WallTextureStyle
-  return 'plaster'
 }
 
 function updateWallStyleUI(): void {

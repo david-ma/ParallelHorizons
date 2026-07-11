@@ -12,7 +12,8 @@
   "scripts": {
     "start": "thalia start",
     "dev": "thalia dev",
-    "typecheck": "tsc --noEmit -p tsconfig.json"
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "bun test tests"
   },
   "dependencies": {
     "@dimforge/rapier3d-compat": "^0.19.3",
@@ -21,6 +22,7 @@
   },
   "devDependencies": {
     "@types/three": "^0.183.1",
+    "bun-types": "^1.2.0",
     "typescript": "^5.9.3"
   }
 }

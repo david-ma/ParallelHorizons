@@ -8,6 +8,7 @@ import type { RawWebsiteConfig } from 'thalia/types'
 import type { ServerResponse, IncomingMessage } from 'http'
 import type { Website } from 'thalia/website'
 import type { RequestInfo } from 'thalia/server'
+import { isValidFloorplan } from '../src/js/floorplan.js'
 
 /** Render a full standalone page from a Handlebars template (no Thalia wrapper). */
 function page(
@@ -37,9 +38,7 @@ function readRequestBody(req: IncomingMessage): Promise<string> {
 }
 
 function isValidFloorplanPayload(data: unknown): data is Record<string, unknown> {
-  if (!data || typeof data !== 'object') return false
-  const blob = data as Record<string, unknown>
-  return Array.isArray(blob.activeCells) && blob.placements != null && typeof blob.placements === 'object'
+  return isValidFloorplan(data)
 }
 
 export const config: RawWebsiteConfig = {

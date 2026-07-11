@@ -7,6 +7,9 @@ import type { FloorplanBlob, FloorplanWallPlacements } from './types.js'
 import { addFrameToArtwork, addPlacardToArtwork } from './artwork.js'
 import { addGalleryCeiling, createFloorMaterial, createWallMaterial, resolveWallTextureStyle } from './materials.js'
 import { addArtworkSpotlightRig, spotlightOptionsForArtwork } from './spotlight.js'
+import { isValidFloorplan } from './floorplan.js'
+
+export { isValidFloorplan } from './floorplan.js'
 
 const DEFAULT_FLOORPLAN_URL = '/gallery-floorplan.json'
 const CELL_WORLD = 6
@@ -66,15 +69,6 @@ function floorplanUrl(url?: string): string {
 }
 
 /** Returns true when parsed JSON has the minimum fields required to build a layout. */
-export function isValidFloorplan(data: unknown): data is FloorplanBlob {
-  if (!data || typeof data !== 'object') return false
-  const blob = data as FloorplanBlob
-  return Array.isArray(blob.activeCells) && blob.placements != null && typeof blob.placements === 'object'
-}
-
-/**
- * Loads floorplan JSON asynchronously. Returns null on failure or invalid data.
- */
 export async function loadFloorplanAsync(url?: string): Promise<FloorplanBlob | null> {
   const u = floorplanUrl(url)
   try {
