@@ -1,17 +1,11 @@
 /**
- * Default (hardcoded) gallery: floor, walls, ceiling, paintings and one featured spotlight.
+ * Default (hardcoded) gallery: floor, walls, ceiling, paintings and spotlights.
  */
 import * as THREE from 'three'
 import type { Gal } from './types.js'
 import { drawFrame } from './artwork.js'
 import { addGalleryCeiling, createFloorMaterial, createWallMaterial } from './materials.js'
-import {
-  addArtworkSpotlightRig,
-  applyArtworkSpotlightRigOptions,
-  bindSpotlightSliderControls,
-  SPOTLIGHT_MODEL_URL,
-  type SpotlightRigOptions,
-} from './spotlight.js'
+import { addArtworkSpotlightRig, spotlightOptionsForArtwork } from './spotlight.js'
 
 export function buildDefaultGallery(g: Gal): void {
   g.scene.add(new THREE.AmbientLight(0xffffff, 0.8))
@@ -53,7 +47,6 @@ export function buildDefaultGallery(g: Gal): void {
   g.num_of_paintings = 30
   g.paintings = []
   const half = Math.floor(g.num_of_paintings / 2) - 1
-  const featuredSpotlightIndex = Math.floor(half / 2)
 
   for (let i = 0; i < g.num_of_paintings; i++) {
     const index = i
@@ -91,84 +84,10 @@ export function buildDefaultGallery(g: Gal): void {
         art.add(mesh)
       }
 
-      if (index === featuredSpotlightIndex) {
-        art.updateMatrixWorld(true)
-        const wallNormal = new THREE.Vector3(0, 0, 1)
-        const wallAnchor = new THREE.Vector3(plane.position.x, 5.35, plane.position.z - 0.06)
-
-        const spotlightTuning: Record<string, number> = {
-          SPOTLIGHT_INTENSITY: 1.9,
-          SPOTLIGHT_DISTANCE: 8,
-          SPOTLIGHT_ANGLE: Math.PI / 7,
-          SPOTLIGHT_PENUMBRA: 0.45,
-          SPOTLIGHT_DECAY: 1.2,
-          SPOTLIGHT_X: plane.position.x,
-          SPOTLIGHT_Y: 5.35,
-          SPOTLIGHT_Z: -2.95,
-          TARGET_Y: 2,
-          TARGET_Z: -2.96,
-          EMITTER_DISC_RADIUS: 0.1,
-          EMITTER_DISC_X: 0,
-          EMITTER_DISC_Y: 0,
-          EMITTER_DISC_Z: 0.17,
-          EMITTER_DISC_OPACITY: 0.95,
-          FIXTURE_SCALE: 0.35,
-          WALL_MOUNT_OFFSET: 0.02,
-        }
-
-        const options: SpotlightRigOptions = {
-          lightOrigin: new THREE.Vector3(
-            spotlightTuning.SPOTLIGHT_X,
-            spotlightTuning.SPOTLIGHT_Y,
-            spotlightTuning.SPOTLIGHT_Z
-          ),
-          lightTarget: new THREE.Vector3(plane.position.x, spotlightTuning.TARGET_Y, spotlightTuning.TARGET_Z),
-          wallNormal,
-          wallAnchor,
-          modelUrl: SPOTLIGHT_MODEL_URL,
-          intensity: spotlightTuning.SPOTLIGHT_INTENSITY,
-          distance: spotlightTuning.SPOTLIGHT_DISTANCE,
-          angle: spotlightTuning.SPOTLIGHT_ANGLE,
-          penumbra: spotlightTuning.SPOTLIGHT_PENUMBRA,
-          decay: spotlightTuning.SPOTLIGHT_DECAY,
-          emitterRadius: spotlightTuning.EMITTER_DISC_RADIUS,
-          emitterOffsetX: spotlightTuning.EMITTER_DISC_X,
-          emitterOffsetY: spotlightTuning.EMITTER_DISC_Y,
-          emitterOffsetZ: spotlightTuning.EMITTER_DISC_Z,
-          emitterOpacity: spotlightTuning.EMITTER_DISC_OPACITY,
-          fixtureScale: spotlightTuning.FIXTURE_SCALE,
-          wallMountOffset: spotlightTuning.WALL_MOUNT_OFFSET,
-        }
-
-        const spotlightRig = addArtworkSpotlightRig(g.scene, options)
-
-        bindSpotlightSliderControls(spotlightTuning, () => {
-          spotlightRig.options.lightOrigin.set(
-            spotlightTuning.SPOTLIGHT_X,
-            spotlightTuning.SPOTLIGHT_Y,
-            spotlightTuning.SPOTLIGHT_Z
-          )
-          spotlightRig.options.lightTarget.set(plane.position.x, spotlightTuning.TARGET_Y, spotlightTuning.TARGET_Z)
-          spotlightRig.options.intensity = spotlightTuning.SPOTLIGHT_INTENSITY
-          spotlightRig.options.distance = spotlightTuning.SPOTLIGHT_DISTANCE
-          spotlightRig.options.angle = spotlightTuning.SPOTLIGHT_ANGLE
-          spotlightRig.options.penumbra = spotlightTuning.SPOTLIGHT_PENUMBRA
-          spotlightRig.options.decay = spotlightTuning.SPOTLIGHT_DECAY
-          spotlightRig.options.emitterRadius = spotlightTuning.EMITTER_DISC_RADIUS
-          spotlightRig.options.emitterOffsetX = spotlightTuning.EMITTER_DISC_X
-          spotlightRig.options.emitterOffsetY = spotlightTuning.EMITTER_DISC_Y
-          spotlightRig.options.emitterOffsetZ = spotlightTuning.EMITTER_DISC_Z
-          spotlightRig.options.emitterOpacity = spotlightTuning.EMITTER_DISC_OPACITY
-          spotlightRig.options.fixtureScale = spotlightTuning.FIXTURE_SCALE
-          spotlightRig.options.wallMountOffset = spotlightTuning.WALL_MOUNT_OFFSET
-          spotlightRig.options.wallAnchor.set(plane.position.x, spotlightTuning.SPOTLIGHT_Y, spotlightTuning.TARGET_Z - 0.06)
-          applyArtworkSpotlightRigOptions(spotlightRig)
-          g.renderer.render(g.scene, g.camera)
-        })
-      }
-
       art.add(plane)
       g.scene.add(art)
+      art.updateMatrixWorld(true)
+      addArtworkSpotlightRig(g.scene, spotlightOptionsForArtwork(art), art)
       g.paintings.push(art)
     }
     ;(img.map as any).needsUpdate = true

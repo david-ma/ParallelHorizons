@@ -206,7 +206,7 @@ export function buildSceneFromFloorplan(g: Gal, data: FloorplanBlob): void {
         g.paintings.push(art)
         g.num_of_paintings++
 
-        addArtworkSpotlightRig(g.scene, spotlightOptionsForArtwork(art))
+        addArtworkSpotlightRig(g.scene, spotlightOptionsForArtwork(art), art)
       })
     })
   })

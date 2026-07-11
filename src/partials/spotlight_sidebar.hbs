@@ -1,27 +1,69 @@
-<section id="spotlight_slider_panel" style="margin: 12px auto 8px; text-align: left; max-width: 320px; font-family: Lato, sans-serif;">
-  <h3 style="margin: 0 0 8px; font-family: Oswald, sans-serif; letter-spacing: 0.08em;">Spotlight Tuning (dev)</h3>
-  <div style="display: grid; grid-template-columns: 1fr auto; gap: 6px 10px; align-items: center;">
-    <label for="spotlight_intensity">Intensity</label><input id="spotlight_intensity" type="range" min="0" max="6" step="0.05">
-    <label for="spotlight_distance">Distance</label><input id="spotlight_distance" type="range" min="1" max="20" step="0.1">
-    <label for="spotlight_angle">Angle</label><input id="spotlight_angle" type="range" min="0.1" max="1.4" step="0.01">
-    <label for="spotlight_penumbra">Penumbra</label><input id="spotlight_penumbra" type="range" min="0" max="1" step="0.01">
-    <label for="spotlight_decay">Decay</label><input id="spotlight_decay" type="range" min="0" max="4" step="0.05">
-    <label for="spotlight_x">Spotlight X</label><input id="spotlight_x" type="range" min="-20" max="20" step="0.01">
-    <label for="spotlight_y">Light Y</label><input id="spotlight_y" type="range" min="1.5" max="6.5" step="0.01">
-    <label for="spotlight_z">Spotlight Z</label><input id="spotlight_z" type="range" min="-3.5" max="-2.2" step="0.01">
-    <label for="target_y">Target Y</label><input id="target_y" type="range" min="0.5" max="3.5" step="0.01">
-    <label for="target_z">Target Z</label><input id="target_z" type="range" min="-3.2" max="-2.6" step="0.005">
-    <label for="emitter_disc_radius">Emitter Radius</label><input id="emitter_disc_radius" type="range" min="0.01" max="0.3" step="0.005">
-    <label for="emitter_disc_x">Emitter X</label><input id="emitter_disc_x" type="range" min="-0.5" max="0.5" step="0.005">
-    <label for="emitter_disc_y">Emitter Y</label><input id="emitter_disc_y" type="range" min="-0.5" max="0.5" step="0.005">
-    <label for="emitter_disc_z">Emitter Z</label><input id="emitter_disc_z" type="range" min="-0.5" max="0.5" step="0.005">
-    <label for="emitter_disc_opacity">Emitter Opacity</label><input id="emitter_disc_opacity" type="range" min="0.05" max="1" step="0.01">
-    <label for="fixture_scale">Fixture Scale</label><input id="fixture_scale" type="range" min="0.05" max="2.0" step="0.01">
-    <label for="wall_mount_offset">Wall Offset</label><input id="wall_mount_offset" type="range" min="-1.0" max="10.0" step="0.01">
+<section id="spotlight_slider_panel" class="spotlight-panel" hidden>
+  <header class="spotlight-panel-head">
+    <h3>Spotlight tuning</h3>
+    <p id="spotlight_rig_count" class="spotlight-meta">0 spotlights</p>
+  </header>
+  <p class="spotlight-hint">Adjustments apply to <strong>every</strong> artwork spotlight in the scene.</p>
+
+  <details open class="spotlight-group">
+    <summary>Mount</summary>
+    <div class="spotlight-sliders" data-group="mount"></div>
+  </details>
+
+  <details open class="spotlight-group">
+    <summary>Beam</summary>
+    <div class="spotlight-sliders" data-group="beam"></div>
+  </details>
+
+  <details open class="spotlight-group">
+    <summary>Emitter disc</summary>
+    <div class="spotlight-sliders" data-group="emitter"></div>
+  </details>
+
+  <details open class="spotlight-group">
+    <summary>Fixture (GLB)</summary>
+    <div class="spotlight-sliders" data-group="fixture"></div>
+  </details>
+
+  <div class="spotlight-actions">
+    <button id="spotlight_reset" type="button">Reset defaults</button>
+    <button id="spotlight_copy_json" type="button">Copy JSON</button>
+    <button id="spotlight_copy_code" type="button">Copy as TypeScript</button>
   </div>
-  <div style="margin-top: 10px; display: flex; gap: 8px; align-items: center;">
-    <button id="export_button" type="button">Export JSON</button>
-    <small id="export_status" aria-live="polite"></small>
-  </div>
+  <p id="spotlight_export_status" class="spotlight-status" aria-live="polite"></p>
+  <textarea id="spotlight_code_preview" class="spotlight-code-preview" readonly hidden aria-label="Exported TypeScript tuning"></textarea>
 </section>
 
+<style>
+  .spotlight-panel {
+    margin: 12px auto 8px;
+    text-align: left;
+    max-width: 340px;
+    font-family: Lato, sans-serif;
+    font-size: 12px;
+  }
+  .spotlight-panel-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
+  .spotlight-panel h3 { margin: 0; font-family: Oswald, sans-serif; letter-spacing: 0.06em; font-size: 1rem; }
+  .spotlight-meta { margin: 0; color: #666; font-size: 11px; }
+  .spotlight-hint { margin: 0 0 8px; color: #555; line-height: 1.4; }
+  .spotlight-group { margin-bottom: 6px; border: 1px solid #e0e0e5; border-radius: 6px; padding: 0 8px 6px; background: #fafafa; }
+  .spotlight-group summary { cursor: pointer; font-weight: 600; padding: 6px 0; list-style: none; }
+  .spotlight-group summary::-webkit-details-marker { display: none; }
+  .spotlight-sliders { display: grid; grid-template-columns: 1fr auto 52px; gap: 4px 8px; align-items: center; }
+  .spotlight-sliders label { color: #333; }
+  .spotlight-sliders input[type="range"] { width: 140px; margin: 0; }
+  .spotlight-sliders output { font-variant-numeric: tabular-nums; text-align: right; color: #444; font-size: 11px; }
+  .spotlight-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .spotlight-actions button {
+    font: inherit; font-size: 11px; padding: 6px 10px; border-radius: 6px;
+    border: 1px solid #ccc; background: #fff; cursor: pointer;
+  }
+  .spotlight-actions button:hover { border-color: #888; }
+  #spotlight_copy_code { background: #1a1a1e; color: #f2f2f7; border-color: #1a1a1e; }
+  .spotlight-status { min-height: 1.2em; margin: 6px 0 0; color: #2d7a3a; font-size: 11px; }
+  .spotlight-code-preview {
+    width: 100%; height: 120px; margin-top: 8px; font-family: ui-monospace, Menlo, monospace;
+    font-size: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;
+  }
+  body.dev-mode .spotlight-panel[hidden] { display: block !important; }
+</style>

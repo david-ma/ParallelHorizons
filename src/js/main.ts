@@ -8,6 +8,7 @@ import type { Gal } from './types.js'
 import { loadFloorplanAsync, buildSceneFromFloorplan, buildMinimalGallery, applySpawnPosition } from './layout.js'
 import { attachMovementKeys, updateMovement, updateVelocityOnly } from './movement.js'
 import { initRapier, createGalleryPhysics, stepPhysics } from './physics.js'
+import { initSpotlightDevPanel } from './spotlight.js'
 
 let lastCalledTime: number | undefined
 let fps = 0
@@ -294,6 +295,9 @@ if (Detector && !Detector.webgl) {
         }
       } finally {
         setLayoutLoading(false)
+        initSpotlightDevPanel(() => {
+          gal!.renderer.render(gal!.scene, gal!.camera)
+        })
       }
     },
 

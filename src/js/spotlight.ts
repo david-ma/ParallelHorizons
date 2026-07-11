@@ -1,37 +1,146 @@
 /**
- * Spotlight rigs for artworks and dev-only slider controls.
+ * Spotlight rigs for artworks and dev-only global tuning controls.
  */
 import * as THREE from 'three'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 
 export const SPOTLIGHT_MODEL_URL = '/models/spotlight/Spotlight.glb'
 
-/** Track-light mount height — tuned default from demo gallery. */
-const MOUNT_Y = 5.35
-/** Artwork group standoff from wall plane (matches layout.ts placeOnWall). */
-const ARTWORK_WALL_STANDOFF = 0.06
-/** Light/fixture offset toward room from wall plane at mount height. */
-const LIGHT_ROOM_OFFSET = 0.04
+/** Pitch down from wall-normal toward artwork (~89° with default mount height). */
+const DEFAULT_FIXTURE_PITCH = Math.atan2(5.35 - 2, 0.04)
 
-const DEFAULT_RIG = {
-  intensity: 1.9,
-  distance: 8,
-  angle: Math.PI / 7,
-  penumbra: 0.45,
-  decay: 1.2,
-  emitterRadius: 0.1,
+/** GLB authored with mount opposite our wall basis — flip to face the wall. */
+const FIXTURE_YAW_OFFSET = Math.PI
+
+/** Global spotlight defaults — edit here or paste from dev panel “Copy as TypeScript”. */
+/** Global spotlight defaults — paste over SPOTLIGHT_TUNING in src/js/spotlight.ts */
+export const SPOTLIGHT_TUNING = {
+  mountY: 4.87,
+  lightRoomOffset: 0.555,
+  artworkWallStandoff: 0.06,
+  targetYOffset: -0.41,
+  intensity: 9.9,
+  distance: 23.6,
+  angle: 0.49,
+  penumbra: 0.81,
+  decay: 0.5,
+  emitterRadius: 0.21,
   emitterOffsetX: 0,
-  emitterOffsetY: 0,
-  emitterOffsetZ: 0.17,
-  emitterOpacity: 0.95,
-  fixtureScale: 0.35,
-  wallMountOffset: 0.02,
+  emitterOffsetY: -0.265,
+  emitterOffsetZ: 0.47,
+  emitterOpacity: 1,
+  fixtureScale: 0.8,
+  wallMountOffset: 0.13,
+  fixturePitchOffset: -1.6,
 } as const
+
+export type SpotlightGlobalTuning = {
+  mountY: number
+  lightRoomOffset: number
+  artworkWallStandoff: number
+  targetYOffset: number
+  intensity: number
+  distance: number
+  angle: number
+  penumbra: number
+  decay: number
+  emitterRadius: number
+  emitterOffsetX: number
+  emitterOffsetY: number
+  emitterOffsetZ: number
+  emitterOpacity: number
+  fixtureScale: number
+  wallMountOffset: number
+  fixturePitchOffset: number
+}
+
+type SliderDef = {
+  key: keyof SpotlightGlobalTuning
+  label: string
+  group: 'mount' | 'beam' | 'emitter' | 'fixture'
+  min: number
+  max: number
+  step: number
+  format?: (v: number) => string
+}
+
+export const SPOTLIGHT_SLIDER_DEFS: SliderDef[] = [
+  { key: 'mountY', label: 'Mount height (Y)', group: 'mount', min: 3.5, max: 6, step: 0.01, format: (v) => `${v.toFixed(2)} m` },
+  { key: 'lightRoomOffset', label: 'Offset from wall', group: 'mount', min: -0.15, max: 0.75, step: 0.005, format: (v) => `${v.toFixed(3)} m` },
+  { key: 'wallMountOffset', label: 'Fixture wall flush', group: 'mount', min: -0.35, max: 0.45, step: 0.005, format: (v) => `${v.toFixed(3)} m` },
+  { key: 'targetYOffset', label: 'Aim Y offset', group: 'mount', min: -1.5, max: 1, step: 0.01, format: (v) => `${v.toFixed(2)} m` },
+  { key: 'intensity', label: 'Intensity', group: 'beam', min: 0, max: 12, step: 0.05, format: (v) => v.toFixed(2) },
+  { key: 'distance', label: 'Distance', group: 'beam', min: 0.5, max: 30, step: 0.1, format: (v) => `${v.toFixed(1)} m` },
+  { key: 'angle', label: 'Cone angle', group: 'beam', min: 0.05, max: 1.55, step: 0.01, format: (v) => `${((v * 180) / Math.PI).toFixed(1)}°` },
+  { key: 'penumbra', label: 'Penumbra', group: 'beam', min: 0, max: 1, step: 0.01, format: (v) => v.toFixed(2) },
+  { key: 'decay', label: 'Decay', group: 'beam', min: 0, max: 6, step: 0.05, format: (v) => v.toFixed(2) },
+  { key: 'emitterRadius', label: 'Disc radius', group: 'emitter', min: 0.01, max: 0.6, step: 0.005, format: (v) => `${v.toFixed(3)} m` },
+  { key: 'emitterOffsetX', label: 'Disc offset ↔', group: 'emitter', min: -0.75, max: 0.75, step: 0.005, format: (v) => `${v.toFixed(3)} m` },
+  { key: 'emitterOffsetY', label: 'Disc offset ↕', group: 'emitter', min: -0.75, max: 0.75, step: 0.005, format: (v) => `${v.toFixed(3)} m` },
+  { key: 'emitterOffsetZ', label: 'Disc offset from wall', group: 'emitter', min: -0.6, max: 0.75, step: 0.005, format: (v) => `${v.toFixed(3)} m` },
+  { key: 'emitterOpacity', label: 'Disc opacity', group: 'emitter', min: 0, max: 1, step: 0.01, format: (v) => v.toFixed(2) },
+  { key: 'fixtureScale', label: 'Model scale', group: 'fixture', min: 0.05, max: 2.5, step: 0.01, format: (v) => v.toFixed(2) },
+  {
+    key: 'fixturePitchOffset',
+    label: 'Pitch (from wall)',
+    group: 'fixture',
+    min: -0.4,
+    max: 2.2,
+    step: 0.01,
+    format: (v) => `${((v * 180) / Math.PI).toFixed(1)}°`,
+  },
+]
+
+const STORAGE_KEY = 'gallery-spotlight-tuning-v1'
 
 const _forward = new THREE.Vector3()
 const _wallAnchor = new THREE.Vector3()
 const _quat = new THREE.Quaternion()
 const _boxCorner = new THREE.Vector3()
+const _corners: THREE.Vector3[] = []
+
+let globalTuning: SpotlightGlobalTuning = { ...SPOTLIGHT_TUNING }
+const registeredRigs: ArtworkSpotlightRig[] = []
+let devPanelReady = false
+let onTuningRender: (() => void) | null = null
+
+export interface ArtworkSpotlightAnchor {
+  artworkCenter: THREE.Vector3
+  wallNormal: THREE.Vector3
+}
+
+export interface SpotlightRigOptions {
+  lightOrigin: THREE.Vector3
+  lightTarget: THREE.Vector3
+  wallNormal: THREE.Vector3
+  wallAnchor: THREE.Vector3
+  modelUrl: string
+  intensity: number
+  distance: number
+  angle: number
+  penumbra: number
+  decay: number
+  emitterRadius: number
+  emitterOffsetX: number
+  emitterOffsetY: number
+  emitterOffsetZ: number
+  emitterOpacity: number
+  fixtureScale: number
+  wallMountOffset: number
+  fixturePitchOffset: number
+}
+
+export interface ArtworkSpotlightRig {
+  spotlight: THREE.SpotLight
+  spotlightTarget: THREE.Object3D
+  emitterDisc: THREE.Mesh
+  fixture?: THREE.Object3D
+  fallback?: THREE.Object3D
+  options: SpotlightRigOptions
+  anchor: ArtworkSpotlightAnchor
+  /** When set, anchor is refreshed from live artwork pose on each apply. */
+  artwork?: THREE.Object3D
+}
 
 function artworkFacingIntoRoom(artwork: THREE.Object3D): THREE.Vector3 {
   artwork.updateMatrixWorld(true)
@@ -55,9 +164,139 @@ function bboxCorners(box: THREE.Box3, target: THREE.Vector3[]): THREE.Vector3[] 
   return target
 }
 
-const _corners: THREE.Vector3[] = []
+function captureAnchor(artwork: THREE.Object3D): ArtworkSpotlightAnchor {
+  artwork.updateMatrixWorld(true)
+  const center = new THREE.Vector3()
+  artwork.getWorldPosition(center)
+  return { artworkCenter: center, wallNormal: artworkFacingIntoRoom(artwork) }
+}
 
-/** Snap fixture so its back face sits on the wall plane defined by wallAnchor + wallNormal. */
+function captureAnchorFromOptions(options: SpotlightRigOptions): ArtworkSpotlightAnchor {
+  return {
+    artworkCenter: options.lightTarget.clone(),
+    wallNormal: options.wallNormal.clone(),
+  }
+}
+
+export function getSpotlightGlobalTuning(): Readonly<SpotlightGlobalTuning> {
+  return globalTuning
+}
+
+export function setSpotlightGlobalTuning(partial: Partial<SpotlightGlobalTuning>): void {
+  globalTuning = { ...globalTuning, ...partial }
+  persistTuning()
+  applyGlobalTuningToAllRigs()
+}
+
+export function resetSpotlightGlobalTuning(): void {
+  globalTuning = { ...SPOTLIGHT_TUNING }
+  if (typeof localStorage !== 'undefined') localStorage.removeItem(STORAGE_KEY)
+  applyGlobalTuningToAllRigs()
+  syncDevPanelValues()
+}
+
+function persistTuning(): void {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(globalTuning))
+  } catch (_err) {
+    // ignore quota / private mode
+  }
+}
+
+function loadPersistedTuning(): void {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    if (!raw) return
+    const parsed = JSON.parse(raw) as Partial<SpotlightGlobalTuning>
+    globalTuning = { ...SPOTLIGHT_TUNING, ...parsed }
+  } catch (_err) {
+    // ignore invalid cache
+  }
+}
+
+export function buildSpotlightOptions(
+  anchor: ArtworkSpotlightAnchor,
+  tuning: SpotlightGlobalTuning = globalTuning,
+  modelUrl: string = SPOTLIGHT_MODEL_URL
+): SpotlightRigOptions {
+  const { artworkCenter, wallNormal } = anchor
+  _wallAnchor.copy(artworkCenter).addScaledVector(wallNormal, -tuning.artworkWallStandoff)
+  _wallAnchor.y = tuning.mountY
+
+  const lightOrigin = new THREE.Vector3(artworkCenter.x, tuning.mountY, artworkCenter.z).addScaledVector(
+    wallNormal,
+    tuning.lightRoomOffset
+  )
+  const lightTarget = artworkCenter.clone().add(new THREE.Vector3(0, tuning.targetYOffset, 0))
+
+  return {
+    lightOrigin,
+    lightTarget,
+    wallNormal: wallNormal.clone(),
+    wallAnchor: _wallAnchor.clone(),
+    modelUrl,
+    intensity: tuning.intensity,
+    distance: tuning.distance,
+    angle: tuning.angle,
+    penumbra: tuning.penumbra,
+    decay: tuning.decay,
+    emitterRadius: tuning.emitterRadius,
+    emitterOffsetX: tuning.emitterOffsetX,
+    emitterOffsetY: tuning.emitterOffsetY,
+    emitterOffsetZ: tuning.emitterOffsetZ,
+    emitterOpacity: tuning.emitterOpacity,
+    fixtureScale: tuning.fixtureScale,
+    wallMountOffset: tuning.wallMountOffset,
+    fixturePitchOffset: tuning.fixturePitchOffset,
+  }
+}
+
+/** Default options for an artwork — uses global SPOTLIGHT_TUNING. */
+export function spotlightOptionsForArtwork(
+  artwork: THREE.Object3D,
+  modelUrl: string = SPOTLIGHT_MODEL_URL
+): SpotlightRigOptions {
+  return buildSpotlightOptions(captureAnchor(artwork), globalTuning, modelUrl)
+}
+
+const _right = new THREE.Vector3()
+const _up = new THREE.Vector3()
+const _normal = new THREE.Vector3()
+const _basisMatrix = new THREE.Matrix4()
+const _worldUp = new THREE.Vector3(0, 1, 0)
+
+/** Orthonormal frame on a vertical wall: +Z into room, +Y vertical, +X along wall. */
+function wallAlignedBasis(wallNormal: THREE.Vector3): { right: THREE.Vector3; up: THREE.Vector3; normal: THREE.Vector3 } {
+  _normal.copy(wallNormal).normalize()
+  _right.crossVectors(_worldUp, _normal)
+  if (_right.lengthSq() < 1e-8) {
+    _right.set(1, 0, 0)
+  } else {
+    _right.normalize()
+  }
+  _up.crossVectors(_normal, _right).normalize()
+  return { right: _right.clone(), up: _up.clone(), normal: _normal.clone() }
+}
+
+/** CircleGeometry faces +Z; align disc flat to wall (normal into room), then pitch toward floor. */
+function orientWallMounted(
+  object: THREE.Object3D,
+  wallNormal: THREE.Vector3,
+  pitchOffset: number
+): void {
+  const { right, up, normal } = wallAlignedBasis(wallNormal)
+  _basisMatrix.makeBasis(right, up, normal)
+  object.quaternion.setFromRotationMatrix(_basisMatrix)
+  if (pitchOffset !== 0) {
+    object.rotateX(pitchOffset)
+  }
+}
+
+function orientFixture(fixture: THREE.Object3D, wallNormal: THREE.Vector3, fixturePitchOffset: number): void {
+  orientWallMounted(fixture, wallNormal, fixturePitchOffset)
+  fixture.rotateY(FIXTURE_YAW_OFFSET)
+}
+
 function mountFixtureOnWall(
   fixture: THREE.Object3D,
   lightOrigin: THREE.Vector3,
@@ -65,11 +304,12 @@ function mountFixtureOnWall(
   wallNormal: THREE.Vector3,
   wallAnchor: THREE.Vector3,
   fixtureScale: number,
-  wallMountOffset: number
+  wallMountOffset: number,
+  fixturePitchOffset: number
 ): void {
   fixture.position.copy(lightOrigin)
   fixture.scale.setScalar(fixtureScale)
-  fixture.lookAt(lightTarget)
+  orientFixture(fixture, wallNormal, fixturePitchOffset)
   fixture.updateMatrixWorld(true)
 
   const wallPlaneD = wallAnchor.dot(wallNormal)
@@ -79,65 +319,7 @@ function mountFixtureOnWall(
     minProj = Math.min(minProj, corner.dot(wallNormal))
   }
   fixture.position.addScaledVector(wallNormal, wallPlaneD + wallMountOffset - minProj)
-}
-
-/** Default tuning derived from artwork pose — works on all four wall orientations. */
-export function spotlightOptionsForArtwork(
-  artwork: THREE.Object3D,
-  modelUrl: string = SPOTLIGHT_MODEL_URL
-): SpotlightRigOptions {
-  artwork.updateMatrixWorld(true)
-  const center = new THREE.Vector3()
-  artwork.getWorldPosition(center)
-  const wallNormal = artworkFacingIntoRoom(artwork)
-
-  _wallAnchor.copy(center).addScaledVector(wallNormal, -ARTWORK_WALL_STANDOFF)
-  _wallAnchor.y = MOUNT_Y
-
-  const lightOrigin = new THREE.Vector3(center.x, MOUNT_Y, center.z).addScaledVector(
-    wallNormal,
-    LIGHT_ROOM_OFFSET
-  )
-
-  return {
-    lightOrigin,
-    lightTarget: center.clone(),
-    wallNormal: wallNormal.clone(),
-    wallAnchor: _wallAnchor.clone(),
-    modelUrl,
-    ...DEFAULT_RIG,
-  }
-}
-
-export interface SpotlightRigOptions {
-  lightOrigin: THREE.Vector3
-  lightTarget: THREE.Vector3
-  /** Unit vector from wall into room (same direction artwork faces). */
-  wallNormal: THREE.Vector3
-  /** A point on the wall surface at mount height, used to flush-mount the fixture. */
-  wallAnchor: THREE.Vector3
-  modelUrl: string
-  intensity: number
-  distance: number
-  angle: number
-  penumbra: number
-  decay: number
-  emitterRadius: number
-  emitterOffsetX: number
-  emitterOffsetY: number
-  emitterOffsetZ: number
-  emitterOpacity: number
-  fixtureScale: number
-  wallMountOffset: number
-}
-
-export interface ArtworkSpotlightRig {
-  spotlight: THREE.SpotLight
-  spotlightTarget: THREE.Object3D
-  emitterDisc: THREE.Mesh
-  fixture?: THREE.Object3D
-  fallback?: THREE.Object3D
-  options: SpotlightRigOptions
+  orientFixture(fixture, wallNormal, fixturePitchOffset)
 }
 
 export function applyArtworkSpotlightRigOptions(rig: ArtworkSpotlightRig): void {
@@ -147,46 +329,52 @@ export function applyArtworkSpotlightRigOptions(rig: ArtworkSpotlightRig): void 
   rig.spotlight.angle = options.angle
   rig.spotlight.penumbra = options.penumbra
   rig.spotlight.decay = options.decay
-  rig.spotlight.position.copy(options.lightOrigin)
   rig.spotlightTarget.position.copy(options.lightTarget)
   rig.spotlight.target = rig.spotlightTarget
 
-  const beamDir = new THREE.Vector3().subVectors(rig.spotlightTarget.position, rig.spotlight.position).normalize()
-  const upReference = Math.abs(beamDir.y) > 0.98 ? new THREE.Vector3(1, 0, 0) : new THREE.Vector3(0, 1, 0)
-  const rightDir = new THREE.Vector3().crossVectors(beamDir, upReference).normalize()
-  const upDir = new THREE.Vector3().crossVectors(rightDir, beamDir).normalize()
+  const mountArgs = [
+    options.lightOrigin,
+    options.lightTarget,
+    options.wallNormal,
+    options.wallAnchor,
+    options.fixtureScale,
+    options.wallMountOffset,
+    options.fixturePitchOffset,
+  ] as const
+
+  const mounted = rig.fixture ?? rig.fallback
+  if (mounted) {
+    mountFixtureOnWall(mounted, ...mountArgs)
+    mounted.getWorldPosition(options.lightOrigin)
+  }
+
+  rig.spotlight.position.copy(options.lightOrigin)
+
+  const { right, up, normal } = wallAlignedBasis(options.wallNormal)
   const emitterMat = rig.emitterDisc.material as THREE.MeshBasicMaterial
   emitterMat.opacity = options.emitterOpacity
   rig.emitterDisc.position
     .copy(rig.spotlight.position)
-    .add(rightDir.multiplyScalar(options.emitterOffsetX))
-    .add(upDir.multiplyScalar(options.emitterOffsetY))
-    .add(beamDir.multiplyScalar(options.emitterOffsetZ))
-  rig.emitterDisc.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), beamDir)
+    .add(right.multiplyScalar(options.emitterOffsetX))
+    .add(up.multiplyScalar(options.emitterOffsetY))
+    .add(normal.multiplyScalar(options.emitterOffsetZ))
+  orientWallMounted(rig.emitterDisc, options.wallNormal, options.fixturePitchOffset)
   rig.emitterDisc.scale.setScalar(options.emitterRadius)
 
-  if (rig.fixture) {
-    mountFixtureOnWall(
-      rig.fixture,
-      options.lightOrigin,
-      options.lightTarget,
-      options.wallNormal,
-      options.wallAnchor,
-      options.fixtureScale,
-      options.wallMountOffset
-    )
+  // Lamp emits from the disc (lens), not the mount point.
+  rig.spotlight.position.copy(rig.emitterDisc.position)
+}
+
+export function applyGlobalTuningToAllRigs(): void {
+  for (const rig of registeredRigs) {
+    if (rig.artwork) {
+      rig.anchor = captureAnchor(rig.artwork)
+    }
+    rig.options = buildSpotlightOptions(rig.anchor, globalTuning, rig.options.modelUrl)
+    applyArtworkSpotlightRigOptions(rig)
   }
-  if (rig.fallback) {
-    mountFixtureOnWall(
-      rig.fallback,
-      options.lightOrigin,
-      options.lightTarget,
-      options.wallNormal,
-      options.wallAnchor,
-      options.fixtureScale,
-      options.wallMountOffset
-    )
-  }
+  updateRigCountLabel()
+  onTuningRender?.()
 }
 
 const spotlightModelLoader = new GLTFLoader()
@@ -213,7 +401,13 @@ function loadSpotlightTemplate(modelUrl: string): Promise<THREE.Object3D> {
   return spotlightTemplatePromise
 }
 
-export function addArtworkSpotlightRig(scene: THREE.Scene, options: SpotlightRigOptions): ArtworkSpotlightRig {
+export function addArtworkSpotlightRig(
+  scene: THREE.Scene,
+  options: SpotlightRigOptions,
+  artwork?: THREE.Object3D
+): ArtworkSpotlightRig {
+  const anchor = artwork ? captureAnchor(artwork) : captureAnchorFromOptions(options)
+
   const spotlight = new THREE.SpotLight(
     0xffffff,
     options.intensity,
@@ -245,8 +439,12 @@ export function addArtworkSpotlightRig(scene: THREE.Scene, options: SpotlightRig
     spotlightTarget,
     emitterDisc,
     options,
+    anchor,
+    artwork,
   }
   applyArtworkSpotlightRigOptions(rig)
+  registeredRigs.push(rig)
+  updateRigCountLabel()
 
   void loadSpotlightTemplate(options.modelUrl)
     .then((template) => {
@@ -254,6 +452,7 @@ export function addArtworkSpotlightRig(scene: THREE.Scene, options: SpotlightRig
       rig.fixture = fixture
       applyArtworkSpotlightRigOptions(rig)
       scene.add(fixture)
+      onTuningRender?.()
     })
     .catch((err) => {
       console.error('Failed to load spotlight model:', err)
@@ -264,96 +463,171 @@ export function addArtworkSpotlightRig(scene: THREE.Scene, options: SpotlightRig
       rig.fallback = fallback
       applyArtworkSpotlightRigOptions(rig)
       scene.add(fallback)
+      onTuningRender?.()
     })
 
   return rig
 }
 
-/**
- * Binds dev-only spotlight tuning sliders (localhost/127.0.0.1). onInputChange is called when any slider changes.
- */
-export function bindSpotlightSliderControls(
-  tuning: Record<string, number>,
-  onInputChange: () => void
-): void {
-  const isDevHost = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+export function formatSpotlightTuningAsCode(tuning: SpotlightGlobalTuning = globalTuning): string {
+  return `/** Global spotlight defaults — paste over SPOTLIGHT_TUNING in src/js/spotlight.ts */
+export const SPOTLIGHT_TUNING = {
+  mountY: ${tuning.mountY},
+  lightRoomOffset: ${tuning.lightRoomOffset},
+  artworkWallStandoff: ${tuning.artworkWallStandoff},
+  targetYOffset: ${tuning.targetYOffset},
+  intensity: ${tuning.intensity},
+  distance: ${tuning.distance},
+  angle: ${tuning.angle},
+  penumbra: ${tuning.penumbra},
+  decay: ${tuning.decay},
+  emitterRadius: ${tuning.emitterRadius},
+  emitterOffsetX: ${tuning.emitterOffsetX},
+  emitterOffsetY: ${tuning.emitterOffsetY},
+  emitterOffsetZ: ${tuning.emitterOffsetZ},
+  emitterOpacity: ${tuning.emitterOpacity},
+  fixtureScale: ${tuning.fixtureScale},
+  wallMountOffset: ${tuning.wallMountOffset},
+  fixturePitchOffset: ${tuning.fixturePitchOffset},
+} as const`
+}
+
+function updateRigCountLabel(): void {
+  const el = document.getElementById('spotlight_rig_count')
+  if (el) {
+    const n = registeredRigs.length
+    el.textContent = n === 1 ? '1 spotlight' : `${n} spotlights`
+  }
+}
+
+function syncDevPanelValues(): void {
+  for (const def of SPOTLIGHT_SLIDER_DEFS) {
+    const input = document.getElementById(`spotlight_${def.key}`) as HTMLInputElement | null
+    const output = document.getElementById(`spotlight_${def.key}_val`) as HTMLOutputElement | null
+    const value = globalTuning[def.key]
+    if (input) {
+      input.min = String(def.min)
+      input.max = String(def.max)
+      input.value = String(Math.min(def.max, Math.max(def.min, value)))
+    }
+    if (output) output.textContent = def.format ? def.format(value) : String(value)
+  }
+  const preview = document.getElementById('spotlight_code_preview') as HTMLTextAreaElement | null
+  if (preview) preview.value = formatSpotlightTuningAsCode()
+}
+
+function buildDevPanelSliders(): void {
+  for (const def of SPOTLIGHT_SLIDER_DEFS) {
+    const host = document.querySelector(`.spotlight-sliders[data-group="${def.group}"]`)
+    if (!host || document.getElementById(`spotlight_${def.key}`)) continue
+
+    const label = document.createElement('label')
+    label.htmlFor = `spotlight_${def.key}`
+    label.textContent = def.label
+
+    const input = document.createElement('input')
+    input.type = 'range'
+    input.id = `spotlight_${def.key}`
+    input.min = String(def.min)
+    input.max = String(def.max)
+    input.step = String(def.step)
+    input.value = String(globalTuning[def.key])
+
+    const output = document.createElement('output')
+    output.id = `spotlight_${def.key}_val`
+    output.htmlFor = `spotlight_${def.key}`
+    output.textContent = def.format ? def.format(globalTuning[def.key]) : String(globalTuning[def.key])
+
+    input.addEventListener('input', () => {
+      const value = Number(input.value)
+      globalTuning = { ...globalTuning, [def.key]: value }
+      output.textContent = def.format ? def.format(value) : String(value)
+      persistTuning()
+      applyGlobalTuningToAllRigs()
+      const preview = document.getElementById('spotlight_code_preview') as HTMLTextAreaElement | null
+      if (preview) preview.value = formatSpotlightTuningAsCode()
+    })
+
+    host.appendChild(label)
+    host.appendChild(input)
+    host.appendChild(output)
+  }
+}
+
+async function copyText(text: string): Promise<boolean> {
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text)
+      return true
+    }
+  } catch (_err) {
+    // fall through
+  }
+  const textArea = document.createElement('textarea')
+  textArea.value = text
+  textArea.setAttribute('readonly', 'true')
+  textArea.style.position = 'fixed'
+  textArea.style.opacity = '0'
+  document.body.appendChild(textArea)
+  textArea.select()
+  const ok = document.execCommand('copy')
+  document.body.removeChild(textArea)
+  return ok
+}
+
+function setExportStatus(message: string): void {
+  const el = document.getElementById('spotlight_export_status')
+  if (el) el.textContent = message
+}
+
+/** Wire dev panel on localhost — call once after scene (and spotlights) are built. */
+export function initSpotlightDevPanel(onRender?: () => void): void {
+  const isDevHost =
+    typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
   if (!isDevHost) return
 
-  const sliderMap: Record<string, string> = {
-    spotlight_intensity: 'SPOTLIGHT_INTENSITY',
-    spotlight_distance: 'SPOTLIGHT_DISTANCE',
-    spotlight_angle: 'SPOTLIGHT_ANGLE',
-    spotlight_penumbra: 'SPOTLIGHT_PENUMBRA',
-    spotlight_decay: 'SPOTLIGHT_DECAY',
-    spotlight_x: 'SPOTLIGHT_X',
-    spotlight_y: 'SPOTLIGHT_Y',
-    spotlight_z: 'SPOTLIGHT_Z',
-    target_y: 'TARGET_Y',
-    target_z: 'TARGET_Z',
-    emitter_disc_radius: 'EMITTER_DISC_RADIUS',
-    emitter_disc_x: 'EMITTER_DISC_X',
-    emitter_disc_y: 'EMITTER_DISC_Y',
-    emitter_disc_z: 'EMITTER_DISC_Z',
-    emitter_disc_opacity: 'EMITTER_DISC_OPACITY',
-    fixture_scale: 'FIXTURE_SCALE',
-    wall_mount_offset: 'WALL_MOUNT_OFFSET',
-  }
+  loadPersistedTuning()
+  onTuningRender = onRender ?? null
 
-  const wireControls = () => {
-    const firstControl = document.getElementById('spotlight_intensity') as HTMLInputElement | null
-    if (!firstControl) return
-    const panel = document.getElementById('spotlight_slider_panel')
-    if (panel?.dataset.wired === 'true') return
-    if (panel) panel.dataset.wired = 'true'
+  const panel = document.getElementById('spotlight_slider_panel')
+  if (panel) panel.hidden = false
 
-    Object.entries(sliderMap).forEach(([id, key]) => {
-      const input = document.getElementById(id) as HTMLInputElement | null
-      if (!input) return
-      input.value = String(tuning[key] ?? 0)
-      input.addEventListener('input', () => {
-        tuning[key] = Number(input.value)
-        onInputChange()
-      })
+  if (!devPanelReady) {
+    devPanelReady = true
+    buildDevPanelSliders()
+
+    document.getElementById('spotlight_reset')?.addEventListener('click', () => {
+      resetSpotlightGlobalTuning()
+      setExportStatus('Reset to SPOTLIGHT_TUNING defaults.')
     })
 
-    const exportButton = document.getElementById('export_button') as HTMLButtonElement | null
-    const exportStatus = document.getElementById('export_status') as HTMLElement | null
-    exportButton?.addEventListener('click', async () => {
-      const json = JSON.stringify(tuning, null, 2)
-      let copied = false
-      try {
-        if (navigator.clipboard?.writeText) {
-          await navigator.clipboard.writeText(json)
-          copied = true
-        }
-      } catch (_err) {
-        copied = false
-      }
+    document.getElementById('spotlight_copy_json')?.addEventListener('click', async () => {
+      const json = JSON.stringify(globalTuning, null, 2)
+      const ok = await copyText(json)
+      setExportStatus(ok ? 'JSON copied — use for localStorage backup.' : 'Copy failed.')
+    })
 
-      if (!copied) {
-        const textArea = document.createElement('textarea')
-        textArea.value = json
-        textArea.setAttribute('readonly', 'true')
-        textArea.style.position = 'fixed'
-        textArea.style.opacity = '0'
-        document.body.appendChild(textArea)
-        textArea.select()
-        copied = document.execCommand('copy')
-        document.body.removeChild(textArea)
+    document.getElementById('spotlight_copy_code')?.addEventListener('click', async () => {
+      const code = formatSpotlightTuningAsCode()
+      const preview = document.getElementById('spotlight_code_preview') as HTMLTextAreaElement | null
+      if (preview) {
+        preview.hidden = false
+        preview.value = code
       }
-
-      if (copied) {
-        if (exportStatus) exportStatus.textContent = 'Copied.'
-        console.debug('Spotlight tuning JSON copied:', json)
-      } else {
-        if (exportStatus) exportStatus.textContent = 'Copy failed.'
-        console.debug('Spotlight tuning JSON:', json)
-      }
+      const ok = await copyText(code)
+      setExportStatus(
+        ok
+          ? 'TypeScript copied — paste over SPOTLIGHT_TUNING in spotlight.ts and commit.'
+          : 'Copy failed — see preview below.'
+      )
     })
   }
 
-  wireControls()
-  if (typeof window !== 'undefined') {
-    window.addEventListener('spotlight-slider-ready', wireControls as EventListener)
-  }
+  syncDevPanelValues()
+  applyGlobalTuningToAllRigs()
+}
+
+/** @deprecated Use initSpotlightDevPanel */
+export function bindSpotlightSliderControls(_tuning: Record<string, number>, _onInputChange: () => void): void {
+  // Legacy no-op — global panel replaces per-rig binding.
 }
