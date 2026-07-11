@@ -29,7 +29,7 @@ export async function initRapier(): Promise<void> {
 }
 
 /**
- * Create the physics world, floor, wall colliders from g.wallGroup, and player rigid body.
+ * Create the physics world, floor, wall colliders from g.wallGroup, artwork colliders from g.paintings, and player rigid body.
  * Call after the scene (and wallGroup) has been built (e.g. after create()).
  * Walls are one static cuboid per mesh; player is dynamic, rotations locked, cuboid 1.2×1×1.2.
  */
@@ -71,6 +71,25 @@ export function createGalleryPhysics(g: Gal): {
       .setTranslation(pos.x, pos.y, pos.z)
       .setRotation(rot)
     world.createCollider(wallDesc)
+  }
+
+  // Artworks (frame + placard): world AABB static cuboids from g.paintings
+  const artBox = new THREE.Box3()
+  const artCenter = new THREE.Vector3()
+  const artSize = new THREE.Vector3()
+  const minArtHalfDepth = 0.08
+  for (let i = 0; i < g.paintings.length; i++) {
+    const painting = g.paintings[i]!
+    painting.updateMatrixWorld(true)
+    artBox.setFromObject(painting)
+    if (artBox.isEmpty()) continue
+    artBox.getCenter(artCenter)
+    artBox.getSize(artSize)
+    const hx = Math.max(artSize.x / 2, 0.05)
+    const hy = Math.max(artSize.y / 2, 0.05)
+    const hz = Math.max(artSize.z / 2, minArtHalfDepth)
+    const artDesc = R.ColliderDesc.cuboid(hx, hy, hz).setTranslation(artCenter.x, artCenter.y, artCenter.z)
+    world.createCollider(artDesc)
   }
 
   // Player: dynamic cuboid, locked rotation, same size as the visual user box (1.2 x 1 x 1.2)
