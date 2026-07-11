@@ -1,4 +1,5 @@
-import { uploadPhotoFiles, type PhotoDto } from './photo-upload-client.js'
+import { uploadPhotoFiles, type PhotoDto, type UploadFileProgress } from './photo-upload-client.js'
+import { buildLibraryPendingCard } from './photo-upload-ui.js'
 
 type FolderDto = {
   id: string
@@ -12,6 +13,7 @@ type FolderFilter = 'all' | 'root' | string
 const state = {
   folders: [] as FolderDto[],
   photos: [] as PhotoDto[],
+  pendingUploads: [] as UploadFileProgress[],
   folderFilter: 'all' as FolderFilter,
   search: '',
   unplacedOnly: false,
@@ -136,7 +138,16 @@ function renderGrid(): void {
   const empty = document.getElementById('library-empty')
   if (!grid) return
   grid.innerHTML = ''
-  if (empty) empty.hidden = state.photos.length > 0
+  const hasItems = state.photos.length > 0 || state.pendingUploads.length > 0
+  if (empty) empty.hidden = hasItems
+
+  state.pendingUploads.forEach((pending) => {
+    const li = document.createElement('li')
+    li.className = `library-card upload-pending${pending.stage === 'error' ? ' upload-error' : ''}`
+    li.dataset.uploadId = pending.localId
+    li.innerHTML = buildLibraryPendingCard(pending)
+    grid.appendChild(li)
+  })
 
   state.photos.forEach((photo, index) => {
     const selected = state.selected.has(photo.id)
@@ -239,16 +250,34 @@ async function uploadFiles(files: FileList | File[]): Promise<void> {
     showToast('No image files selected', true)
     return
   }
-  showToast(`Uploading ${list.length} file${list.length === 1 ? '' : 's'}…`)
+  const pendingIds = new Set<string>()
   try {
-    const uploaded = await uploadPhotoFiles(list, { folderId: uploadFolderId() })
+    const uploaded = await uploadPhotoFiles(list, {
+      folderId: uploadFolderId(),
+      onProgress: (progress) => {
+        pendingIds.add(progress.localId)
+        const idx = state.pendingUploads.findIndex((p) => p.localId === progress.localId)
+        if (idx >= 0) state.pendingUploads[idx] = progress
+        else state.pendingUploads.push(progress)
+        if (progress.stage === 'error') pendingIds.delete(progress.localId)
+        renderGrid()
+      },
+    })
+    state.pendingUploads = state.pendingUploads.filter((p) => pendingIds.has(p.localId) && p.stage === 'error')
     await reloadAll()
-    if (uploaded.length === 0) {
+    if (uploaded.length === 0 && state.pendingUploads.length === 0) {
       showToast('No photos were saved', true)
       return
     }
-    showToast(`Uploaded ${uploaded.length} photo${uploaded.length === 1 ? '' : 's'}`)
+    if (uploaded.length > 0) {
+      showToast(`Uploaded ${uploaded.length} photo${uploaded.length === 1 ? '' : 's'}`)
+    }
+    if (state.pendingUploads.length > 0) {
+      showToast(`${state.pendingUploads.length} upload${state.pendingUploads.length === 1 ? '' : 's'} failed`, true)
+    }
   } catch (err) {
+    state.pendingUploads = state.pendingUploads.filter((p) => p.stage === 'error')
+    renderGrid()
     showToast(err instanceof Error ? err.message : 'Upload failed', true)
   }
 }

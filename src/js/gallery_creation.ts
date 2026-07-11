@@ -2,7 +2,8 @@ declare const d3: any
 
 import { WALL_TEXTURE_OPTIONS, type WallTextureStyle } from './types.js'
 import { parseWallStyle } from './floorplan.js'
-import { uploadPhotoFiles } from './photo-upload-client.js'
+import { uploadPhotoFiles, type UploadFileProgress } from './photo-upload-client.js'
+import { buildEditorPendingTile } from './photo-upload-ui.js'
 
 type CellKey = string
 type Wall = 'north' | 'east' | 'south' | 'west'
@@ -67,6 +68,7 @@ type ArtPointerDrag = {
 }
 
 const photoCatalog: PhotoItem[] = []
+const pendingUploads: UploadFileProgress[] = []
 
 const activeCells = new Set<CellKey>()
 const placements: CellPlacements = {}
@@ -323,6 +325,15 @@ function renderPhotoList(): void {
   const placed = getPlacedPhotoIds()
   let shown = 0
 
+  pendingUploads.forEach((pending) => {
+    shown += 1
+    const tile = document.createElement('div')
+    tile.className = `photo-tile upload-pending${pending.stage === 'error' ? ' upload-error' : ''}`
+    tile.dataset.uploadId = pending.localId
+    tile.innerHTML = buildEditorPendingTile(pending)
+    list.appendChild(tile)
+  })
+
   photoCatalog.forEach((photo) => {
     const isPlaced = placed.has(photo.id)
     if (showUnplacedOnly && isPlaced) return
@@ -359,8 +370,10 @@ function renderPhotoList(): void {
     empty.className = 'photo-list-empty'
     empty.textContent = photoCatalog.length
       ? 'All photos are placed — uncheck “Show unplaced only”.'
-      : 'No photos yet — upload above or add them in your library.'
-    list.appendChild(empty)
+      : pendingUploads.length
+        ? ''
+        : 'No photos yet — upload above or add them in your library.'
+    if (empty.textContent) list.appendChild(empty)
   }
 }
 
@@ -894,17 +907,34 @@ async function uploadEditorPhotos(files: FileList | File[]): Promise<void> {
     showToast('No image files selected', true)
     return
   }
-  showToast(`Uploading ${list.length} file${list.length === 1 ? '' : 's'}…`)
+  const pendingIds = new Set<string>()
   try {
-    const uploaded = await uploadPhotoFiles(list)
+    const uploaded = await uploadPhotoFiles(list, {
+      onProgress: (progress) => {
+        pendingIds.add(progress.localId)
+        const idx = pendingUploads.findIndex((p) => p.localId === progress.localId)
+        if (idx >= 0) pendingUploads[idx] = progress
+        else pendingUploads.push(progress)
+        if (progress.stage === 'error') pendingIds.delete(progress.localId)
+        renderPhotoList()
+      },
+    })
+    pendingUploads.splice(0, pendingUploads.length, ...pendingUploads.filter((p) => pendingIds.has(p.localId) && p.stage === 'error'))
     await loadOwnerPhotos()
     updatePreview()
-    if (uploaded.length === 0) {
+    if (uploaded.length === 0 && pendingUploads.length === 0) {
       showToast('No photos were saved', true)
       return
     }
-    showToast(`Uploaded ${uploaded.length} photo${uploaded.length === 1 ? '' : 's'}`)
+    if (uploaded.length > 0) {
+      showToast(`Uploaded ${uploaded.length} photo${uploaded.length === 1 ? '' : 's'}`)
+    }
+    if (pendingUploads.length > 0) {
+      showToast(`${pendingUploads.length} upload${pendingUploads.length === 1 ? '' : 's'} failed`, true)
+    }
   } catch (err) {
+    pendingUploads.splice(0, pendingUploads.length, ...pendingUploads.filter((p) => p.stage === 'error'))
+    renderPhotoList()
     showToast(err instanceof Error ? err.message : 'Upload failed', true)
   }
 }

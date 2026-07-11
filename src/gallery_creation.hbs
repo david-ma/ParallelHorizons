@@ -125,6 +125,21 @@
     .photo-tile.placed { opacity: 0.72; }
     .photo-tile.selected { border-color: var(--primary); box-shadow: 0 0 0 1px var(--primary); opacity: 1; }
     .photo-tile img { display: block; width: 100%; aspect-ratio: 1 / 1; object-fit: cover; border-radius: 4px; }
+    .photo-tile.upload-pending { cursor: default; }
+    .photo-tile.upload-pending .upload-placeholder {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      aspect-ratio: 1 / 1;
+      border-radius: 4px;
+      background: #1f1f21;
+    }
+    .photo-tile.upload-pending.upload-error .upload-placeholder { background: #2a2020; }
+    .photo-tile.upload-pending .upload-loading { width: 40px; height: 40px; object-fit: contain; }
+    .photo-tile.upload-pending .upload-stage { margin: 0; font-size: 10px; color: var(--muted); text-align: center; line-height: 1.3; }
+    .photo-tile.upload-error .upload-stage { color: #ff375f; }
     .photo-title { margin: 4px 0 0; font-size: 12px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .photo-meta { margin: 2px 0 0; font-size: 10px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .placard-editor { padding: 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface-2); flex: 1; min-height: 0; overflow-y: auto; }

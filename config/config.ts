@@ -12,6 +12,7 @@ import { isValidFloorplan } from '../src/js/floorplan.js'
 import { galleries as galleriesTable, photos as photosTable, photoFolders as photoFoldersTable } from '../models/gallery-schema.js'
 import { loadMirrorOrigin } from './load-secrets.js'
 import { softDeletePhoto } from './photo-store.js'
+import { handleUploadPhoto } from './photo-upload.js'
 import {
   handleFolderCreate,
   handleFolderDelete,

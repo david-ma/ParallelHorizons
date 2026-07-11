@@ -952,6 +952,72 @@ body.page-home {
 	color: #8e8e93;
 }
 
+.library-card.upload-pending {
+	pointer-events: none;
+}
+
+.library-card.upload-pending .upload-pending-body {
+	padding-top: 0.5rem;
+}
+
+.upload-placeholder {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 0.5rem;
+	width: 100%;
+	aspect-ratio: 1 / 1;
+	background: #242426;
+	border-bottom: 1px solid #3a3a3d;
+}
+
+.upload-placeholder.upload-error {
+	background: #2a2020;
+}
+
+.upload-loading {
+	display: block;
+	width: 48px;
+	height: 48px;
+	object-fit: contain;
+}
+
+.upload-stage {
+	margin: 0;
+	padding: 0 0.5rem;
+	font-size: 0.75rem;
+	color: #8e8e93;
+	text-align: center;
+	line-height: 1.3;
+}
+
+.upload-error .upload-stage {
+	color: #ff375f;
+}
+
+.photo-tile.upload-pending {
+	cursor: default;
+	opacity: 1;
+}
+
+.photo-tile.upload-pending .upload-placeholder {
+	aspect-ratio: 1 / 1;
+	border-radius: 4px;
+	margin-bottom: 4px;
+	border-bottom: none;
+	background: #1f1f21;
+}
+
+.photo-tile.upload-pending .upload-loading {
+	width: 40px;
+	height: 40px;
+}
+
+.photo-tile.upload-pending .upload-stage {
+	font-size: 10px;
+}
+
 .library-dialog {
 	border: 1px solid #3a3a3d;
 	border-radius: 8px;
